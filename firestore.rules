@@ -1,0 +1,315 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+              isBootstrapAdmin());
+    }
+    
+    function isModerator() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'moderator'];
+    }
+    
+    function isActiveUser(userId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      return userDoc.data != null && userDoc.data.metadata.accountStatus == 'active';
+    }
+    
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+    
+    function hasCompletedOnboarding(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.metadata.onboardingCompleted == true;
+    }
+    
+    function isBootstrapAdmin() {
+      // Allow admin bootstrap for specific emails
+      // Add your email below to automatically get admin role
+      return request.auth.token.email in [
+        'thehseenshaik@gmail.com'
+      ];
+    }
+    
+    // ============================================================================
+    // USERS COLLECTION
+    // ============================================================================
+    
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId) || isAdmin() || isBootstrapAdmin();
+      
+      // Users can create their own profile on signup
+      allow create: if isOwner(userId) && 
+                       request.resource.data.role == 'user' &&
+                       request.resource.data.metadata.accountStatus == 'active' &&
+                       request.resource.data.basicInfo.email.matches('.+@.+\\..+');
+      
+      // Users can update their own profile
+      // Allow both structured UserDocument updates and flat profile data from ProfileContext
+      // Allow admin bootstrap for users in the allowlist
+      allow update: if isOwner(userId) || isAdmin() || isBootstrapAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin() || isBootstrapAdmin();
+      
+      // ============================================================================
+      // USER SUBCOLLECTIONS
+      // ============================================================================
+      
+      // Basic info - user can read/write their own
+      match /basicInfo/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Auth info - user can read, limited write
+      match /authInfo/{document=**} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && 
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['email', 'provider', 'providers']);
+      }
+      
+      // Profile - user can read/write their own
+      match /profile/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Settings - user can read/write their own
+      match /settings/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Privacy - user can read/write their own
+      match /privacy/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Connected platforms - user can read/write their own
+      match /connectedPlatforms/{collection}/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // AI data - user can read/write their own
+      match /aiData/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Resume data - user can read/write their own
+      match /resumeData/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Portfolio data - user can read/write their own
+      match /portfolioData/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Community data - user can read/write their own
+      match /communityData/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Metadata - user can read, limited write
+      match /metadata/{document=**} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && 
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['createdAt', 'role', 'accountStatus']);
+      }
+      
+      // Role - only admins can modify
+      match /role/{document=**} {
+        allow read: if isOwner(userId);
+        allow write: if isAdmin();
+      }
+    }
+    
+    // ============================================================================
+    // USERNAMES COLLECTION (for username uniqueness)
+    // ============================================================================
+    
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isOwner(request.resource.data.userId) || isAdmin();
+    }
+    
+    // ============================================================================
+    // PROFILES COLLECTION (public profiles)
+    // ============================================================================
+    
+    match /profiles/{userId} {
+      // Public read access based on privacy settings
+      allow read: if isAuthenticated() && 
+                     (request.resource.data.privacy.profileVisibility == 'public' ||
+                      request.resource.data.privacy.profileVisibility == 'connections' &&
+                      request.auth.uid in request.resource.data.communityData.following ||
+                      isOwner(userId) ||
+                      isAdmin());
+      
+      // Users can create/update their own public profile
+      allow create, update: if isOwner(userId);
+      
+      // Only admins can delete public profiles
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================================================
+    // EDUCATION COLLECTION
+    // ============================================================================
+    
+    match /education/{docId} {
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(request.resource.data.userId);
+    }
+    
+    // ============================================================================
+    // EXPERIENCE COLLECTION
+    // ============================================================================
+    
+    match /experience/{docId} {
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(request.resource.data.userId);
+    }
+    
+    // ============================================================================
+    // PROJECTS COLLECTION
+    // ============================================================================
+    
+    match /projects/{docId} {
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(request.resource.data.userId);
+    }
+    
+    // ============================================================================
+    // RESUMES COLLECTION
+    // ============================================================================
+    
+    match /resumes/{docId} {
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(request.resource.data.userId);
+    }
+    
+    // ============================================================================
+    // PORTFOLIOS COLLECTION
+    // ============================================================================
+    
+    match /portfolios/{userId} {
+      // Public read based on portfolio settings
+      allow read: if request.resource.data.enabled == true ||
+                     isOwner(userId) ||
+                     isAdmin();
+      
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // ============================================================================
+    // POSTS COLLECTION (community)
+    // ============================================================================
+    
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(request.resource.data.userId) || isModerator();
+      allow delete: if isOwner(request.resource.data.userId) || isModerator();
+    }
+    
+    // ============================================================================
+    // COMMENTS COLLECTION
+    // ============================================================================
+    
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isOwner(request.resource.data.userId) || isModerator();
+      allow delete: if isOwner(request.resource.data.userId) || isModerator();
+    }
+    
+    // ============================================================================
+    // NOTIFICATIONS COLLECTION
+    // ============================================================================
+    
+    match /notifications/{notificationId} {
+      allow read: if isOwner(request.resource.data.userId);
+      allow create: if false; // Created by server/cloud functions
+      allow update: if isOwner(request.resource.data.userId) &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['read']);
+      allow delete: if isOwner(request.resource.data.userId);
+    }
+    
+    // ============================================================================
+    // SESSIONS COLLECTION
+    // ============================================================================
+    
+    match /sessions/{sessionId} {
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(request.resource.data.userId) || isAdmin();
+    }
+    
+    // ============================================================================
+    // ACTIVITY LOGS COLLECTION
+    // ============================================================================
+    
+    match /activityLogs/{logId} {
+      allow read: if isOwner(request.resource.data.userId) || isAdmin();
+      allow create: if false; // Created by server/cloud functions
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================================================
+    // ADMIN COLLECTION (admin-only data)
+    // ============================================================================
+    
+    match /admin/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    // ============================================================================
+    // ANALYTICS COLLECTION
+    // ============================================================================
+    
+    match /analytics/{document=**} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false; // Created by server/cloud functions
+    }
+    
+    // ============================================================================
+    // RATE LIMITING COLLECTION
+    // ============================================================================
+    
+    match /rateLimits/{identifier} {
+      allow read, create, update, delete: if true; // Allow for rate limiting
+    }
+  }
+}

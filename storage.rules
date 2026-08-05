@@ -1,0 +1,79 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================================================
+    // HELPER FUNCTIONS
+    // ============================================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // ============================================================================
+    // USER-SPECIFIC STORAGE
+    // ============================================================================
+    
+    match /users/{userId}/{allPaths=**} {
+      // Read access: Owner can always read, others can read if profile is public
+      allow read: if isOwner(userId) || 
+                     (get(/databases/$(database)/documents/users/$(userId)).data.privacy.profileVisibility == 'public');
+      
+      // Write access: Only owner can write to their own storage
+      allow write: if isOwner(userId);
+    }
+    
+    // ============================================================================
+    // AVATAR STORAGE (with size and type validation)
+    // ============================================================================
+    
+    match /users/{userId}/avatars/{fileName} {
+      allow read: if isOwner(userId) || 
+                     (get(/databases/$(database)/documents/users/$(userId)).data.privacy.profileVisibility == 'public');
+      
+      allow write: if isOwner(userId) &&
+                    request.resource.size < 5 * 1024 * 1024 && // 5MB max
+                    request.resource.contentType.matches('image/.*'); // Images only
+    }
+    
+    // ============================================================================
+    // RESUME STORAGE (with size and type validation)
+    // ============================================================================
+    
+    match /users/{userId}/resumes/{fileName} {
+      allow read: if isOwner(userId);
+      
+      allow write: if isOwner(userId) &&
+                    request.resource.size < 10 * 1024 * 1024 && // 10MB max
+                    (request.resource.contentType.matches('application/pdf') ||
+                     request.resource.contentType.matches('application/msword') ||
+                     request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document'));
+    }
+    
+    // ============================================================================
+    // PUBLIC STORAGE (accessible to all)
+    // ============================================================================
+    
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // ============================================================================
+    // TEMPORARY STORAGE (for uploads)
+    // ============================================================================
+    
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
