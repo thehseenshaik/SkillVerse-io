@@ -297,7 +297,7 @@ This project is private and proprietary. All rights reserved.
 
 ## 👨‍💻 Author
 
-**Hseen Shaik** — [@thehseenshaik](https://github.com/thehseenshaik)
+**Shaik Thehseen** — [@thehseenshaik](https://github.com/thehseenshaik)
 
 ---
 
