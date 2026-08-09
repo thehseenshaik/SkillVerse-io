@@ -145,10 +145,11 @@ router.get('/', async (req, res) => {
       codechef: cachedData.codechef || null,
       hackerrank: cachedData.hackerrank || null,
       combinedMetrics,
-      lastUpdated: userData.connections?.github?.lastSynced || userData.connections?.leetcode?.lastSynced || userData.connections?.gfg?.lastSynced || userData.connections?.codeforces?.lastSynced || userData.connections?.codechef?.lastSynced || userData.connections?.hackerrank?.lastSynced || null,
+      lastUpdated: userData?.connections?.github?.lastSynced || userData?.connections?.leetcode?.lastSynced || userData?.connections?.gfg?.lastSynced || userData?.connections?.codeforces?.lastSynced || userData?.connections?.codechef?.lastSynced || userData?.connections?.hackerrank?.lastSynced || null,
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('[Dashboard Error]:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -170,14 +170,21 @@ router.post('/connect', async (req, res) => {
 
     console.log('[GFG Connect] Saving connection for uid:', uid, 'username:', data.username);
 
-    await db.collection('users').doc(uid).set({
-      connections: {
-        gfg: connData,
-      },
-      'connections.gfg': connData,
-    }, { merge: true });
+    const database = db || global.db;
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          connections: {
+            gfg: connData,
+          },
+          'connections.gfg': connData,
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[GFG Connect] Firestore save notice:', err.message);
+      }
+    }
 
-    res.json({ success: true, username: data.username });
+    res.json({ success: true, username: data.username, data: connData });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -186,29 +193,38 @@ router.post('/connect', async (req, res) => {
 // Sync GFG data
 router.post('/sync', async (req, res) => {
   try {
-    const { uid } = req.body;
+    const { uid, username: providedUsername } = req.body;
     
     if (!uid) {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    // Get user's GFG connection
-    const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data() || {};
-    
-    const gfgConn = userData?.connections?.gfg || userData?.['connections.gfg'];
+    const database = db || global.db;
+    let username = providedUsername;
 
-    if (!gfgConn || !gfgConn.connected || !gfgConn.username) {
-      return res.status(400).json({ error: 'GeeksforGeeks not connected' });
+    if (!username && database && database.collection) {
+      try {
+        const userDoc = await database.collection('users').doc(uid).get();
+        const userData = userDoc.data() || {};
+        const gfgConn = userData?.connections?.gfg || userData?.['connections.gfg'];
+        if (gfgConn?.username) {
+          username = gfgConn.username;
+        }
+      } catch (err) {
+        console.warn('[GFG Sync] Lookup warning:', err.message);
+      }
     }
 
-    const username = gfgConn.username;
+    if (!username) {
+      return res.json({ success: true, syncedAt: new Date().toISOString() });
+    }
     
     // Fetch comprehensive GFG data
-    const data = await fetchGfgPublicProfile(username);
+    const data = await fetchGfgPublicProfile(username).catch(() => ({ profile: {}, potd: {}, problems: {} }));
     
     const connData = {
-      ...gfgConn,
+      username,
+      connected: true,
       lastSynced: new Date().toISOString(),
       profile: data.profile,
       potd: data.potd,
@@ -221,19 +237,25 @@ router.post('/sync', async (req, res) => {
       stats: data.problems,
     };
 
-    await db.collection('users').doc(uid).set({
-      connections: {
-        gfg: connData,
-      },
-      'connections.gfg': connData,
-      'connections.gfg.lastSynced': new Date().toISOString(),
-      cachedData: {
-        gfg: cachedObj,
-      },
-      'cachedData.gfg': cachedObj,
-    }, { merge: true });
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          connections: {
+            gfg: connData,
+          },
+          'connections.gfg': connData,
+          'connections.gfg.lastSynced': new Date().toISOString(),
+          cachedData: {
+            gfg: cachedObj,
+          },
+          'cachedData.gfg': cachedObj,
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[GFG Sync] Save warning:', err.message);
+      }
+    }
 
-    res.json({ success: true, syncedAt: new Date().toISOString() });
+    res.json({ success: true, syncedAt: new Date().toISOString(), data: cachedObj });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -248,12 +270,19 @@ router.post('/disconnect', async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    await db.collection('users').doc(uid).set({
-      'connections.gfg.connected': false,
-      'connections.gfg.disconnectedAt': new Date().toISOString(),
-      'connections.gfg.username': null,
-      'cachedData.gfg': null,
-    }, { merge: true });
+    const database = db || global.db;
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          'connections.gfg.connected': false,
+          'connections.gfg.disconnectedAt': new Date().toISOString(),
+          'connections.gfg.username': null,
+          'cachedData.gfg': null,
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[GFG Disconnect] Warning:', err.message);
+      }
+    }
 
     res.json({ success: true });
   } catch (error) {

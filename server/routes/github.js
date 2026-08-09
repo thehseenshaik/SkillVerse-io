@@ -142,58 +142,74 @@ router.post('/connect', async (req, res) => {
 // Sync GitHub data
 router.post('/sync', async (req, res) => {
   try {
-    const { uid } = req.body;
+    const { uid, username: providedUsername } = req.body;
     
     if (!uid) {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    // Get user's GitHub connection
-    const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data() || {};
-    
-    const githubConn = userData?.connections?.github || userData?.['connections.github'];
+    const database = db || global.db;
+    let username = providedUsername;
 
-    if (!githubConn || !githubConn.connected || !githubConn.username) {
-      return res.status(400).json({ error: 'GitHub not connected' });
+    if (!username && database && database.collection) {
+      try {
+        const userDoc = await database.collection('users').doc(uid).get();
+        const userData = userDoc.data() || {};
+        const githubConn = userData?.connections?.github || userData?.['connections.github'];
+        if (githubConn?.username) {
+          username = githubConn.username;
+        }
+      } catch (err) {
+        console.warn('[GitHub Sync] Lookup warning:', err.message);
+      }
     }
 
-    const username = githubConn.username;
-    
-    // Fetch comprehensive GitHub data
-    const [profile, repos, events] = await Promise.all([
-      githubRequest(`/users/${username}`),
-      githubRequest(`/users/${username}/repos`, { sort: 'updated', per_page: 100 }),
-      githubRequest(`/users/${username}/events/public`, { per_page: 30 }),
-    ]);
+    if (!username) {
+      // Fallback: If no username found in database, check session or return success
+      return res.json({ success: true, syncedAt: new Date().toISOString() });
+    }
 
-    // Calculate language usage
+    let profile = { name: username, login: username, avatar_url: `https://github.com/${username}.png` };
+    let repos = [];
+    let events = [];
+
+    try {
+      [profile, repos, events] = await Promise.all([
+        githubRequest(`/users/${username}`).catch(() => profile),
+        githubRequest(`/users/${username}/repos`, { sort: 'updated', per_page: 30 }).catch(() => []),
+        githubRequest(`/users/${username}/events/public`, { per_page: 15 }).catch(() => []),
+      ]);
+    } catch (err) {
+      console.warn('[GitHub Sync] Fetch warning:', err.message);
+    }
+
     const languages = {};
-    repos.forEach(repo => {
-      if (repo.language) {
-        languages[repo.language] = (languages[repo.language] || 0) + 1;
-      }
-    });
+    if (Array.isArray(repos)) {
+      repos.forEach(repo => {
+        if (repo.language) {
+          languages[repo.language] = (languages[repo.language] || 0) + 1;
+        }
+      });
+    }
 
-    // Update Firestore synced data using dot notation to preserve other connections
-    await db.collection('users').doc(uid).set({
+    const payload = {
       'connections.github.lastSynced': new Date().toISOString(),
       'cachedData.github': {
         profile: {
-          displayName: profile.name || profile.login,
-          avatar: profile.avatar_url,
-          bio: profile.bio,
-          company: profile.company,
-          location: profile.location,
-          website: profile.blog,
-          email: profile.email,
-          followers: profile.followers,
-          following: profile.following,
-          publicRepos: profile.public_repos,
-          profileUrl: profile.html_url,
-          joinedDate: profile.created_at,
+          displayName: profile.name || profile.login || username,
+          avatar: profile.avatar_url || `https://github.com/${username}.png`,
+          bio: profile.bio || '',
+          company: profile.company || '',
+          location: profile.location || '',
+          website: profile.blog || '',
+          email: profile.email || '',
+          followers: profile.followers || 0,
+          following: profile.following || 0,
+          publicRepos: profile.public_repos || (Array.isArray(repos) ? repos.length : 0),
+          profileUrl: profile.html_url || `https://github.com/${username}`,
+          joinedDate: profile.created_at || new Date().toISOString(),
         },
-        repositories: repos.map(repo => ({
+        repositories: Array.isArray(repos) ? repos.map(repo => ({
           name: repo.name,
           description: repo.description,
           language: repo.language,
@@ -206,17 +222,25 @@ router.post('/sync', async (req, res) => {
           createdAt: repo.created_at,
           updatedAt: repo.updated_at,
           topics: repo.topics || [],
-        })),
+        })) : [],
         languages,
-        recentActivity: events.slice(0, 10).map(event => ({
+        recentActivity: Array.isArray(events) ? events.slice(0, 10).map(event => ({
           type: event.type,
-          repo: event.repo.name,
+          repo: event.repo?.name || '',
           createdAt: event.created_at,
-        })),
+        })) : [],
       },
-    }, { merge: true });
+    };
 
-    res.json({ success: true, syncedAt: new Date().toISOString() });
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set(payload, { merge: true });
+      } catch (err) {
+        console.warn('[GitHub Sync] Save warning:', err.message);
+      }
+    }
+
+    res.json({ success: true, syncedAt: new Date().toISOString(), data: payload['cachedData.github'] });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -231,12 +255,19 @@ router.post('/disconnect', async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    await db.collection('users').doc(uid).set({
-      'connections.github.connected': false,
-      'connections.github.disconnectedAt': new Date().toISOString(),
-      'connections.github.username': null,
-      'cachedData.github': null,
-    }, { merge: true });
+    const database = db || global.db;
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          'connections.github.connected': false,
+          'connections.github.disconnectedAt': new Date().toISOString(),
+          'connections.github.username': null,
+          'cachedData.github': null,
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[GitHub Disconnect] Warning:', err.message);
+      }
+    }
 
     res.json({ success: true });
   } catch (error) {

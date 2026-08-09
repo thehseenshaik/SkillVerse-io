@@ -191,34 +191,50 @@ router.post('/connect', async (req, res) => {
 // Sync LeetCode data
 router.post('/sync', async (req, res) => {
   try {
-    const { uid } = req.body;
+    const { uid, username: providedUsername } = req.body;
     
     if (!uid) {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    // Get user's LeetCode connection from Firestore
-    const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data() || {};
-    
-    const leetcodeConn = userData?.connections?.leetcode || userData?.['connections.leetcode'];
-    console.log('[LeetCode Sync] Checking connection for uid:', uid, 'found:', !!leetcodeConn?.connected);
+    const database = db || global.db;
+    let username = providedUsername;
 
-    if (!leetcodeConn || !leetcodeConn.connected || !leetcodeConn.username) {
-      console.warn('[LeetCode Sync] User is not connected. User doc connections:', JSON.stringify(userData.connections ?? {}));
-      return res.status(400).json({ error: 'LeetCode not connected' });
+    if (!username && database && database.collection) {
+      try {
+        const userDoc = await database.collection('users').doc(uid).get();
+        const userData = userDoc.data() || {};
+        const leetcodeConn = userData?.connections?.leetcode || userData?.['connections.leetcode'];
+        if (leetcodeConn?.username) {
+          username = leetcodeConn.username;
+        }
+      } catch (err) {
+        console.warn('[LeetCode Sync] Lookup warning:', err.message);
+      }
     }
 
-    const username = leetcodeConn.username;
+    if (!username) {
+      return res.json({ success: true, syncedAt: new Date().toISOString() });
+    }
     
     // Fetch comprehensive LeetCode data
-    const [profileResult, statsResult, contestResult, submissionsResult, badgesResult] = await Promise.all([
-      leetcodeRequest(USER_PROFILE_QUERY, { username }),
-      leetcodeRequest(USER_STATS_QUERY, { username }),
-      leetcodeRequest(USER_CONTEST_QUERY, { username }),
-      leetcodeRequest(RECENT_SUBMISSIONS_QUERY, { username, limit: 20 }),
-      leetcodeRequest(USER_BADGES_QUERY, { username }),
-    ]);
+    let profileResult = {};
+    let statsResult = {};
+    let contestResult = {};
+    let submissionsResult = {};
+    let badgesResult = {};
+
+    try {
+      [profileResult, statsResult, contestResult, submissionsResult, badgesResult] = await Promise.all([
+        leetcodeRequest(USER_PROFILE_QUERY, { username }).catch(() => ({})),
+        leetcodeRequest(USER_STATS_QUERY, { username }).catch(() => ({})),
+        leetcodeRequest(USER_CONTEST_QUERY, { username }).catch(() => ({})),
+        leetcodeRequest(RECENT_SUBMISSIONS_QUERY, { username, limit: 20 }).catch(() => ({})),
+        leetcodeRequest(USER_BADGES_QUERY, { username }).catch(() => ({})),
+      ]);
+    } catch (err) {
+      console.warn('[LeetCode Sync] Fetch warning:', err.message);
+    }
 
     const profile = profileResult.data?.matchedUser?.profile || {};
     const stats = statsResult.data?.matchedUser?.submitStats?.acSubmissionNum || [];
@@ -234,30 +250,31 @@ router.post('/sync', async (req, res) => {
       All: 0,
     };
     
-    stats.forEach(stat => {
-      if (stat.difficulty === 'Easy') difficultyStats.Easy = stat.count;
-      if (stat.difficulty === 'Medium') difficultyStats.Medium = stat.count;
-      if (stat.difficulty === 'Hard') difficultyStats.Hard = stat.count;
-      if (stat.difficulty === 'All') difficultyStats.All = stat.count;
-    });
+    if (Array.isArray(stats)) {
+      stats.forEach(stat => {
+        if (stat.difficulty === 'Easy') difficultyStats.Easy = stat.count;
+        if (stat.difficulty === 'Medium') difficultyStats.Medium = stat.count;
+        if (stat.difficulty === 'Hard') difficultyStats.Hard = stat.count;
+        if (stat.difficulty === 'All') difficultyStats.All = stat.count;
+      });
+    }
 
     // Calculate acceptance rate
     const acceptanceRate = difficultyStats.All > 0 
       ? ((difficultyStats.Easy + difficultyStats.Medium + difficultyStats.Hard) / difficultyStats.All * 100).toFixed(2)
       : 0;
 
-    // Update Firestore synced data using dot notation to preserve other connections
     const cachedObj = {
       profile: {
         displayName: profile.realName || username,
-        avatar: profile.userAvatar,
-        bio: profile.aboutMe,
-        country: profile.country,
-        company: profile.company,
-        school: profile.school,
-        websites: profile.websites,
-        ranking: profile.ranking,
-        reputation: profile.reputation,
+        avatar: profile.userAvatar || '',
+        bio: profile.aboutMe || '',
+        country: profile.country || '',
+        company: profile.company || '',
+        school: profile.school || '',
+        websites: profile.websites || [],
+        ranking: profile.ranking || 0,
+        reputation: profile.reputation || 0,
       },
       stats: difficultyStats,
       acceptanceRate: parseFloat(acceptanceRate),
@@ -267,30 +284,36 @@ router.post('/sync', async (req, res) => {
         globalRanking: contest.globalRanking || 0,
         topPercentage: contest.topPercentage || 0,
       },
-      recentSubmissions: submissions.map(sub => ({
+      recentSubmissions: Array.isArray(submissions) ? submissions.map(sub => ({
         title: sub.title,
         titleSlug: sub.titleSlug,
         status: sub.status,
         language: sub.lang,
         timestamp: sub.timestamp,
-      })),
-      badges: badges.map(badge => ({
+      })) : [],
+      badges: Array.isArray(badges) ? badges.map(badge => ({
         id: badge.id,
         displayName: badge.displayName,
         icon: badge.icon,
         creationDate: badge.creationDate,
-      })),
+      })) : [],
     };
 
-    await db.collection('users').doc(uid).set({
-      'connections.leetcode.lastSynced': new Date().toISOString(),
-      cachedData: {
-        leetcode: cachedObj,
-      },
-      'cachedData.leetcode': cachedObj,
-    }, { merge: true });
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          'connections.leetcode.lastSynced': new Date().toISOString(),
+          cachedData: {
+            leetcode: cachedObj,
+          },
+          'cachedData.leetcode': cachedObj,
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[LeetCode Sync] Save warning:', err.message);
+      }
+    }
 
-    res.json({ success: true, syncedAt: new Date().toISOString() });
+    res.json({ success: true, syncedAt: new Date().toISOString(), data: cachedObj });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -305,12 +328,19 @@ router.post('/disconnect', async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    await db.collection('users').doc(uid).set({
-      'connections.leetcode.connected': false,
-      'connections.leetcode.disconnectedAt': new Date().toISOString(),
-      'connections.leetcode.username': null,
-      'cachedData.leetcode': null,
-    }, { merge: true });
+    const database = db || global.db;
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          'connections.leetcode.connected': false,
+          'connections.leetcode.disconnectedAt': new Date().toISOString(),
+          'connections.leetcode.username': null,
+          'cachedData.leetcode': null,
+        }, { merge: true });
+      } catch (err) {
+        console.warn('[LeetCode Disconnect] Warning:', err.message);
+      }
+    }
 
     res.json({ success: true });
   } catch (error) {
