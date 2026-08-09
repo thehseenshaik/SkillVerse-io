@@ -26,7 +26,10 @@ if (typeof window !== "undefined") {
     'Cross-Origin-Opener-Policy',
     'window.close',
     'contentscript.js',
-    'injected.js'
+    'injected.js',
+    'evmAsk.js',
+    'Cannot redefine property',
+    'A listener indicated an asynchronous response'
   ];
 
   // Suppress wallet extension errors in console
