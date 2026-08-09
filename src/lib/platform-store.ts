@@ -314,20 +314,42 @@ export const usePlatformStore = create<PlatformStore>()(
           const data = await response.json();
           console.log('[Platform Store] GitHub connect success:', data);
           
+          const profileObj = data.profile || data.data?.profile || {
+            displayName: username,
+            avatar: `https://github.com/${username}.png`,
+            bio: '',
+            company: '',
+            location: '',
+            website: '',
+            email: '',
+            followers: 0,
+            following: 0,
+            publicRepos: 0,
+            profileUrl: `https://github.com/${username}`,
+            joinedDate: new Date().toISOString(),
+          };
+
+          const fullGithubData = {
+            profile: profileObj,
+            repositories: data.data?.repositories || [],
+            languages: data.data?.languages || {},
+            recentActivity: data.data?.recentActivity || [],
+          };
+
           set({
             isLoading: false,
             github: {
               connected: true,
-              username: data.username,
+              username: data.username || username,
               lastSynced: new Date().toISOString(),
               connectedAt: new Date().toISOString(),
             },
-            githubData: data.profile,
+            githubData: fullGithubData,
           });
           
-          // Trigger dashboard data refresh to sync with identity hub
+          // Trigger sync to fetch full public repo and commit details
           if (uid) {
-            await get().fetchDashboardData(uid);
+            get().syncGitHub(uid).catch(() => {});
           }
         } catch (error) {
           console.error('[Platform Store] GitHub connect exception:', error);
@@ -339,10 +361,11 @@ export const usePlatformStore = create<PlatformStore>()(
       syncGitHub: async (uid: string) => {
         set({ isSyncing: true, error: null });
         try {
+          const currentUsername = get().github.username;
           const response = await fetch(`${API_BASE}/api/github/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid }),
+            body: JSON.stringify({ uid, username: currentUsername }),
           });
           
           if (!response.ok) {
@@ -350,11 +373,15 @@ export const usePlatformStore = create<PlatformStore>()(
             throw new Error(error.error || 'Sync failed');
           }
           
+          const data = await response.json();
+          if (data.data) {
+            set({ githubData: data.data });
+          }
+          
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
         } catch (error) {
-          set({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
-          throw error;
+          set({ isSyncing: false });
         }
       },
       
