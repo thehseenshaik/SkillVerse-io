@@ -2,6 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      window.global = window;
+      window.process = window.process || {
+        env: { NODE_ENV: "production" },
+        browser: true,
+        version: "",
+        versions: { node: false },
+        nextTick: function (fn) { setTimeout(fn, 0); }
+      };
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SkillVerse — Your Complete Career Operating System</title>
     <meta

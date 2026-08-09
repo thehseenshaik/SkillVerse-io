@@ -60,7 +60,7 @@ if (typeof window !== "undefined") {
   };
 
   // Increase EventEmitter max listeners to prevent memory leak warnings
-  if (typeof (process as any).setMaxListeners === "function") {
+  if (typeof process !== "undefined" && typeof (process as any)?.setMaxListeners === "function") {
     (process as any).setMaxListeners(50);
   }
 }
