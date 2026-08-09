@@ -33,6 +33,7 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as CareerScoreRouteImport } from './routes/career-score'
+import { Route as CareerSnapshotRouteImport } from './routes/career-snapshot'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as ConnectionsBackupRouteImport } from './routes/connections-backup'
@@ -185,6 +186,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const CareerScoreRoute = CareerScoreRouteImport.update({
   id: '/career-score',
   path: '/career-score',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CareerSnapshotRoute = CareerSnapshotRouteImport.update({
+  id: '/career-snapshot',
+  path: '/career-snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangePasswordRoute = ChangePasswordRouteImport.update({
@@ -378,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/assistant': typeof AssistantRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/career-score': typeof CareerScoreRoute
+  '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
   '/connections': typeof ConnectionsRoute
   '/connections-backup': typeof ConnectionsBackupRoute
@@ -437,6 +444,7 @@ export interface FileRoutesByTo {
   '/assistant': typeof AssistantRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/career-score': typeof CareerScoreRoute
+  '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
   '/connections': typeof ConnectionsRoute
   '/connections-backup': typeof ConnectionsBackupRoute
@@ -497,6 +505,7 @@ export interface FileRoutesById {
   '/assistant': typeof AssistantRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/career-score': typeof CareerScoreRoute
+  '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
   '/connections': typeof ConnectionsRoute
   '/connections-backup': typeof ConnectionsBackupRoute
@@ -558,6 +567,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth-callback'
     | '/career-score'
+    | '/career-snapshot'
     | '/change-password'
     | '/connections'
     | '/connections-backup'
@@ -617,6 +627,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth-callback'
     | '/career-score'
+    | '/career-snapshot'
     | '/change-password'
     | '/connections'
     | '/connections-backup'
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth-callback'
     | '/career-score'
+    | '/career-snapshot'
     | '/change-password'
     | '/connections'
     | '/connections-backup'
@@ -736,6 +748,7 @@ export interface RootRouteChildren {
   AssistantRoute: typeof AssistantRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   CareerScoreRoute: typeof CareerScoreRoute
+  CareerSnapshotRoute: typeof CareerSnapshotRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
   ConnectionsRoute: typeof ConnectionsRoute
   ConnectionsBackupRoute: typeof ConnectionsBackupRoute
@@ -932,6 +945,13 @@ declare module '@tanstack/react-router' {
       path: '/career-score'
       fullPath: '/career-score'
       preLoaderRoute: typeof CareerScoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/career-snapshot': {
+      id: '/career-snapshot'
+      path: '/career-snapshot'
+      fullPath: '/career-snapshot'
+      preLoaderRoute: typeof CareerSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/change-password': {
@@ -1227,6 +1247,7 @@ const rootRouteChildren: RootRouteChildren = {
   AssistantRoute: AssistantRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   CareerScoreRoute: CareerScoreRoute,
+  CareerSnapshotRoute: CareerSnapshotRoute,
   ChangePasswordRoute: ChangePasswordRoute,
   ConnectionsRoute: ConnectionsRoute,
   ConnectionsBackupRoute: ConnectionsBackupRoute,

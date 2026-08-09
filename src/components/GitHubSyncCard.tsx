@@ -10,8 +10,11 @@ import {
   ExternalLink,
   ArrowRight,
   AlertCircle,
+  TrendingUp,
 } from "lucide-react";
 import { useProfile } from "@/lib/profile-context";
+import { usePlatformStore } from "@/lib/platform-store";
+import { useIdentityHub } from "@/lib/identity-hub-context";
 import {
   fetchGithubStats,
   parseGithubUsername,
@@ -19,19 +22,18 @@ import {
   type GitHubStats,
 } from "@/lib/github";
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - +new Date(iso);
-  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (d < 1) return "today";
-  if (d < 30) return `${d}d ago`;
-  const m = Math.floor(d / 30);
-  if (m < 12) return `${m}mo ago`;
-  return `${Math.floor(m / 12)}y ago`;
-}
-
 export function GitHubSyncCard() {
   const { profile } = useProfile();
-  const username = parseGithubUsername(profile.links.github ?? "");
+  const { github, githubData } = usePlatformStore();
+  const { connections = [] } = useIdentityHub();
+
+  const rawUsername =
+    github?.username ||
+    connections?.find((c) => c.platform === "github" && c.status === "connected")?.username ||
+    profile?.links?.github ||
+    "";
+
+  const username = parseGithubUsername(rawUsername || "");
   const [stats, setStats] = useState<GitHubStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,13 +53,14 @@ export function GitHubSyncCard() {
   }
 
   useEffect(() => {
-    setStats(null);
-    void load(false);
+    if (username) {
+      void load(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
 
-  // Empty state — no GitHub username set yet
-  if (!username) {
+  // Empty state — no GitHub username set yet and not connected
+  if (!username && !github?.connected) {
     return (
       <div className="glass relative overflow-hidden rounded-3xl p-6 shadow-elegant">
         <div className="flex items-center gap-2">
@@ -68,11 +71,10 @@ export function GitHubSyncCard() {
           </span>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Add your GitHub username on your profile to pull repos, languages, and
-          stars into your Career Score.
+          Connect your GitHub profile to pull repositories, top languages, and stars into your live Career Score.
         </p>
         <Link
-          to="/profile"
+          to="/connections"
           className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-foreground px-3 text-xs font-semibold text-background transition-opacity hover:opacity-90"
         >
           Connect GitHub <ArrowRight className="h-3.5 w-3.5" />
@@ -81,15 +83,36 @@ export function GitHubSyncCard() {
     );
   }
 
+  // Display user stats (from local fetch or fallback to platformStore data)
+  const avatar = stats?.avatar || githubData?.profile?.avatar;
+  const displayName = stats?.name || githubData?.profile?.displayName || username || "Developer";
+  const userBio = stats?.bio || githubData?.profile?.bio;
+  const totalRepos = stats?.publicRepos ?? (Array.isArray(githubData?.repositories) ? githubData.repositories.length : githubData?.profile?.publicRepos ?? 0);
+  const totalStars = stats?.totalStars ?? 0;
+  const totalForks = stats?.totalForks ?? 0;
+  const followersCount = stats?.followers ?? githubData?.profile?.followers ?? 0;
+  
+  const topRepos = Array.isArray(stats?.topRepos) && stats.topRepos.length > 0
+    ? stats.topRepos
+    : Array.isArray(githubData?.repositories)
+    ? githubData.repositories
+    : [];
+
+  const topLanguages = Array.isArray(stats?.languages) && stats.languages.length > 0
+    ? stats.languages
+    : githubData?.languages && typeof githubData.languages === "object"
+    ? Object.entries(githubData.languages).map(([name, bytes]) => ({ name, count: Number(bytes), pct: 0 }))
+    : [];
+
   return (
     <div className="glass relative overflow-hidden rounded-3xl p-6 shadow-elegant">
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="relative">
-          {stats?.avatar ? (
+          {avatar ? (
             <img
-              src={stats.avatar}
-              alt={`${stats.username} avatar`}
+              src={avatar}
+              alt={`${username || "User"} avatar`}
               className="h-12 w-12 rounded-xl border border-border/70 object-cover"
               loading="lazy"
             />
@@ -98,164 +121,165 @@ export function GitHubSyncCard() {
               <FaGithub className="h-5 w-5" />
             </div>
           )}
-          <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border-2 border-background bg-foreground">
-            <FaGithub className="h-2.5 w-2.5 text-background" />
-          </span>
         </div>
+
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h2 className="truncate text-base font-semibold">
-              {stats?.name ?? stats?.username ?? username}
+              {displayName}
             </h2>
-            {stats && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />{" "}
-                Live
-              </span>
+            {username && (
+              <a
+                href={`https://github.com/${username}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-brand"
+              >
+                @{username}
+                <ExternalLink className="h-3 w-3" />
+              </a>
             )}
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="h-3 w-3" /> Live Synced
+            </span>
           </div>
-          <a
-            href={stats?.htmlUrl ?? `https://github.com/${username}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            @{stats?.username ?? username} <ExternalLink className="h-3 w-3" />
-          </a>
+
+          {userBio && (
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+              {userBio}
+            </p>
+          )}
         </div>
+
         <button
+          type="button"
           onClick={() => load(true)}
           disabled={loading}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/70 bg-background/60 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-60"
-          aria-label="Resync GitHub"
+          aria-label="Refresh GitHub stats"
+          className="grid h-8 w-8 place-items-center rounded-lg border border-border/70 bg-background/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
         >
-          <RefreshCcw
-            className={"h-3.5 w-3.5 " + (loading ? "animate-spin" : "")}
-          />
-          {loading ? "Syncing" : "Resync"}
+          <RefreshCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5" />
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-500">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Stat grid */}
-      <div className="mt-5 grid grid-cols-4 gap-2">
-        {[
-          { Icon: BookMarked, label: "Repos", v: stats?.publicRepos },
-          { Icon: Star, label: "Stars", v: stats?.totalStars },
-          { Icon: GitFork, label: "Forks", v: stats?.totalForks },
-          { Icon: Users, label: "Followers", v: stats?.followers },
-        ].map(({ Icon, label, v }) => (
-          <div
-            key={label}
-            className="rounded-xl border border-border/60 bg-background/40 p-2.5 text-center"
-          >
-            <Icon className="mx-auto h-3.5 w-3.5 text-muted-foreground" />
-            <div className="mt-1 text-lg font-semibold tabular-nums">
-              {loading && v == null ? "—" : (v ?? "—")}
-            </div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {label}
-            </div>
+      {/* Metrics Row */}
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-2xl border border-border/70 bg-background/40 p-3">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <BookMarked className="h-3.5 w-3.5" /> Repos
           </div>
-        ))}
+          <div className="mt-1 text-xl font-bold">{totalRepos}</div>
+        </div>
+
+        <div className="rounded-2xl border border-border/70 bg-background/40 p-3">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Star className="h-3.5 w-3.5 text-amber-500" /> Stars
+          </div>
+          <div className="mt-1 text-xl font-bold">{totalStars}</div>
+        </div>
+
+        <div className="rounded-2xl border border-border/70 bg-background/40 p-3">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <GitFork className="h-3.5 w-3.5" /> Forks
+          </div>
+          <div className="mt-1 text-xl font-bold">{totalForks}</div>
+        </div>
+
+        <div className="rounded-2xl border border-border/70 bg-background/40 p-3">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Users className="h-3.5 w-3.5" /> Followers
+          </div>
+          <div className="mt-1 text-xl font-bold">{followersCount}</div>
+        </div>
       </div>
 
-      {/* Languages */}
-      {stats && stats.languages.length > 0 && (
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
-            <span>Top languages</span>
-            <span>{stats.languages.length} detected</span>
+      {/* Top Languages */}
+      {topLanguages.length > 0 && (
+        <div className="mt-4">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Top Languages
           </div>
-          <div className="flex h-2 w-full overflow-hidden rounded-full bg-secondary">
-            {stats.languages.map((l) => (
-              <div
-                key={l.name}
-                style={{ width: `${l.pct}%`, background: langColor(l.name) }}
-                title={`${l.name} · ${l.pct}%`}
-              />
-            ))}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {stats.languages.map((l) => (
-              <span
-                key={l.name}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-medium"
-              >
+          <div className="flex flex-wrap gap-2">
+            {topLanguages.slice(0, 5).map((lang: any, i: number) => {
+              const langName = typeof lang === "string" ? lang : lang?.name || "Code";
+              return (
                 <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: langColor(l.name) }}
-                />
-                {l.name} <span className="text-muted-foreground">{l.pct}%</span>
-              </span>
-            ))}
+                  key={`${langName}-${i}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/40 px-2.5 py-1 text-xs font-medium"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: langColor(langName) }}
+                  />
+                  {langName}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Top repos */}
-      {stats && stats.topRepos.length > 0 && (
-        <div className="mt-5">
-          <div className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-            Pinned by activity
+      {/* Top Repos */}
+      {topRepos.length > 0 && (
+        <div className="mt-5 border-t border-border/50 pt-4">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Featured Repositories
           </div>
-          <ul className="space-y-1.5">
-            {stats.topRepos.map((r) => (
-              <li key={r.name}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {topRepos.slice(0, 4).map((repo: any, idx: number) => {
+              const repoName = repo?.name || `Repository ${idx + 1}`;
+              const repoUrl = repo?.url || (username ? `https://github.com/${username}/${repoName}` : undefined);
+              const repoDesc = repo?.description || "Public repository";
+              const repoLang = repo?.language;
+              const repoStars = repo?.stars;
+
+              return (
                 <a
-                  href={r.url}
+                  key={`${repoName}-${idx}`}
+                  href={repoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2 transition-all hover:border-brand/40 hover:bg-background/70"
+                  className="group/repo rounded-xl border border-border/60 bg-background/30 p-3 transition-colors hover:border-brand/40 hover:bg-background/60"
                 >
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate text-[13px] font-semibold">
-                        {r.name}
-                      </span>
-                      {r.language && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"
-                          title={r.language}
-                        >
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: langColor(r.language) }}
-                          />
-                          {r.language}
-                        </span>
-                      )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-xs font-bold group-hover/repo:text-brand">
+                      {repoName}
                     </span>
-                    {r.description && (
-                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                        {r.description}
+                    <ExternalLink className="h-3 w-3 text-muted-foreground/40 group-hover/repo:text-brand" />
+                  </div>
+                  {repoDesc && (
+                    <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">
+                      {repoDesc}
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
+                    {repoLang && (
+                      <span className="flex items-center gap-1">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: langColor(repoLang) }}
+                        />
+                        {repoLang}
                       </span>
                     )}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1 tabular-nums">
-                      <Star className="h-3 w-3" /> {r.stars}
-                    </span>
-                    <span className="tabular-nums">{timeAgo(r.updatedAt)}</span>
-                  </span>
+                    {repoStars != null && (
+                      <span className="flex items-center gap-0.5">
+                        <Star className="h-3 w-3 text-amber-500" /> {repoStars}
+                      </span>
+                    )}
+                  </div>
                 </a>
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+          </div>
         </div>
-      )}
-
-      {stats && (
-        <p className="mt-4 text-[10px] text-muted-foreground">
-          Synced {timeAgo(new Date(stats.fetchedAt).toISOString())} · cached for
-          6 hours
-        </p>
       )}
     </div>
   );

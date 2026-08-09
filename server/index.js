@@ -33,6 +33,7 @@ try {
 }
 
 // Export db before requiring routes to avoid circular dependency
+global.db = db;
 module.exports.db = db;
 
 const app = express();
@@ -50,9 +51,15 @@ app.use(helmet({
   },
 }));
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? 'https://your-domain.com' 
-    : true, // Allow all origins in development
+  origin: [
+    'https://skillverse-io.web.app',
+    'https://skillverse-io.firebaseapp.com',
+    'https://skillverse-13b58.web.app',
+    'https://skillverse-13b58.firebaseapp.com',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+  ],
   credentials: true,
 }));
 
@@ -90,6 +97,8 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/connections', require('./routes/connections'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/aptitude', require('./routes/aptitude'));
+app.use('/api/linkedin', require('./routes/linkedin'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

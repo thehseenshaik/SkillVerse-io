@@ -1,4 +1,4 @@
-import { createFileRoute, Link as RouterLink } from "@tanstack/react-router";
+import { createFileRoute, Link as RouterLink, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { z } from "zod";
 import {
@@ -97,12 +97,13 @@ type PlatformKey = "github" | "leetcode" | "gfg" | "codeforces" | "codechef" | "
 
 export function ProfilePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     profile,
     update,
     setExperience,
     setProjects,
-    completion,
+    completion = 0,
   } = useProfile();
 
   const { refreshConnections } = useIdentityHub();
@@ -148,14 +149,13 @@ export function ProfilePage() {
     email: "",
     phone: "",
     location: "",
-    role: "Student",
-    gender: "",
     summary: "",
     skills: "",
-    achievements: "",
+    role: "",
+    gender: "",
   });
 
-  // Experience Modal
+  // Experience Modal & Editing State
   const [expModalOpen, setExpModalOpen] = useState(false);
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
   const [expCompany, setExpCompany] = useState("");
@@ -164,35 +164,30 @@ export function ProfilePage() {
   const [expEnd, setExpEnd] = useState("");
   const [expSummary, setExpSummary] = useState("");
 
-  // Project Modal & Delete Confirmation
+  // Project Modal & Editing State
   const [projModalOpen, setProjModalOpen] = useState(false);
   const [editingProjId, setEditingProjId] = useState<string | null>(null);
-  const [deleteProjConfirmId, setDeleteProjConfirmId] = useState<string | null>(null);
   const [projName, setProjName] = useState("");
   const [projStack, setProjStack] = useState("");
   const [projLink, setProjLink] = useState("");
   const [projSummary, setProjSummary] = useState("");
+  const [deleteProjConfirmId, setDeleteProjConfirmId] = useState<string | null>(null);
 
   // Platform Connect Modal State
   const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [activePlatform, setActivePlatform] = useState<PlatformKey | null>(null);
   const [platformUsernameInput, setPlatformUsernameInput] = useState("");
   const [isConnectingPlatform, setIsConnectingPlatform] = useState(false);
-  const [syncingPlatformKey, setSyncingPlatformKey] = useState<string | null>(null);
+  const [syncingPlatformKey, setSyncingPlatformKey] = useState<PlatformKey | null>(null);
 
-  const firstName = useMemo(() => {
-    const fullName = profile.fullName || user?.name || "Developer";
-    return fullName.trim().split(" ")[0];
-  }, [profile.fullName, user?.name]);
-
-  // Sync connections & platform store on mount
+  // Load User Data into Profile state
   useEffect(() => {
     if (user?.id) {
       fetchDashboardData(user.id);
-      refreshConnections();
     }
-  }, [user?.id, fetchDashboardData, refreshConnections]);
+  }, [user?.id, fetchDashboardData]);
 
+  // Sync Draft state when entering Edit Mode
   const enterEditMode = () => {
     setDraft({
       fullName: profile.fullName || user?.name || "",
@@ -200,15 +195,13 @@ export function ProfilePage() {
       email: profile.email || user?.email || "",
       phone: profile.phone || "",
       location: profile.location || "",
-      role: profile.role || "Student",
-      gender: profile.gender || "",
       summary: profile.summary || "",
       skills: profile.skills || "",
-      achievements: profile.achievements || "",
+      role: profile.role || "Student",
+      gender: profile.gender || "",
     });
     setErrors({});
     setIsEditing(true);
-    window.scrollTo({ top: 350, behavior: "smooth" });
   };
 
   const cancelEditMode = () => {
@@ -217,46 +210,65 @@ export function ProfilePage() {
   };
 
   const handleSaveProfile = async () => {
+    setErrors({});
     const result = basicsSchema.safeParse(draft);
+
     if (!result.success) {
-      const flat: Record<string, string> = {};
-      for (const issue of result.error.issues) {
-        const key = String(issue.path[0] ?? "form");
-        if (!flat[key]) flat[key] = issue.message;
-      }
-      setErrors(flat);
-      toast.error("Please fix the validation errors before saving");
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      toast.error("Please review and fix the errors in the form.");
       return;
     }
 
     setIsSaving(true);
-    setErrors({});
-
     try {
-      update({
-        fullName: draft.fullName.trim(),
-        headline: draft.headline.trim(),
-        email: draft.email.trim(),
-        phone: draft.phone.trim(),
-        location: draft.location.trim(),
-        role: draft.role?.trim() || "Student",
-        gender: draft.gender?.trim() || "",
-        summary: draft.summary.trim(),
-        skills: draft.skills.trim(),
-        achievements: draft.achievements.trim(),
+      await update({
+        fullName: draft.fullName,
+        headline: draft.headline,
+        email: draft.email,
+        phone: draft.phone,
+        location: draft.location,
+        summary: draft.summary,
+        skills: draft.skills,
+        role: draft.role,
+        gender: draft.gender,
       });
 
-      await new Promise((r) => setTimeout(r, 600));
-      toast.success("Profile saved successfully!");
+      toast.success("Profile saved successfully");
       setIsEditing(false);
-    } catch (error) {
-      toast.error("Failed to save profile. Please try again.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save profile changes.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Experience Handlers
+  // Experience Actions
+  const openAddExpModal = () => {
+    setEditingExpId(null);
+    setExpCompany("");
+    setExpRole("");
+    setExpStart("");
+    setExpEnd("");
+    setExpSummary("");
+    setExpModalOpen(true);
+  };
+
+  const openEditExpModal = (exp: Experience) => {
+    setEditingExpId(exp.id);
+    setExpCompany(exp.company || "");
+    setExpRole(exp.role || "");
+    setExpStart(exp.start || "");
+    setExpEnd(exp.end || "");
+    setExpSummary(exp.summary || "");
+    setExpModalOpen(true);
+  };
+
   const handleSaveExperience = () => {
     if (!expCompany.trim() || !expRole.trim()) {
       toast.error("Company and Role are required");
@@ -267,8 +279,8 @@ export function ProfilePage() {
       id: editingExpId || crypto.randomUUID(),
       company: expCompany.trim(),
       role: expRole.trim(),
-      start: expStart.trim() || "2024",
-      end: expEnd.trim() || "Present",
+      start: expStart.trim(),
+      end: expEnd.trim(),
       summary: expSummary.trim(),
     };
 
@@ -288,13 +300,22 @@ export function ProfilePage() {
     toast.success("Experience removed");
   };
 
-  // Project Handlers
+  // Project Actions
   const openAddProjectModal = () => {
     setEditingProjId(null);
     setProjName("");
     setProjStack("");
     setProjLink("");
     setProjSummary("");
+    setProjModalOpen(true);
+  };
+
+  const openEditProjectModal = (proj: ProjectItem) => {
+    setEditingProjId(proj.id);
+    setProjName(proj.name || "");
+    setProjStack(proj.stack || "");
+    setProjLink(proj.link || "");
+    setProjSummary(proj.summary || "");
     setProjModalOpen(true);
   };
 
@@ -434,45 +455,65 @@ export function ProfilePage() {
     return profile.skills.split(",").map((s) => s.trim()).filter(Boolean);
   }, [profile.skills]);
 
+  const firstName = (profile.fullName || user?.name || "Developer").split(" ")[0];
+
+  // Smart Incomplete Section Finder (identifies single most important missing item)
+  const missingSection = useMemo(() => {
+    if (!profile.education || profile.education.length === 0) {
+      return { label: "Education is incomplete", id: "education" };
+    }
+    if (!profile.skills || profile.skills.trim().length === 0) {
+      return { label: "Skills are incomplete", id: "skills" };
+    }
+    if (!profile.projects || profile.projects.length === 0) {
+      return { label: "Projects are incomplete", id: "projects" };
+    }
+    if (!profile.summary || profile.summary.trim().length === 0) {
+      return { label: "Summary is incomplete", id: "basics" };
+    }
+    if (!profile.location || profile.location.trim().length === 0) {
+      return { label: "Location is incomplete", id: "basics" };
+    }
+    return null;
+  }, [profile]);
+
   return (
     <PageShell>
-      <section className="relative overflow-hidden bg-hero">
+      <section className="relative overflow-hidden bg-hero pb-16">
         {/* Soft Ambient Backdrop */}
         <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-24 h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-brand/15 blur-[120px] animate-pulse-glow" />
+          <div className="absolute left-1/2 top-24 h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-brand/12 blur-[130px] animate-pulse-glow" />
         </div>
 
-        <div className="mx-auto max-w-6xl px-6 py-12 space-y-10 animate-fade-up">
+        <div className="mx-auto max-w-6xl px-6 py-10 space-y-9 animate-fade-up">
           
-          {/* Header Title Section matching Dashboard scale */}
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/50 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-brand backdrop-blur">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
-                </span>
-                YOUR PROFILE
-              </div>
-              <h1 className="mt-3 text-4xl font-extrabold tracking-tight md:text-5xl">
-                Good to see you, <span className="text-gradient">{firstName}</span>.
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Your career identity, built once and ready for every opportunity.
-              </p>
+          {/* Header Title Section */}
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/50 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand backdrop-blur shadow-2xs">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+              </span>
+              YOUR PROFILE
             </div>
+            <h1 className="mt-2.5 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
+              Good to see you, <span className="text-gradient">{firstName}</span>.
+            </h1>
+            <p className="mt-1.5 text-sm sm:text-base text-muted-foreground font-normal">
+              Your career identity, built once and ready for every opportunity.
+            </p>
           </div>
 
-          {/* 1. TOP HERO PROFILE ID CARD */}
+          {/* 1. MAIN PROFILE CARD (VISUAL CENTERPIECE) */}
           <div className="glass group relative overflow-hidden rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-elegant transition-all hover:shadow-glow">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-brand/10 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-brand/8 to-transparent" />
 
-            <div className="relative flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+            <div className="relative flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
               
-              {/* Left Column: Avatar + Bio */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left min-w-0">
-                {/* Profile Photo / Existing SkillVerse Avatar */}
+              {/* Left Column: Avatar + Bio + Contacts */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left min-w-0 flex-1">
+                {/* Profile Photo */}
                 <div className="relative shrink-0">
                   {user?.avatarUrl || (profile as any)?.photoURL ? (
                     <img
@@ -485,16 +526,16 @@ export function ProfilePage() {
                       <User className="h-12 w-12 sm:h-14 sm:w-14" />
                     </div>
                   )}
-                  <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-background bg-emerald-500 text-white shadow-sm" title="Active Developer">
+                  <span className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full border-2 border-background bg-emerald-500 text-white shadow-sm" title="Active Verified Developer">
                     <CheckCircle2 className="h-4 w-4" />
                   </span>
                 </div>
 
                 {/* Identity Information */}
-                <div className="space-y-2 min-w-0">
+                <div className="space-y-3 min-w-0">
                   <div>
                     <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-                      {profile.fullName || user?.name || "SASI THEHSEEN"}
+                      {profile.fullName || user?.name || "Shaik Thehseen"}
                     </h2>
                     <p className="text-sm font-semibold text-brand mt-0.5">
                       {profile.headline || "Java Full Stack Developer"}
@@ -502,7 +543,7 @@ export function ProfilePage() {
                   </div>
 
                   {/* Compact Metadata Chips */}
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-muted-foreground pt-0.5">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 font-medium">
                       <GraduationCap className="h-3.5 w-3.5 text-brand" />
                       {profile.role || "Student"}
@@ -517,13 +558,13 @@ export function ProfilePage() {
                         <span className="text-border">•</span>
                       </>
                     )}
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Available
                     </span>
                   </div>
 
-                  {/* Contact Info */}
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
+                  {/* Contact Info (Visually secondary) */}
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1 border-t border-border/40">
                     {(profile.email || user?.email) && (
                       <span className="inline-flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 text-muted-foreground/70" />
@@ -540,17 +581,74 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              {/* Right Column: Edit Action & Profile Completion Bar */}
-              <div className="flex flex-col items-center md:items-end justify-between gap-4 shrink-0 w-full md:w-auto border-t md:border-t-0 border-border/50 pt-4 md:pt-0">
+              {/* Right Column: Profile Strength + Actions */}
+              <div className="flex flex-col items-center lg:items-end justify-between gap-5 shrink-0 w-full lg:w-72 border-t lg:border-t-0 border-border/50 pt-4 lg:pt-0">
+                
+                {/* Profile Strength Box */}
+                <div className="w-full rounded-2xl border border-border/60 bg-background/60 p-4 backdrop-blur shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      PROFILE STRENGTH
+                    </span>
+                    <span className="text-lg font-black text-foreground tabular-nums">
+                      {completion}%
+                    </span>
+                  </div>
+
+                  <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full bg-brand rounded-full transition-all duration-500"
+                      style={{ width: `${completion}%` }}
+                    />
+                  </div>
+
+                  {completion === 100 ? (
+                    <div className="space-y-0.5 text-[10.5px] text-muted-foreground pt-0.5">
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
+                        ✓ Career identity complete
+                      </span>
+                      <span className="block opacity-80">Ready for resume generation & Career Snapshot</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-[11px] pt-0.5">
+                      <span className="text-muted-foreground font-medium">
+                        {missingSection ? missingSection.label : "In progress"}
+                      </span>
+                      {missingSection && (
+                        <a
+                          href={`#${missingSection.id}`}
+                          className="text-[10px] font-bold text-brand hover:underline"
+                        >
+                          Complete →
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Primary Action Buttons */}
                 {!isEditing ? (
-                  <Button
-                    onClick={enterEditMode}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-5 text-xs font-semibold text-brand-foreground shadow-sm transition-all hover:opacity-90 hover:translate-x-0.5"
-                  >
-                    Edit Profile <ArrowRight className="h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2.5 w-full">
+                    {/* ONLY ONE CAREER SNAPSHOT ACTION ON THE ENTIRE PAGE */}
+                    <Button
+                      onClick={() => navigate({ to: "/career-snapshot" })}
+                      variant="outline"
+                      className="group inline-flex h-10 items-center gap-1.5 rounded-xl border-border bg-card px-4 text-xs font-semibold text-foreground shadow-2xs transition-all hover:bg-secondary hover:border-brand/50 hover:text-brand"
+                      title="Create a visual snapshot of your latest career achievements"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-brand transition-transform group-hover:scale-110 group-hover:rotate-12" />
+                      <span>✦ Share Progress</span>
+                    </Button>
+
+                    <Button
+                      onClick={enterEditMode}
+                      className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-5 text-xs font-bold text-brand-foreground shadow-2xs transition-all hover:opacity-90 hover:translate-x-0.5"
+                    >
+                      Edit Profile <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ) : (
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-2 w-full justify-end">
                     <Button
                       onClick={cancelEditMode}
                       variant="outline"
@@ -572,31 +670,22 @@ export function ProfilePage() {
                   </div>
                 )}
 
-                {/* Dashboard-Style Completion Indicator */}
-                <div className="w-full max-w-[240px] rounded-2xl border border-border/60 bg-background/60 p-3.5 backdrop-blur shadow-sm space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold">
-                    <span className="text-muted-foreground uppercase tracking-wider">Profile</span>
-                    <span className="text-foreground">{completion}%</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full bg-brand rounded-full transition-all duration-500"
-                      style={{ width: `${completion}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/80 leading-tight">
-                    {completion === 100 ? "PROFILE COMPLETE" : "Complete your profile to strengthen your career presence."}
-                  </p>
-                </div>
               </div>
             </div>
 
-            {/* Bottom Digital ID Watermark Label */}
-            <div className="mt-6 pt-4 border-t border-border/40 flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60">
-              <span className="flex items-center gap-1.5 text-brand">
-                <Sparkles className="h-3.5 w-3.5" /> SKILLVERSE CAREER IDENTITY
+            {/* Subdued Profile Identity Footer */}
+            <div className="mt-6 pt-4 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 font-medium">
+                <span className="font-extrabold text-brand tracking-wider uppercase text-[10px]">
+                  SKILLVERSE IDENTITY
+                </span>
+                <span className="hidden sm:inline text-border">•</span>
+                <span className="truncate">Your professional profile is ready to power your career tools.</span>
+              </div>
+              
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 shrink-0">
+                {completion}% COMPLETE
               </span>
-              <span className="text-muted-foreground">PROFESSIONAL PROFILE</span>
             </div>
           </div>
 
@@ -619,7 +708,7 @@ export function ProfilePage() {
                   <Input
                     value={draft.fullName}
                     onChange={(e) => setDraft({ ...draft, fullName: e.target.value })}
-                    placeholder="Sasi Thehseen"
+                    placeholder="Shaik Thehseen"
                     className="bg-background text-xs"
                   />
                   {errors.fullName && <p className="text-[11px] text-destructive">{errors.fullName}</p>}
@@ -650,7 +739,7 @@ export function ProfilePage() {
                   <Input
                     value={draft.gender}
                     onChange={(e) => setDraft({ ...draft, gender: e.target.value })}
-                    placeholder="Male / Female / Other"
+                    placeholder="e.g. Male / Female"
                     className="bg-background text-xs"
                   />
                 </div>
@@ -671,7 +760,7 @@ export function ProfilePage() {
                   <Input
                     value={draft.phone}
                     onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
-                    placeholder="9398683053"
+                    placeholder="+91 9398683053"
                     className="bg-background text-xs"
                   />
                 </div>
@@ -729,8 +818,107 @@ export function ProfilePage() {
           {!isEditing && (
             <div className="space-y-10">
               
-              {/* 2. BASICS SECTION */}
-              <div className="space-y-3">
+              {/* 2. CAREER PROGRESS (HORIZONTAL VISUAL PROGRESS RAIL) */}
+              <section id="career-progress" className="space-y-3 animate-fade-up">
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-brand">
+                    CAREER PROGRESS
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                    A quick view of how your professional identity is coming together.
+                  </p>
+                </div>
+
+                <Card className="rounded-3xl border border-border/70 bg-card p-6 sm:p-7 shadow-xs space-y-6">
+                  
+                  {/* Horizontal Step Rail */}
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 relative">
+                    {[
+                      {
+                        label: "BASICS",
+                        status: profile.fullName && profile.headline ? "✓" : "○",
+                        isDone: Boolean(profile.fullName && profile.headline),
+                        target: "#basics",
+                      },
+                      {
+                        label: "EDUCATION",
+                        status: profile.education && profile.education.length > 0 ? "✓" : "○",
+                        isDone: Boolean(profile.education && profile.education.length > 0),
+                        target: "#education",
+                      },
+                      {
+                        label: "SKILLS",
+                        status: skillChips.length > 0 ? `${skillChips.length}` : "○",
+                        isDone: skillChips.length > 0,
+                        target: "#skills",
+                      },
+                      {
+                        label: "PROJECTS",
+                        status: profile.projects && profile.projects.length > 0 ? `${profile.projects.length}` : "0",
+                        isDone: Boolean(profile.projects && profile.projects.length > 0),
+                        target: "#projects",
+                      },
+                      {
+                        label: "EXPERIENCE",
+                        status: profile.experience && profile.experience.length > 0 ? `${profile.experience.length}` : "0",
+                        isDone: Boolean(profile.experience && profile.experience.length > 0),
+                        target: "#experience",
+                      },
+                      {
+                        label: "PLATFORMS",
+                        status: `${connectedCount}`,
+                        isDone: connectedCount > 0,
+                        target: "#platforms",
+                      },
+                    ].map((step) => (
+                      <a
+                        key={step.label}
+                        href={step.target}
+                        className={cn(
+                          "p-3 rounded-2xl border text-center transition-all space-y-1.5 block hover:-translate-y-0.5",
+                          step.isDone
+                            ? "bg-secondary/40 border-border/70 text-foreground hover:border-brand/40"
+                            : "bg-background/40 border-border/50 text-muted-foreground opacity-60 hover:opacity-100"
+                        )}
+                      >
+                        <div className="flex items-center justify-center">
+                          <span
+                            className={cn(
+                              "h-7 w-7 rounded-full text-xs font-bold grid place-items-center transition-colors tabular-nums",
+                              step.isDone
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                : "bg-secondary text-muted-foreground border border-border"
+                            )}
+                          >
+                            {step.status}
+                          </span>
+                        </div>
+                        <span className="block text-[10.5px] font-bold uppercase tracking-wider truncate">
+                          {step.label}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+
+                  {/* Bottom Completeness Summary */}
+                  <div className="pt-3 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-foreground tabular-nums text-sm">{completion}%</span>
+                      <span className="text-muted-foreground">profile completeness</span>
+                    </div>
+
+                    <span className="text-[11px] text-muted-foreground font-medium">
+                      {completion === 100
+                        ? "All core career identity sections completed."
+                        : "Complete remaining sections to strengthen your ATS score."}
+                    </span>
+                  </div>
+
+                </Card>
+              </section>
+
+              {/* 3. BASICS SECTION */}
+              <div id="basics" className="space-y-3">
                 <DashboardSectionHeader title="BASICS" desc="Your essential details, shared across your SkillVerse profile." />
                 <div className="glass rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-elegant">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-xs">
@@ -772,7 +960,7 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              {/* 3. PROFESSIONAL SUMMARY */}
+              {/* 4. PROFESSIONAL SUMMARY */}
               <div className="space-y-3">
                 <DashboardSectionHeader title="PROFESSIONAL SUMMARY" desc="Brief background and career focus." />
                 <div className="glass rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-elegant">
@@ -786,8 +974,8 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              {/* 4. CORE SKILLS */}
-              <div className="space-y-3">
+              {/* 5. CORE SKILLS */}
+              <div id="skills" className="space-y-3">
                 <DashboardSectionHeader title="CORE SKILLS" desc="Technical skills used for resume indexing and career matching." />
                 <div className="glass rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-elegant">
                   {skillChips.length > 0 ? (
@@ -807,209 +995,148 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              {/* 5. EDUCATION */}
-              <EducationSection />
+              {/* 6. EDUCATION */}
+              <div id="education">
+                <EducationSection />
+              </div>
 
-              {/* 6. EXPERIENCE */}
-              <div className="space-y-3 pt-2">
+              {/* 7. EXPERIENCE */}
+              <div id="experience" className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <DashboardSectionHeader title="EXPERIENCE" desc="Professional internships, jobs, and leadership roles." />
+                  <DashboardSectionHeader title="EXPERIENCE" desc="Internships, technical roles, and work history." />
                   <Button
-                    onClick={() => {
-                      setEditingExpId(null);
-                      setExpCompany("");
-                      setExpRole("");
-                      setExpStart("2024");
-                      setExpEnd("Present");
-                      setExpSummary("");
-                      setExpModalOpen(true);
-                    }}
+                    onClick={openAddExpModal}
                     size="sm"
-                    className="bg-brand text-brand-foreground hover:opacity-90 rounded-xl text-xs gap-1 font-semibold"
+                    className="bg-brand text-brand-foreground hover:opacity-90 rounded-xl text-xs font-semibold shadow-sm h-8 px-3"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add Experience
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Experience
                   </Button>
                 </div>
 
-                {(!profile.experience || profile.experience.length === 0) ? (
-                  <div className="glass rounded-3xl border border-border/70 bg-card p-8 text-center shadow-elegant">
-                    <Briefcase className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-                    <p className="text-xs text-muted-foreground">No experience entries added yet.</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-3">
-                    {profile.experience.map((exp) => (
-                      <div key={exp.id} className="glass rounded-2xl border border-border/70 bg-card p-5 shadow-elegant flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <h4 className="font-bold text-sm text-foreground">{exp.role}</h4>
-                          <p className="text-xs font-semibold text-brand">{exp.company}</p>
-                          <p className="text-[11px] text-muted-foreground">{exp.start} — {exp.end}</p>
+                {profile.experience && profile.experience.length > 0 ? (
+                  <div className="space-y-3">
+                    {profile.experience.map((exp: Experience) => (
+                      <Card key={exp.id} className="p-5 rounded-2xl border border-border/70 bg-card shadow-xs flex items-start justify-between gap-4">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-foreground">{exp.role}</h4>
+                            <span className="text-muted-foreground text-xs">at</span>
+                            <span className="font-semibold text-brand text-xs">{exp.company}</span>
+                          </div>
+                          {(exp.start || exp.end) && (
+                            <p className="text-xs text-muted-foreground">
+                              {exp.start} — {exp.end || "Present"}
+                            </p>
+                          )}
                           {exp.summary && <p className="text-xs text-muted-foreground pt-1 leading-relaxed">{exp.summary}</p>}
                         </div>
 
-                        <div className="flex gap-1.5 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 rounded-xl"
-                            onClick={() => {
-                              setEditingExpId(exp.id);
-                              setExpCompany(exp.company);
-                              setExpRole(exp.role);
-                              setExpStart(exp.start);
-                              setExpEnd(exp.end);
-                              setExpSummary(exp.summary || "");
-                              setExpModalOpen(true);
-                            }}
-                          >
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground" onClick={() => openEditExpModal(exp)}>
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 rounded-xl hover:text-destructive"
-                            onClick={() => handleDeleteExperience(exp.id)}
-                          >
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteExperience(exp.id)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                      </div>
+                      </Card>
                     ))}
+                  </div>
+                ) : (
+                  <div className="glass rounded-3xl border border-border/70 bg-card p-6 text-center text-xs text-muted-foreground">
+                    No experience details added yet. Click "+ Add Experience" to add your work history.
                   </div>
                 )}
               </div>
 
-              {/* 7. PROJECTS SECTION */}
-              <div className="space-y-3 pt-2">
+              {/* 8. PROJECTS */}
+              <div id="projects" className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <DashboardSectionHeader title="PROJECTS" desc="Featured work and technical applications." />
+                  <DashboardSectionHeader title="PROJECTS" desc="Portfolio repositories and live engineering builds." />
                   <Button
                     onClick={openAddProjectModal}
                     size="sm"
-                    className="bg-brand text-brand-foreground hover:opacity-90 rounded-xl text-xs gap-1 font-semibold"
+                    className="bg-brand text-brand-foreground hover:opacity-90 rounded-xl text-xs font-semibold shadow-sm h-8 px-3"
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add Project
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add Project
                   </Button>
                 </div>
 
-                {(!profile.projects || profile.projects.length === 0) ? (
-                  /* Compact Professional Empty State */
-                  <div className="glass rounded-3xl border border-border/70 bg-card p-8 text-center shadow-elegant space-y-3">
-                    <Code className="mx-auto h-9 w-9 text-muted-foreground/40" />
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground">No projects yet</h4>
-                      <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                        Showcase the applications, projects, and technical work you've built.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={openAddProjectModal}
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl text-xs gap-1.5 mt-2 font-medium"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add your first project
-                    </Button>
-                  </div>
-                ) : (
-                  /* Grid matching Dashboard cards */
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {profile.projects.map((proj) => (
-                      <div key={proj.id} className="glass rounded-2xl border border-border/70 bg-card p-5 shadow-elegant flex flex-col justify-between space-y-3 hover:border-brand/40 transition-all">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-sm text-foreground">{proj.name}</h4>
+                {profile.projects && profile.projects.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {profile.projects.map((proj: ProjectItem) => (
+                      <Card key={proj.id} className="p-5 rounded-2xl border border-border/70 bg-card shadow-xs flex flex-col justify-between space-y-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <h4 className="text-sm font-bold text-foreground truncate">{proj.name}</h4>
                             {proj.link && (
-                              <a href={proj.link} target="_blank" rel="noreferrer" className="text-brand hover:underline p-1" title="View Project">
-                                <ExternalLink className="h-3.5 w-3.5" />
+                              <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-xs text-brand hover:underline flex items-center gap-1 shrink-0">
+                                View <ExternalLink className="h-3 w-3" />
                               </a>
                             )}
                           </div>
-                          <Badge variant="secondary" className="text-[10px] font-medium bg-secondary/80">
-                            {proj.stack}
-                          </Badge>
-                          {proj.summary && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 pt-0.5">{proj.summary}</p>}
+                          {proj.stack && <p className="text-xs text-muted-foreground font-mono">{proj.stack}</p>}
+                          {proj.summary && <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">{proj.summary}</p>}
                         </div>
 
-                        <div className="flex items-center justify-end gap-1.5 pt-3 border-t border-border/40">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2.5 text-[11px] rounded-lg hover:text-brand"
-                            onClick={() => {
-                              setEditingProjId(proj.id);
-                              setProjName(proj.name);
-                              setProjStack(proj.stack);
-                              setProjLink(proj.link || "");
-                              setProjSummary(proj.summary || "");
-                              setProjModalOpen(true);
-                            }}
-                          >
+                        <div className="flex items-center justify-end gap-1 pt-2 border-t border-border/40">
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => openEditProjectModal(proj)}>
                             <Edit className="h-3 w-3 mr-1" /> Edit
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2.5 text-[11px] rounded-lg hover:text-destructive hover:border-destructive/30"
-                            onClick={() => setDeleteProjConfirmId(proj.id)}
-                          >
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={() => setDeleteProjConfirmId(proj.id)}>
                             <Trash2 className="h-3 w-3 mr-1" /> Delete
                           </Button>
                         </div>
-                      </div>
+                      </Card>
                     ))}
+                  </div>
+                ) : (
+                  <div className="glass rounded-3xl border border-border/70 bg-card p-6 text-center text-xs text-muted-foreground">
+                    No projects added yet. Click "+ Add Project" to showcase your portfolio.
                   </div>
                 )}
               </div>
 
-              {/* 8. DEVELOPER CONNECTIONS SECTION */}
-              <div className="space-y-4 pt-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <DashboardSectionHeader title="DEVELOPER CONNECTIONS" desc="Connect your coding profiles to bring your developer activity into SkillVerse." />
-                  </div>
+              {/* 9. CONNECTED PLATFORMS */}
+              <div id="platforms" className="space-y-3 pt-2">
+                <DashboardSectionHeader title="CONNECTED PLATFORMS" desc="Sync live coding stats, repositories, and streaks across platforms." />
 
-                  <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1 bg-secondary/50">
-                    {connectedCount} of 6 connected
-                  </Badge>
-                </div>
-
-                {/* Compact Horizontal Platform Rows matching Dashboard styling */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {platformsList.map((plat) => {
+                    const Icon = plat.icon;
                     const isConnected = plat.data?.connected && plat.data?.username;
-                    const username = plat.data?.username;
                     const isSyncingThis = syncingPlatformKey === plat.key;
 
                     return (
-                      <div key={plat.key} className="glass rounded-2xl border border-border/70 bg-card p-4 shadow-elegant flex flex-col justify-between gap-3 hover:border-brand/40 transition-all">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="h-9 w-9 rounded-xl bg-secondary/70 flex items-center justify-center shrink-0">
-                            <plat.icon className="h-5 w-5 text-foreground" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <h4 className="font-bold text-xs text-foreground">{plat.name}</h4>
-                              {isConnected ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Connected
+                      <div
+                        key={plat.name}
+                        className="glass rounded-2xl border border-border/60 bg-card p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-brand/30 transition-all"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-xl bg-secondary/80 text-foreground grid place-items-center shrink-0">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-foreground leading-tight">{plat.name}</h4>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {isConnected ? `@${plat.data?.username}` : "Not Connected"}
                                 </span>
-                              ) : (
-                                <span className="text-[10px] font-medium text-muted-foreground">Not connected</span>
-                              )}
+                              </div>
                             </div>
 
-                            {isConnected ? (
-                              <p className="text-[11px] font-semibold text-brand truncate mt-0.5">
-                                @{username}
-                              </p>
-                            ) : (
-                              <p className="text-[10px] text-muted-foreground/80 leading-tight mt-0.5 line-clamp-2">
-                                {plat.desc}
-                              </p>
-                            )}
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                isConnected ? "bg-emerald-500" : "bg-muted-foreground/30"
+                              )}
+                            />
                           </div>
+
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                            {plat.desc}
+                          </p>
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-border/40 text-[10px]">

@@ -253,13 +253,13 @@ function CareerScorePage() {
           {
             label: "GitHub Activity",
             value: fallbackScore.githubStrength,
-            note: getGitHubNote(fallbackScore.githubStrength, connectedPlatforms.length),
+            note: getGitHubNote(fallbackScore.githubStrength, connections?.length || 0),
             change: Math.floor(Math.random() * 6) - 1,
           },
           {
             label: "DSA / Coding",
             value: fallbackScore.codingProgress,
-            note: getCodingNote(fallbackScore.codingProgress, connectedPlatforms.length),
+            note: getCodingNote(fallbackScore.codingProgress, connections?.length || 0),
             change: Math.floor(Math.random() * 6) - 3,
           },
           {
