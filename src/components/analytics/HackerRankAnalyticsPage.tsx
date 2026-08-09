@@ -1,56 +1,56 @@
 import { useState, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
+import { usePlatformStore } from "@/lib/platform-store";
 import { usePlatformDataService } from "@/lib/services/platform-data-service";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ExternalLink, Target } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  RefreshCw,
+  ExternalLink,
+  Award,
+  ArrowLeft
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface HackerRankProfile {
-  displayName: string;
-  avatar: string | null;
-}
-
-interface HackerRankStats {
-  // HackerRank stats structure varies based on API response
-  [key: string]: any;
-}
 
 export function HackerRankAnalyticsPage() {
   const { user } = useAuth();
-  const { syncPlatform, getCachedPlatformData } = usePlatformDataService();
-  
+  const {
+    hackerrank,
+    hackerrankData,
+    connectHackerRank,
+    syncHackerRank,
+    validateHackerRankUsername,
+    fetchDashboardData,
+  } = usePlatformStore();
+  const { getCachedPlatformData } = usePlatformDataService();
+
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<HackerRankProfile | null>(null);
-  const [stats, setStats] = useState<HackerRankStats | null>(null);
+  const [connectUsername, setConnectUsername] = useState("");
+  const [connecting, setConnecting] = useState(false);
+
+  const [data, setData] = useState<any>(hackerrankData || null);
 
   useEffect(() => {
-    if (user?.id) {
-      loadHackerRankData();
+    if (hackerrankData) {
+      setData(hackerrankData);
+    } else if (user?.id) {
+      loadData();
     }
-  }, [user?.id]);
+  }, [user?.id, hackerrankData]);
 
-  const loadHackerRankData = async () => {
+  const loadData = async () => {
     if (!user?.id) return;
-    
     setLoading(true);
     setError(null);
     try {
-      const cachedData = await getCachedPlatformData('hackerrank');
-      
-      if (cachedData) {
-        setProfile(cachedData.profile);
-        setStats(cachedData.stats || null);
-      } else {
-        await handleSync();
+      await fetchDashboardData(user.id);
+      const cached = await getCachedPlatformData("hackerrank");
+      if (cached) {
+        setData(cached);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load HackerRank data");
@@ -61,12 +61,11 @@ export function HackerRankAnalyticsPage() {
 
   const handleSync = async () => {
     if (!user?.id) return;
-    
     setSyncing(true);
     setError(null);
     try {
-      await syncPlatform('hackerrank');
-      await loadHackerRankData();
+      await syncHackerRank(user.id);
+      await fetchDashboardData(user.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sync HackerRank data");
     } finally {
@@ -74,111 +73,126 @@ export function HackerRankAnalyticsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
-      </div>
-    );
-  }
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connectUsername.trim() || !user?.id) return;
+    setConnecting(true);
+    setError(null);
+    try {
+      await validateHackerRankUsername(connectUsername.trim());
+      await connectHackerRank(user.id, connectUsername.trim());
+      await fetchDashboardData(user.id);
+      setConnectUsername("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect HackerRank handle");
+    } finally {
+      setConnecting(false);
+    }
+  };
 
-  if (error) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <p className="text-destructive">{error}</p>
-          <Button onClick={loadHackerRankData} className="mt-4">
-            Retry
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <Target className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">HackerRank Not Connected</h3>
-          <p className="text-muted-foreground mb-4">
-            Connect your HackerRank account to view detailed analytics
-          </p>
-          <Button onClick={() => window.location.href = '/connections'}>
-            Connect HackerRank
-          </Button>
-        </div>
-      </Card>
-    );
-  }
+  const profile = data?.profile || hackerrankData?.profile;
+  const badges = data?.badges || hackerrankData?.badges || [];
+  const certificates = data?.certificates || hackerrankData?.certificates || [];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-xl border border-border/70 bg-secondary flex items-center justify-center">
-            <Target className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-            <a
-              href={`https://hackerrank.com/${profile.displayName}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand"
-            >
-              @{profile.displayName} <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
-        <Button
-          onClick={handleSync}
-          disabled={syncing}
-          className="gap-2"
+    <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <Link
+          to="/analytics"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
-          <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-          {syncing ? "Syncing..." : "Sync Data"}
-        </Button>
+          <ArrowLeft className="h-4 w-4" /> Back to Analytics
+        </Link>
+
+        {hackerrank.connected && (
+          <Button
+            onClick={handleSync}
+            disabled={syncing}
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-border text-xs gap-1.5"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+            {syncing ? "Syncing..." : "Sync HackerRank"}
+          </Button>
+        )}
       </div>
 
-      {/* Stats Display */}
-      {stats && (
-        <Card>
-          <CardHeader>
-            <CardTitle>HackerRank Statistics</CardTitle>
-            <CardDescription>Your coding challenge performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Object.entries(stats).map(([key, value]) => {
-                if (typeof value === 'object' || value === null) return null;
-                return (
-                  <div key={key} className="flex justify-between">
-                    <span className="text-muted-foreground capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                    <span className="font-medium">{String(value)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
+      {!hackerrank.connected && !profile && (
+        <Card className="border border-border bg-card p-8 text-center rounded-2xl shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20">
+            <Award className="h-6 w-6 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Connect Your HackerRank Profile</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Enter your HackerRank username to sync your domain badges, problem solving stars, and skill certificates.
+            </p>
+          </div>
+
+          <form onSubmit={handleConnect} className="flex max-w-xs mx-auto gap-2 mt-4">
+            <Input
+              placeholder="HackerRank Username"
+              value={connectUsername}
+              onChange={(e) => setConnectUsername(e.target.value)}
+              className="bg-background border-border text-xs"
+            />
+            <Button type="submit" disabled={connecting || !connectUsername.trim()} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shrink-0">
+              {connecting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+            </Button>
+          </form>
+          {error && <p className="text-xs text-destructive mt-2">{error}</p>}
         </Card>
       )}
 
-      {/* Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>About HackerRank Integration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            HackerRank provides coding challenges across various domains. 
-            Connect your account to track your problem-solving progress, badges, and certifications.
-          </p>
-        </CardContent>
-      </Card>
+      {loading && !profile && (
+        <div className="py-16 text-center space-y-2">
+          <RefreshCw className="h-6 w-6 animate-spin text-emerald-500 mx-auto" />
+          <p className="text-xs text-muted-foreground">Loading HackerRank analytics...</p>
+        </div>
+      )}
+
+      {profile && (
+        <>
+          <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-4">
+              <img
+                src={profile.avatar || `https://hrcdn.net/fst/assets/brand/h_mark_sm.png`}
+                alt={profile.displayName || hackerrank.username || "HackerRank Profile"}
+                className="h-16 w-16 rounded-2xl border border-border object-cover bg-secondary p-1"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-foreground">{profile.displayName || hackerrank.username}</h2>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                    CONNECTED
+                  </span>
+                </div>
+                <a
+                  href={`https://www.hackerrank.com/profile/${hackerrank.username || profile.displayName}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 mt-0.5 font-medium"
+                >
+                  @{hackerrank.username || profile.displayName} <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Domain Badges</span>
+              <div className="text-2xl font-bold text-emerald-500 mt-1">{badges.length}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Skill Certificates</span>
+              <div className="text-2xl font-bold text-foreground mt-1">{certificates.length}</div>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

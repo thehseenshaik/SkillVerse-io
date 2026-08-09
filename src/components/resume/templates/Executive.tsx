@@ -6,257 +6,177 @@ interface ExecutiveProps {
 }
 
 export function Executive({ resume, theme }: ExecutiveProps) {
-  const { profile, experience, education, skills, projects } = resume;
+  const { profile, experience, education, skills, projects, certifications, achievements } = resume;
 
   return (
     <div 
-      className="bg-white text-gray-900"
+      className="bg-white text-black leading-relaxed"
       style={{
-        fontFamily: theme.typography.fontFamily,
-        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily || "Inter, sans-serif",
+        color: "#000000",
       }}
     >
-      {/* Header with accent background */}
-      <div 
-        className="px-8 py-6 mb-6"
-        style={{ backgroundColor: `${theme.colors.primary}10` }}
-      >
-        <h1 
-          className="text-3xl font-bold tracking-wide"
-          style={{ color: theme.colors.primary }}
-        >
+      {/* HEADER */}
+      <div className="text-center mb-4 pb-3 border-b-2 border-black">
+        <h1 className="text-2xl font-bold tracking-tight uppercase text-black mb-0.5">
           {profile.fullName || "Your Name"}
         </h1>
-        <p className="text-xl font-semibold text-gray-700 mt-1">{profile.title || "Your Title"}</p>
-        <div className="flex flex-wrap gap-6 mt-3 text-sm text-gray-600">
-          <span>{profile.contact.email || "email@example.com"}</span>
-          <span>{profile.contact.phone || "+1 234 567 890"}</span>
-          <span>{profile.contact.location || "City, Country"}</span>
+        {profile.title && (
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-800 mb-1.5">
+            {profile.title}
+          </p>
+        )}
+        <div className="text-[10px] text-gray-700 font-medium flex flex-wrap justify-center items-center gap-x-2 gap-y-0.5">
+          {profile.contact.phone && <span>{profile.contact.phone}</span>}
+          {profile.contact.phone && profile.contact.email && <span className="text-gray-400">|</span>}
+          {profile.contact.email && <span>{profile.contact.email}</span>}
+          {profile.contact.location && <span className="text-gray-400">|</span>}
+          {profile.contact.location && <span>{profile.contact.location}</span>}
+          {profile.contact.linkedin && <span className="text-gray-400">|</span>}
+          {profile.contact.linkedin && <span>LinkedIn: {profile.contact.linkedin}</span>}
+          {profile.contact.github && <span className="text-gray-400">|</span>}
+          {profile.contact.github && <span>GitHub: {profile.contact.github}</span>}
+          {(profile.contact.portfolio || profile.contact.website) && <span className="text-gray-400">|</span>}
+          {(profile.contact.portfolio || profile.contact.website) && <span>Portfolio: {profile.contact.portfolio || profile.contact.website}</span>}
         </div>
       </div>
 
-      {/* Summary */}
+      {/* SUMMARY */}
       {profile.summary && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-2 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
+        <div className="mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-gray-400">
             Executive Summary
           </h2>
-          <p className="text-base text-gray-700 leading-relaxed max-w-4xl">{profile.summary}</p>
+          <p className="text-[10.5px] leading-snug text-gray-900">
+            {profile.summary}
+          </p>
         </div>
       )}
 
-      {/* Experience */}
+      {/* EXPERIENCE */}
       {experience.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
+        <div className="mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-gray-400">
             Professional Experience
           </h2>
-          {experience.map((exp) => (
-            <div key={exp.id} className="mb-6">
-              <div className="flex justify-between items-baseline mb-2">
-                <h3 className="font-bold text-gray-900 text-lg">{exp.position}</h3>
-                <span className="text-sm text-gray-600 font-medium">
-                  {exp.startDate} - {exp.current ? "Present" : exp.endDate}
-                </span>
-              </div>
-              <p className="text-base font-semibold text-gray-700 mb-2">{exp.company}</p>
-              {exp.location && (
-                <p className="text-sm text-gray-600 mb-2">{exp.location}</p>
-              )}
-              <ul className="text-base text-gray-700 space-y-2 list-disc list-inside">
-                {exp.description.map((desc, i) => (
-                  <li key={i}>{desc}</li>
-                ))}
-              </ul>
-              {exp.achievements && exp.achievements.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-sm font-semibold text-gray-900 mb-2">Key Achievements:</p>
-                  <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
-                    {exp.achievements.map((achievement, i) => (
-                      <li key={i} className="font-medium">{achievement}</li>
-                    ))}
-                  </ul>
+          <div className="space-y-2.5">
+            {experience.map((exp) => {
+              const dateRange = [exp.startDate, exp.current ? "Present" : exp.endDate].filter(Boolean).join(" – ");
+              return (
+                <div key={exp.id} className="text-[10.5px]">
+                  <div className="flex justify-between items-baseline font-bold text-black">
+                    <span>
+                      {exp.position} — <span className="font-semibold text-gray-800">{exp.company}</span>
+                    </span>
+                    {dateRange && <span className="font-medium text-gray-700 text-[10px] shrink-0 ml-2">{dateRange}</span>}
+                  </div>
+                  {exp.description && exp.description.length > 0 && (
+                    <ul className="mt-1 space-y-0.5 pl-4 list-disc text-gray-900">
+                      {exp.description.map((desc, i) => (
+                        <li key={i} className="leading-snug">{desc}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Education */}
-      {education.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
-            Education
+      {/* PROJECTS */}
+      {projects.length > 0 && (
+        <div className="mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-gray-400">
+            Key Projects
           </h2>
-          {education.map((edu) => (
-            <div key={edu.id} className="mb-4">
-              <div className="flex justify-between items-baseline mb-2">
-                <h3 className="font-bold text-gray-900 text-base">{edu.degree}</h3>
-                <span className="text-sm text-gray-600 font-medium">
-                  {edu.startDate} - {edu.current ? "Present" : edu.endDate}
-                </span>
-              </div>
-              <p className="text-base font-semibold text-gray-700">{edu.institution}</p>
-              <p className="text-sm text-gray-600">{edu.field}</p>
-              {edu.gpa && (
-                <p className="text-sm text-gray-600">GPA: {edu.gpa}</p>
-              )}
-              {edu.honors && edu.honors.length > 0 && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Honors: {edu.honors.join(", ")}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Skills */}
-      {skills.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
-            Core Competencies
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {skills.map((skill) => (
-              <div
-                key={skill.id}
-                className="px-4 py-2 border border-gray-300 rounded"
-                style={{ borderColor: theme.colors.primary }}
-              >
-                <p className="font-semibold text-gray-900 text-sm">{skill.name}</p>
-                <p className="text-xs text-gray-600">{skill.level}</p>
+          <div className="space-y-2.5">
+            {projects.map((project) => (
+              <div key={project.id} className="text-[10.5px]">
+                <div className="flex justify-between items-baseline">
+                  <span className="font-bold text-black">
+                    {project.name}
+                    {project.technologies && project.technologies.length > 0 && (
+                      <span className="font-normal text-gray-800"> | {project.technologies.join(", ")}</span>
+                    )}
+                  </span>
+                  {(project.link || project.github) && (
+                    <span className="text-[10px] text-gray-600 font-medium shrink-0 ml-2">
+                      {[project.link ? "Live Demo" : null, project.github ? "GitHub" : null].filter(Boolean).join(" • ")}
+                    </span>
+                  )}
+                </div>
+                {project.description && (
+                  <ul className="mt-1 space-y-0.5 pl-4 list-disc text-gray-900">
+                    <li className="leading-snug">{project.description}</li>
+                  </ul>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Projects */}
-      {projects.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
-            Notable Projects
+      {/* TECHNICAL SKILLS */}
+      {skills.length > 0 && (
+        <div className="mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-gray-400">
+            Core Competencies & Skills
           </h2>
-          {projects.map((project) => (
-            <div key={project.id} className="mb-4">
-              <h3 className="font-bold text-gray-900 mb-1">{project.name}</h3>
-              <p className="text-base text-gray-700 mb-2">{project.description}</p>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {project.technologies.map((tech, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1 text-xs font-medium rounded"
-                    style={{
-                      backgroundColor: `${theme.colors.accent}15`,
-                      color: theme.colors.accent,
-                    }}
-                  >
-                    {tech}
-                  </span>
-                ))}
-              </div>
-              {(project.link || project.github) && (
-                <div className="text-sm">
-                  {project.link && (
-                    <a href={project.link} className="text-blue-600 hover:underline mr-3">
-                      View Project
-                    </a>
-                  )}
-                  {project.github && (
-                    <a href={project.github} className="text-blue-600 hover:underline">
-                      GitHub Repository
-                    </a>
-                  )}
+          <div className="text-[10.5px] text-gray-900 leading-snug">
+            <span className="font-bold text-black">Skills: </span>
+            <span>{skills.map((s) => s.name).join(", ")}</span>
+          </div>
+        </div>
+      )}
+
+      {/* EDUCATION */}
+      {education.length > 0 && (
+        <div className="mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-gray-400">
+            Education
+          </h2>
+          <div className="space-y-2">
+            {education.map((edu) => {
+              const dateRange = [edu.startDate, edu.current ? "Present" : edu.endDate].filter(Boolean).join(" – ");
+              const degreeField = [edu.degree, edu.field].filter(Boolean).join(" — ");
+              const instLoc = [edu.institution, edu.location].filter(Boolean).join(", ");
+              const scoreHonors = [
+                edu.gpa ? `CGPA/Score: ${edu.gpa}` : null,
+                edu.honors && edu.honors.length > 0 ? `Honors: ${edu.honors.join(", ")}` : null,
+              ].filter(Boolean).join(" • ");
+
+              return (
+                <div key={edu.id} className="text-[10.5px]">
+                  <div className="flex justify-between items-baseline font-bold text-black">
+                    <span>{degreeField || "Degree"}</span>
+                    {dateRange && <span className="font-medium text-gray-700 text-[10px] shrink-0 ml-2">{dateRange}</span>}
+                  </div>
+                  <div className="flex justify-between items-baseline text-gray-800 mt-0.5">
+                    <span>{instLoc}</span>
+                    {scoreHonors && <span className="font-semibold text-gray-700 text-[10px] shrink-0 ml-2">{scoreHonors}</span>}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Certifications */}
-      {resume.certifications.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
-            Certifications & Credentials
+      {/* CERTIFICATIONS */}
+      {certifications && certifications.length > 0 && (
+        <div className="mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider mb-1.5 pb-0.5 border-b border-gray-400">
+            Certifications
           </h2>
-          {resume.certifications.map((cert) => (
-            <div key={cert.id} className="mb-3">
-              <div className="flex justify-between items-baseline">
-                <h3 className="font-bold text-gray-900 text-sm">{cert.name}</h3>
-                <span className="text-xs text-gray-600">{cert.date}</span>
+          <div className="space-y-1 text-[10.5px]">
+            {certifications.map((cert) => (
+              <div key={cert.id} className="flex justify-between items-baseline">
+                <span>
+                  <strong className="text-black">{cert.name}</strong> — {cert.issuer}
+                </span>
+                {cert.date && <span className="text-[10px] text-gray-700 font-medium">{cert.date}</span>}
               </div>
-              <p className="text-sm text-gray-700">{cert.issuer}</p>
-              {cert.credentialId && (
-                <p className="text-xs text-gray-600">Credential ID: {cert.credentialId}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Achievements */}
-      {resume.achievements.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
-            Awards & Recognition
-          </h2>
-          {resume.achievements.map((achievement) => (
-            <div key={achievement.id} className="mb-2">
-              <div className="flex justify-between items-baseline">
-                <h3 className="font-bold text-gray-900 text-sm">{achievement.title}</h3>
-                <span className="text-xs text-gray-600">{achievement.date}</span>
-              </div>
-              <p className="text-sm text-gray-700">{achievement.description}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Languages */}
-      {resume.languages.length > 0 && (
-        <div className="px-8 mb-6">
-          <h2 
-            className="text-lg font-bold mb-4 uppercase tracking-wide"
-            style={{ color: theme.colors.primary }}
-          >
-            Languages
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {resume.languages.map((lang) => (
-              <span
-                key={lang.id}
-                className="px-4 py-2 text-sm font-medium rounded-full border"
-                style={{
-                  borderColor: theme.colors.primary,
-                  color: theme.colors.primary,
-                }}
-              >
-                {lang.name} ({lang.proficiency})
-              </span>
             ))}
           </div>
         </div>

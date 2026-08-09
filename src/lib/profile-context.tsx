@@ -254,9 +254,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
+        const cleanProfile = JSON.parse(JSON.stringify(profile));
         await setDoc(
           doc(fbDb(), "users", uid),
-          { ...profile, updatedAt: serverTimestamp() },
+          { ...cleanProfile, updatedAt: serverTimestamp() },
           { merge: true },
         );
         isDirtyRef.current = false;

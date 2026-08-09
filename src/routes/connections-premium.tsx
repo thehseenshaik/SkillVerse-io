@@ -354,7 +354,7 @@ function ConnectionsPage() {
   const AnimatedCounter = ({ value, duration = 1000 }: { value: number; duration?: number }) => {
     const [count, setCount] = useState(0);
     const countRef = useRef(0);
-    const animationRef = useRef<number>();
+    const animationRef = useRef<number | undefined>(undefined);
 
     useEffect(() => {
       const startTime = performance.now();

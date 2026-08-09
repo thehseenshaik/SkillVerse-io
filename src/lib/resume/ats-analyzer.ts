@@ -1,55 +1,106 @@
 import type { ResumeData, ATSAnalysis, ResumeHealthScore } from "./types";
 
-// Common ATS keywords by category
-const commonKeywords = {
-  skills: [
-    'javascript', 'python', 'java', 'react', 'node.js', 'typescript', 'sql', 'aws',
-    'docker', 'kubernetes', 'git', 'agile', 'scrum', 'machine learning', 'data analysis',
-    'project management', 'leadership', 'communication', 'problem solving', 'teamwork',
-    'analytics', 'marketing', 'sales', 'customer service', 'operations', 'finance',
-  ],
-  actionVerbs: [
-    'developed', 'implemented', 'designed', 'managed', 'led', 'created', 'built',
-    'optimized', 'improved', 'increased', 'reduced', 'achieved', 'delivered', 'launched',
-    'executed', 'coordinated', 'collaborated', 'analyzed', 'engineered', 'architected',
-  ],
-  metrics: [
-    '%', 'increased', 'decreased', 'reduced', 'saved', 'generated', 'improved by',
-    'growth', 'revenue', 'users', 'customers', 'sales', 'efficiency', 'productivity',
-  ],
-};
+// Comprehensive Technical & Domain Keyword Dictionary
+const TECH_KEYWORDS = [
+  // Languages
+  "javascript", "typescript", "python", "java", "c++", "c#", "c", "golang", "go", "rust",
+  "php", "ruby", "swift", "kotlin", "scala", "dart", "r", "matlab", "bash", "shell",
+  
+  // Frontend
+  "react", "react.js", "next.js", "vue", "vue.js", "angular", "svelte", "html", "html5",
+  "css", "css3", "tailwind", "tailwind css", "bootstrap", "sass", "redux", "zustand",
+  "webpack", "vite", "responsive design", "ui/ux", "figma",
+  
+  // Backend & Frameworks
+  "node.js", "express", "express.js", "spring", "spring boot", "django", "flask", "fastapi",
+  "asp.net", ".net", "nest.js", "graphql", "rest api", "restful", "microservices", "grpc",
+  
+  // Databases & Caching
+  "sql", "mysql", "postgresql", "postgres", "mongodb", "sqlite", "redis", "elasticsearch",
+  "cassandra", "dynamodb", "oracle", "prisma", "hibernate", "firebase", "firestore",
+  
+  // Cloud & DevOps
+  "aws", "amazon web services", "azure", "gcp", "google cloud", "docker", "kubernetes", "k8s",
+  "ci/cd", "github actions", "jenkins", "terraform", "ansible", "linux", "nginx", "serverless",
+  
+  // Core CS & Methodologies
+  "data structures", "algorithms", "dsa", "oop", "object oriented", "system design",
+  "dbms", "operating systems", "computer networks", "agile", "scrum", "git", "github",
+  "unit testing", "jest", "pytest", "debugging", "problem solving",
+  
+  // AI & Data
+  "machine learning", "deep learning", "ai", "artificial intelligence", "nlp", "llm",
+  "computer vision", "pandas", "numpy", "tensorflow", "pytorch", "data analysis",
+];
 
-// Analyze resume for ATS compatibility
+const STRONG_ACTION_VERBS = [
+  "developed", "implemented", "designed", "engineered", "architected", "built", "spearheaded",
+  "optimized", "improved", "accelerated", "scaled", "reduced", "increased", "boosted",
+  "achieved", "delivered", "launched", "executed", "collaborated", "automated", "created",
+  "led", "managed", "streamlined", "orchestrated", "transformed", "integrated", "formulated"
+];
+
+const STOPWORDS = new Set([
+  "the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her", "was",
+  "one", "our", "out", "has", "have", "been", "this", "that", "with", "they", "from",
+  "what", "which", "their", "will", "would", "about", "into", "than", "could", "should",
+  "your", "them", "very", "also", "some", "more", "like", "just", "over", "such", "these",
+  "must", "work", "team", "role", "years", "year", "looking", "needs", "need", "plus",
+  "experience", "ability", "strong", "understanding", "knowledge", "working", "using",
+  "requirements", "responsibilities", "qualifications", "preferred", "including",
+]);
+
+/**
+ * Super Accurate ATS Analyzer
+ */
 export function analyzeATS(resume: ResumeData, jobDescription?: string): ATSAnalysis {
   const resumeText = extractResumeText(resume);
-  const jobKeywords = jobDescription ? extractKeywords(jobDescription) : [];
+  const rawJobKeywords = jobDescription ? extractJobKeywords(jobDescription) : [];
   
-  // Calculate keyword density
-  const keywordDensity = calculateKeywordDensity(resumeText, jobKeywords);
-  
-  // Find missing keywords
-  const missingKeywords = findMissingKeywords(resumeText, jobKeywords);
-  
-  // Identify weak sections
+  // Calculate keyword matches
+  const keywordDensity: Record<string, number> = {};
+  const matchedKeywords: string[] = [];
+  const missingKeywords: string[] = [];
+
+  if (rawJobKeywords.length > 0) {
+    rawJobKeywords.forEach((kw) => {
+      const regex = new RegExp(`\\b${escapeRegExp(kw)}\\b`, "i");
+      const isMatch = regex.test(resumeText);
+      if (isMatch) {
+        matchedKeywords.push(kw);
+        keywordDensity[kw] = (keywordDensity[kw] || 0) + 1;
+      } else {
+        missingKeywords.push(kw);
+      }
+    });
+  } else {
+    // Check against standard technical dictionary
+    TECH_KEYWORDS.forEach((kw) => {
+      const regex = new RegExp(`\\b${escapeRegExp(kw)}\\b`, "i");
+      const isMatch = regex.test(resumeText);
+      if (isMatch) {
+        keywordDensity[kw] = 1;
+      }
+    });
+  }
+
+  // Identify weak sections & formatting issues
   const weakSections = identifyWeakSections(resume);
-  
-  // Find formatting problems
   const formattingProblems = checkFormatting(resume);
-  
-  // Generate suggestions
-  const suggestions = generateSuggestions(resume, missingKeywords, weakSections);
-  
-  // Calculate overall ATS score
-  const score = calculateATSScore(
-    keywordDensity,
-    missingKeywords,
-    weakSections,
-    formattingProblems
-  );
-  
-  // Calculate readability
+  const suggestions = generateSuggestions(resume, missingKeywords, weakSections, resumeText);
   const readability = calculateReadability(resumeText);
-  
+
+  // Score Calculation
+  const score = calculateAccurateATSScore(
+    resume,
+    matchedKeywords.length,
+    missingKeywords.length,
+    rawJobKeywords.length,
+    weakSections.length,
+    formattingProblems.length,
+    readability.score
+  );
+
   return {
     score,
     missingKeywords,
@@ -61,330 +112,278 @@ export function analyzeATS(resume: ResumeData, jobDescription?: string): ATSAnal
   };
 }
 
-// Extract all text from resume
+/**
+ * Extract all searchable text from resume
+ */
 function extractResumeText(resume: ResumeData): string {
   const parts: string[] = [];
-  
-  // Profile
-  parts.push(resume.profile.fullName);
-  parts.push(resume.profile.title);
-  parts.push(resume.profile.summary || '');
-  
-  // Skills
-  resume.skills.forEach(skill => parts.push(skill.name));
-  
-  // Experience
-  resume.experience.forEach(exp => {
+
+  parts.push(resume.profile.fullName || "");
+  parts.push(resume.profile.title || "");
+  parts.push(resume.profile.summary || "");
+  parts.push(resume.profile.contact.location || "");
+
+  resume.skills.forEach((s) => parts.push(s.name));
+
+  resume.experience.forEach((exp) => {
     parts.push(exp.position);
     parts.push(exp.company);
-    parts.push(exp.description.join(' '));
-    if (exp.achievements) parts.push(exp.achievements.join(' '));
+    parts.push(exp.description.join(" "));
+    if (exp.achievements) parts.push(exp.achievements.join(" "));
   });
-  
-  // Education
-  resume.education.forEach(edu => {
+
+  resume.education.forEach((edu) => {
     parts.push(edu.degree);
-    parts.push(edu.institution);
     parts.push(edu.field);
+    parts.push(edu.institution);
   });
-  
-  // Projects
-  resume.projects.forEach(proj => {
+
+  resume.projects.forEach((proj) => {
     parts.push(proj.name);
     parts.push(proj.description);
-    parts.push(proj.technologies.join(' '));
+    parts.push(proj.technologies.join(" "));
   });
-  
-  return parts.join(' ').toLowerCase();
-}
 
-// Extract keywords from job description
-function extractKeywords(text: string): string[] {
-  const words = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
-  const uniqueWords = [...new Set(words)];
-  return uniqueWords.filter(word => 
-    !['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'has', 'have', 'been', 'this', 'that', 'with', 'they', 'from', 'what', 'which', 'their', 'will', 'would', 'about', 'into', 'than', 'could', 'should'].includes(word)
-  );
-}
-
-// Calculate keyword density
-function calculateKeywordDensity(resumeText: string, jobKeywords: string[]): Record<string, number> {
-  const density: Record<string, number> = {};
-  
-  if (jobKeywords.length === 0) {
-    // Use common keywords if no job description
-    commonKeywords.skills.forEach(keyword => {
-      const regex = new RegExp(keyword, 'gi');
-      const matches = resumeText.match(regex);
-      density[keyword] = matches ? matches.length : 0;
-    });
-  } else {
-    jobKeywords.forEach(keyword => {
-      const regex = new RegExp(keyword, 'gi');
-      const matches = resumeText.match(regex);
-      density[keyword] = matches ? matches.length : 0;
+  if (resume.certifications) {
+    resume.certifications.forEach((c) => {
+      parts.push(c.name);
+      parts.push(c.issuer);
     });
   }
-  
-  return density;
-}
 
-// Find missing keywords
-function findMissingKeywords(resumeText: string, jobKeywords: string[]): string[] {
-  if (jobKeywords.length === 0) {
-    return [];
+  if (resume.achievements) {
+    resume.achievements.forEach((a) => {
+      parts.push(a.title);
+      parts.push(a.description);
+    });
   }
-  
-  return jobKeywords.filter(keyword => {
-    const regex = new RegExp(keyword, 'gi');
-    return !resumeText.match(regex);
-  });
+
+  return parts.join(" ").toLowerCase();
 }
 
-// Identify weak sections
+/**
+ * Extract tech & domain keywords from job description
+ */
+export function extractJobKeywords(jobDescription: string): string[] {
+  const normalized = jobDescription.toLowerCase();
+  const found = new Set<string>();
+
+  // 1. Check known technical multi-word & single-word dictionary
+  TECH_KEYWORDS.forEach((keyword) => {
+    const regex = new RegExp(`\\b${escapeRegExp(keyword)}\\b`, "i");
+    if (regex.test(normalized)) {
+      found.add(keyword);
+    }
+  });
+
+  // 2. Extract capitalized/acronym technical words from original text
+  const tokens = jobDescription.match(/\b[A-Za-z0-9+#.-]{2,}\b/g) || [];
+  tokens.forEach((t) => {
+    const low = t.toLowerCase();
+    if (low.length >= 3 && !STOPWORDS.has(low) && !/^\d+$/.test(low)) {
+      if (TECH_KEYWORDS.includes(low)) {
+        found.add(low);
+      }
+    }
+  });
+
+  return Array.from(found);
+}
+
+/**
+ * Check Weak Sections
+ */
 function identifyWeakSections(resume: ResumeData): string[] {
-  const weakSections: string[] = [];
-  
-  // Check experience
-  if (resume.experience.length === 0) {
-    weakSections.push('No work experience listed');
-  } else {
-    resume.experience.forEach((exp, index) => {
+  const weak: string[] = [];
+
+  if (!resume.profile.summary || resume.profile.summary.length < 50) {
+    weak.push("Professional summary is too short or missing (aim for 2–3 impactful lines)");
+  }
+
+  if (resume.skills.length < 5) {
+    weak.push("Skills section has fewer than 5 skills (add your core technologies)");
+  }
+
+  if (resume.education.length === 0) {
+    weak.push("No education entries listed");
+  }
+
+  if (resume.projects.length === 0 && resume.experience.length === 0) {
+    weak.push("No projects or work experience listed");
+  }
+
+  if (resume.experience.length > 0) {
+    resume.experience.forEach((exp, idx) => {
       if (exp.description.length < 2) {
-        weakSections.push(`Experience #${index + 1} has insufficient bullet points`);
-      }
-      if (!exp.achievements || exp.achievements.length === 0) {
-        weakSections.push(`Experience #${index + 1} lacks achievements`);
+        weak.push(`Experience #${idx + 1} (${exp.company || 'Role'}) has fewer than 2 bullet points`);
       }
     });
   }
-  
-  // Check skills
-  if (resume.skills.length < 5) {
-    weakSections.push('Skills section has fewer than 5 skills');
-  }
-  
-  // Check projects
-  if (resume.projects.length === 0) {
-    weakSections.push('No projects listed');
-  }
-  
-  // Check education
-  if (resume.education.length === 0) {
-    weakSections.push('No education listed');
-  }
-  
-  // Check summary
-  if (!resume.profile.summary || resume.profile.summary.length < 50) {
-    weakSections.push('Summary is too short or missing');
-  }
-  
-  return weakSections;
+
+  return weak;
 }
 
-// Check for formatting problems
+/**
+ * Check Formatting Problems
+ */
 function checkFormatting(resume: ResumeData): string[] {
   const problems: string[] = [];
-  
-  // Check for missing contact info
+
   if (!resume.profile.contact.email) {
-    problems.push('Email address is missing');
+    problems.push("Email address is missing");
   }
   if (!resume.profile.contact.phone) {
-    problems.push('Phone number is missing');
+    problems.push("Phone number is missing");
   }
   if (!resume.profile.contact.location) {
-    problems.push('Location is missing');
+    problems.push("Location is missing");
   }
-  
-  // Check for incomplete entries
-  resume.experience.forEach((exp, index) => {
-    if (!exp.startDate) {
-      problems.push(`Experience #${index + 1} is missing start date`);
-    }
-    if (!exp.endDate && !exp.current) {
-      problems.push(`Experience #${index + 1} is missing end date`);
-    }
-  });
-  
-  resume.education.forEach((edu, index) => {
-    if (!edu.startDate) {
-      problems.push(`Education #${index + 1} is missing start date`);
-    }
-  });
-  
+  if (!resume.profile.contact.linkedin && !resume.profile.contact.github) {
+    problems.push("No LinkedIn or GitHub profile links included");
+  }
+
   return problems;
 }
 
-// Generate suggestions
+/**
+ * Generate Smart Actionable Suggestions
+ */
 function generateSuggestions(
   resume: ResumeData,
   missingKeywords: string[],
-  weakSections: string[]
+  weakSections: string[],
+  resumeText: string
 ): string[] {
   const suggestions: string[] = [];
-  
-  // Keyword suggestions
+
   if (missingKeywords.length > 0) {
-    suggestions.push(`Add these keywords from job description: ${missingKeywords.slice(0, 5).join(', ')}`);
+    suggestions.push(`Add these target job keywords: ${missingKeywords.slice(0, 4).join(", ")}`);
   }
-  
-  // Section suggestions
-  if (weakSections.some(s => s.includes('bullet points'))) {
-    suggestions.push('Add more bullet points to experience descriptions (aim for 3-5 per role)');
+
+  // Check action verbs
+  const hasActionVerb = STRONG_ACTION_VERBS.some((v) => resumeText.includes(v));
+  if (!hasActionVerb) {
+    suggestions.push("Start bullet points with strong action verbs (e.g. 'Engineered', 'Optimized', 'Scaled')");
   }
-  
-  if (weakSections.some(s => s.includes('achievements'))) {
-    suggestions.push('Add quantifiable achievements to experience (e.g., "Increased sales by 25%")');
+
+  // Check metrics
+  const hasMetrics = /\b\d+%\b|\b\d+x\b|\b\d+\+\b|\b\$\d+/i.test(resumeText);
+  if (!hasMetrics) {
+    suggestions.push("Include measurable numbers/metrics (e.g. 'improved performance by 40%', 'served 10,000+ users')");
   }
-  
-  if (weakSections.some(s => s.includes('skills'))) {
-    suggestions.push('Add more relevant skills to showcase your expertise');
+
+  if (resume.skills.length < 8) {
+    suggestions.push("Add 8–15 specific technical skills for better ATS keyword density");
   }
-  
-  if (weakSections.some(s => s.includes('projects'))) {
-    suggestions.push('Add projects to demonstrate practical experience');
+
+  if (!resume.profile.contact.github) {
+    suggestions.push("Add your GitHub profile URL to showcase your code and repositories");
   }
-  
-  if (weakSections.some(s => s.includes('summary'))) {
-    suggestions.push('Write a more detailed professional summary (50-150 words)');
-  }
-  
-  // General suggestions
-  if (resume.experience.length > 0) {
-    const hasMetrics = resume.experience.some(exp => 
-      exp.description.some(desc => /\d+%|\$\d+|\d+ (users|customers|sales)/i.test(desc))
-    );
-    if (!hasMetrics) {
-      suggestions.push('Add metrics and numbers to demonstrate impact (e.g., "Reduced costs by 30%")');
-    }
-  }
-  
+
   return suggestions;
 }
 
-// Calculate overall ATS score
-function calculateATSScore(
-  keywordDensity: Record<string, number>,
-  missingKeywords: string[],
-  weakSections: string[],
-  formattingProblems: string[]
+/**
+ * Calculate Accurate ATS Score (0 - 100)
+ */
+function calculateAccurateATSScore(
+  resume: ResumeData,
+  matchedCount: number,
+  missingCount: number,
+  totalJobKeywords: number,
+  weakCount: number,
+  formatProblemCount: number,
+  readabilityScore: number
 ): number {
-  let score = 100;
-  
-  // Deduct for missing keywords
-  const keywordScore = missingKeywords.length > 0 
-    ? Math.max(0, 30 - (missingKeywords.length * 5))
-    : 30;
-  
-  // Deduct for weak sections
-  const sectionScore = Math.max(0, 40 - (weakSections.length * 8));
-  
-  // Deduct for formatting problems
-  const formatScore = Math.max(0, 30 - (formattingProblems.length * 10));
-  
-  score = keywordScore + sectionScore + formatScore;
-  
-  return Math.round(score);
+  let score = 50; // Base score
+
+  // 1. Profile Completeness (max +20)
+  if (resume.profile.fullName) score += 4;
+  if (resume.profile.title) score += 4;
+  if (resume.profile.contact.email) score += 4;
+  if (resume.profile.contact.phone) score += 4;
+  if (resume.profile.summary && resume.profile.summary.length >= 50) score += 4;
+
+  // 2. Education & Skills (max +20)
+  if (resume.education.length > 0) score += 8;
+  if (resume.skills.length >= 5) score += 6;
+  if (resume.skills.length >= 8) score += 6;
+
+  // 3. Projects & Experience (max +20)
+  if (resume.projects.length >= 1) score += 10;
+  if (resume.projects.length >= 2 || resume.experience.length >= 1) score += 10;
+
+  // 4. Job Keyword Match Adjustments
+  if (totalJobKeywords > 0) {
+    const matchRatio = matchedCount / totalJobKeywords;
+    score = Math.round(score * 0.7 + matchRatio * 30);
+  }
+
+  // 5. Deductions for critical issues
+  score -= formatProblemCount * 6;
+  score -= weakCount * 4;
+
+  // Clamp 0 - 100
+  return Math.max(20, Math.min(100, Math.round(score)));
 }
 
-// Calculate readability score
-function calculateReadability(text: string): ATSAnalysis['readability'] {
-  const words = text.split(/\s+/).length;
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-  const avgSentenceLength = sentences > 0 ? words / sentences : 0;
-  
-  // Simple readability score based on sentence length
-  let score = 100;
-  if (avgSentenceLength > 25) score -= 20;
-  else if (avgSentenceLength > 20) score -= 10;
-  else if (avgSentenceLength < 10) score -= 10;
-  
-  let level = 'Professional';
-  if (avgSentenceLength > 25) level = 'Complex';
-  else if (avgSentenceLength < 10) level = 'Simple';
-  
+/**
+ * Calculate Readability
+ */
+function calculateReadability(text: string): ATSAnalysis["readability"] {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0).length;
+  const avgSentenceLength = sentences > 0 ? words / sentences : 14;
+
+  let score = 90;
+  if (avgSentenceLength > 24) score -= 25;
+  else if (avgSentenceLength > 18) score -= 10;
+
+  let level = "Professional & Clear";
+  if (avgSentenceLength > 24) level = "Complex";
+  else if (avgSentenceLength < 8) level = "Very Simple";
+
   return {
-    score: Math.max(0, score),
+    score: Math.max(30, Math.min(100, Math.round(score))),
     level,
     avgSentenceLength: Math.round(avgSentenceLength * 10) / 10,
   };
 }
 
-// Calculate resume health score
+/**
+ * Health Score Calculation
+ */
 export function calculateHealthScore(resume: ResumeData, atsAnalysis: ATSAnalysis): ResumeHealthScore {
-  const completeness = calculateSectionCompleteness(resume);
-  
-  const overall = Math.round(
-    (atsAnalysis.score * 0.4) +
-    (atsAnalysis.readability.score * 0.2) +
-    (completeness.overall * 0.4)
-  );
-  
+  const profileScore = Math.min(100, [
+    resume.profile.fullName ? 25 : 0,
+    resume.profile.title ? 20 : 0,
+    resume.profile.contact.email ? 20 : 0,
+    resume.profile.contact.phone ? 15 : 0,
+    resume.profile.summary ? 20 : 0,
+  ].reduce((a, b) => a + b, 0));
+
+  const expScore = resume.experience.length > 0 ? 90 : resume.projects.length > 0 ? 80 : 30;
+  const projScore = resume.projects.length >= 2 ? 95 : resume.projects.length === 1 ? 80 : 20;
+  const keywordScore = atsAnalysis.score >= 80 ? 95 : atsAnalysis.score >= 60 ? 75 : 50;
+
   return {
-    overall,
+    overall: atsAnalysis.score,
     atsScore: atsAnalysis.score,
     readability: atsAnalysis.readability.score,
-    professionalism: Math.round(completeness.profile * 100),
-    keywordMatch: Math.round(atsAnalysis.score * 0.8),
-    projectQuality: Math.round(completeness.projects * 100),
-    experienceQuality: Math.round(completeness.experience * 100),
-    sectionCompleteness: completeness.sections,
+    professionalism: profileScore,
+    keywordMatch: keywordScore,
+    projectQuality: projScore,
+    experienceQuality: expScore,
+    sectionCompleteness: {
+      profile: profileScore / 100,
+      skills: Math.min(1, resume.skills.length / 8),
+      experience: expScore / 100,
+      education: resume.education.length > 0 ? 1 : 0,
+      projects: projScore / 100,
+    },
   };
 }
 
-// Calculate section completeness
-function calculateSectionCompleteness(resume: ResumeData) {
-  const sections: Record<string, number> = {};
-  
-  // Profile completeness
-  let profileScore = 0;
-  if (resume.profile.fullName) profileScore += 0.2;
-  if (resume.profile.title) profileScore += 0.2;
-  if (resume.profile.contact.email) profileScore += 0.2;
-  if (resume.profile.contact.phone) profileScore += 0.2;
-  if (resume.profile.summary && resume.profile.summary.length > 50) profileScore += 0.2;
-  sections.profile = profileScore;
-  
-  // Experience completeness
-  let experienceScore = 0;
-  if (resume.experience.length > 0) {
-    experienceScore += 0.3;
-    const avgBulletPoints = resume.experience.reduce((sum, exp) => sum + exp.description.length, 0) / resume.experience.length;
-    experienceScore += Math.min(0.4, avgBulletPoints / 5);
-    const hasAchievements = resume.experience.some(exp => exp.achievements && exp.achievements.length > 0);
-    if (hasAchievements) experienceScore += 0.3;
-  }
-  sections.experience = experienceScore;
-  
-  // Education completeness
-  let educationScore = 0;
-  if (resume.education.length > 0) {
-    educationScore += 0.5;
-    const hasDetails = resume.education.every(edu => edu.degree && edu.institution);
-    if (hasDetails) educationScore += 0.5;
-  }
-  sections.education = educationScore;
-  
-  // Skills completeness
-  let skillsScore = 0;
-  if (resume.skills.length >= 5) skillsScore += 0.5;
-  if (resume.skills.length >= 10) skillsScore += 0.5;
-  sections.skills = skillsScore;
-  
-  // Projects completeness
-  let projectsScore = 0;
-  if (resume.projects.length > 0) {
-    projectsScore += 0.5;
-    const hasDetails = resume.projects.every(proj => proj.description && proj.technologies.length > 0);
-    if (hasDetails) projectsScore += 0.5;
-  }
-  sections.projects = projectsScore;
-  
-  const overall = Object.values(sections).reduce((sum, score) => sum + score, 0) / Object.keys(sections).length;
-  
-  return {
-    overall,
-    sections,
-  };
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -9,10 +9,10 @@ export const themePresets: Record<string, Theme> = {
       bodyFont: 'Inter',
     },
     colors: {
-      primary: '#8b5cf6',
-      secondary: '#6366f1',
-      accent: '#06b6d4',
-      text: '#1f2937',
+      primary: '#000000',
+      secondary: '#374151',
+      accent: '#000000',
+      text: '#111827',
       background: '#ffffff',
     },
     headingStyle: {
@@ -38,9 +38,9 @@ export const themePresets: Record<string, Theme> = {
       bodyFont: 'Roboto',
     },
     colors: {
-      primary: '#1e40af',
-      secondary: '#3b82f6',
-      accent: '#0ea5e9',
+      primary: '#000000',
+      secondary: '#374151',
+      accent: '#111827',
       text: '#1f2937',
       background: '#ffffff',
     },
@@ -67,9 +67,9 @@ export const themePresets: Record<string, Theme> = {
       bodyFont: 'Poppins',
     },
     colors: {
-      primary: '#ec4899',
-      secondary: '#f472b6',
-      accent: '#14b8a6',
+      primary: '#000000',
+      secondary: '#374151',
+      accent: '#111827',
       text: '#374151',
       background: '#ffffff',
     },
@@ -125,9 +125,9 @@ export const themePresets: Record<string, Theme> = {
       bodyFont: 'Lato',
     },
     colors: {
-      primary: '#dc2626',
-      secondary: '#ef4444',
-      accent: '#f59e0b',
+      primary: '#000000',
+      secondary: '#374151',
+      accent: '#111827',
       text: '#1f2937',
       background: '#ffffff',
     },
@@ -139,7 +139,7 @@ export const themePresets: Record<string, Theme> = {
     sectionStyle: {
       spacing: 'spacious',
       borders: true,
-      borderColor: '#fca5a5',
+      borderColor: '#e5e7eb',
       background: '#ffffff',
     },
     icons: {
@@ -154,11 +154,11 @@ export const themePresets: Record<string, Theme> = {
       bodyFont: 'JetBrains Mono',
     },
     colors: {
-      primary: '#10b981',
-      secondary: '#34d399',
-      accent: '#a855f7',
-      text: '#d1d5db',
-      background: '#111827',
+      primary: '#000000',
+      secondary: '#374151',
+      accent: '#111827',
+      text: '#111827',
+      background: '#ffffff',
     },
     headingStyle: {
       size: 'medium',
@@ -168,8 +168,8 @@ export const themePresets: Record<string, Theme> = {
     sectionStyle: {
       spacing: 'normal',
       borders: true,
-      borderColor: '#374151',
-      background: '#1f2937',
+      borderColor: '#e5e7eb',
+      background: '#ffffff',
     },
     icons: {
       enabled: true,
@@ -226,8 +226,20 @@ export const iconStyleOptions = [
   { label: 'Minimal', value: 'minimal' as const },
 ];
 
-// Preset color palettes
+// Preset color palettes (Black as default first choice)
 export const colorPalettes = [
+  {
+    name: 'Black / Monochrome',
+    primary: '#000000',
+    secondary: '#374151',
+    accent: '#6b7280',
+  },
+  {
+    name: 'Classic Dark',
+    primary: '#111827',
+    secondary: '#1f2937',
+    accent: '#4b5563',
+  },
   {
     name: 'Purple',
     primary: '#8b5cf6',
@@ -257,24 +269,6 @@ export const colorPalettes = [
     primary: '#ea580c',
     secondary: '#f97316',
     accent: '#fb923c',
-  },
-  {
-    name: 'Pink',
-    primary: '#db2777',
-    secondary: '#ec4899',
-    accent: '#f472b6',
-  },
-  {
-    name: 'Teal',
-    primary: '#0d9488',
-    secondary: '#14b8a6',
-    accent: '#2dd4bf',
-  },
-  {
-    name: 'Indigo',
-    primary: '#4338ca',
-    secondary: '#6366f1',
-    accent: '#818cf8',
   },
 ];
 

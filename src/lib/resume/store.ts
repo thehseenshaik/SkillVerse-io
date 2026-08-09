@@ -46,10 +46,10 @@ const defaultTheme: Theme = {
     bodyFont: 'Inter',
   },
   colors: {
-    primary: '#8b5cf6',
-    secondary: '#6366f1',
-    accent: '#06b6d4',
-    text: '#1f2937',
+    primary: '#000000',
+    secondary: '#111827',
+    accent: '#374151',
+    text: '#111827',
     background: '#ffffff',
   },
   headingStyle: {
@@ -99,8 +99,10 @@ interface ResumeBuilderStore {
   setCurrentResumeId: (id: string | null) => void;
   loadResume: (id: string) => void;
   createNewResume: (name?: string) => void;
+  renameResume: (id: string, name: string) => void;
   duplicateResume: (id: string) => void;
   deleteResume: (id: string) => void;
+  saveResume: () => void;
   updateProfile: (profile: Partial<Profile>) => void;
   updateContact: (contact: Partial<ContactInfo>) => void;
   
@@ -162,6 +164,8 @@ interface ResumeBuilderStore {
   // Template & Theme
   template: TemplateType;
   setTemplate: (template: TemplateType) => void;
+  selectedPreset: string;
+  setSelectedPreset: (preset: string) => void;
   theme: Theme;
   setTheme: (theme: Partial<Theme>) => void;
   resetTheme: () => void;
@@ -198,6 +202,7 @@ export const useResumeStore = create<ResumeBuilderStore>()(
       resumes: [],
       currentResumeId: null,
       template: 'ats-professional',
+      selectedPreset: 'default',
       theme: defaultTheme,
       previewMode: 'desktop',
       zoom: 100,
@@ -208,38 +213,66 @@ export const useResumeStore = create<ResumeBuilderStore>()(
       isSaving: false,
       
       // Resume operations
-      setResume: (resume) => set({ resume }),
+      setResume: (resume) => {
+        const preset = resume.selectedPreset || get().selectedPreset || 'default';
+        const template = resume.template || get().template || 'ats-professional';
+        set({ resume, selectedPreset: preset, template });
+      },
       setResumes: (resumes) => set({ resumes }),
       setCurrentResumeId: (id) => set({ currentResumeId: id }),
       loadResume: (id) => {
         const state = get();
         const resume = state.resumes.find(r => r.id === id);
         if (resume) {
-          set({ resume, currentResumeId: id });
+          const preset = resume.selectedPreset || 'default';
+          const template = resume.template || 'ats-professional';
+          set({ 
+            resume: { ...resume, selectedPreset: preset, template }, 
+            currentResumeId: id,
+            selectedPreset: preset,
+            template: template,
+          });
         }
       },
-      createNewResume: (name = 'New Resume') => {
+      createNewResume: (name = 'My Resume') => {
         const newResume = createEmptyResume();
         newResume.name = name;
+        newResume.selectedPreset = 'default';
+        newResume.template = 'ats-professional';
         set((state) => ({
-          resumes: [...state.resumes, newResume],
+          resumes: [newResume, ...state.resumes],
           resume: newResume,
           currentResumeId: newResume.id,
+          selectedPreset: 'default',
+          template: 'ats-professional',
         }));
+      },
+      renameResume: (id, name) => {
+        set((state) => {
+          const updatedResumes = state.resumes.map((r) =>
+            r.id === id ? { ...r, name, updatedAt: new Date().toISOString() } : r
+          );
+          const updatedCurrent =
+            state.resume.id === id ? { ...state.resume, name, updatedAt: new Date().toISOString() } : state.resume;
+          return {
+            resumes: updatedResumes,
+            resume: updatedCurrent,
+          };
+        });
       },
       duplicateResume: (id) => {
         const state = get();
-        const original = state.resumes.find(r => r.id === id);
+        const original = state.resumes.find((r) => r.id === id) || (state.resume.id === id ? state.resume : null);
         if (original) {
           const duplicate = {
-            ...original,
+            ...JSON.parse(JSON.stringify(original)),
             id: crypto.randomUUID(),
-            name: `${original.name} (Copy)`,
+            name: `${original.name} — Copy`,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
           set((state) => ({
-            resumes: [...state.resumes, duplicate],
+            resumes: [duplicate, ...state.resumes],
           }));
         }
       },
@@ -552,7 +585,14 @@ export const useResumeStore = create<ResumeBuilderStore>()(
       })),
       
       // Template & Theme
-      setTemplate: (template) => set({ template }),
+      setTemplate: (template) => set((state) => ({ 
+        template, 
+        resume: { ...state.resume, template, updatedAt: new Date().toISOString() } 
+      })),
+      setSelectedPreset: (selectedPreset) => set((state) => ({ 
+        selectedPreset, 
+        resume: { ...state.resume, selectedPreset, updatedAt: new Date().toISOString() } 
+      })),
       setTheme: (theme) => set((state) => ({ theme: { ...state.theme, ...theme } })),
       resetTheme: () => set({ theme: defaultTheme }),
       
@@ -565,15 +605,36 @@ export const useResumeStore = create<ResumeBuilderStore>()(
       setActiveSection: (activeSection) => set({ activeSection }),
       setIsBuilderVisible: (isBuilderVisible) => set({ isBuilderVisible }),
       
-      // Auto-save
+      // Auto-save & Manual Save
+      saveResume: () => {
+        const state = get();
+        const now = new Date().toISOString();
+        const current = {
+          ...state.resume,
+          selectedPreset: state.selectedPreset,
+          template: state.template,
+          updatedAt: now,
+        };
+        
+        const exists = state.resumes.some((r) => r.id === current.id);
+        const updatedResumes = exists
+          ? state.resumes.map((r) => (r.id === current.id ? current : r))
+          : [current, ...state.resumes];
+          
+        set({
+          resume: current,
+          resumes: updatedResumes,
+          currentResumeId: current.id,
+          lastSaved: now,
+          isSaving: false,
+        });
+      },
       setIsSaving: (isSaving) => set({ isSaving }),
       updateLastSaved: () => set({ lastSaved: new Date().toISOString() }),
       triggerAutoSave: async () => {
         const state = get();
         state.setIsSaving(true);
-        // Simulate save delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        state.updateLastSaved();
+        state.saveResume();
         state.setIsSaving(false);
       },
       

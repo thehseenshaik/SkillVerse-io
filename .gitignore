@@ -43,9 +43,10 @@ Thumbs.db
 .firebase/
 firebase-debug.log
 
-# Vite
+# Vite & Bundler
 .vite-cache/
 *.tsbuildinfo
+.tanstack/
 
 # Temp files
 *.tmp
@@ -54,5 +55,6 @@ firebase-debug.log
 
 # Overflows
 *.overflow
+
 # Devin AI
 .devin/

@@ -1,95 +1,59 @@
 import { useState, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
+import { usePlatformStore } from "@/lib/platform-store";
 import { usePlatformDataService } from "@/lib/services/platform-data-service";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ExternalLink, Target, Trophy, Flame, Award, CheckCircle2, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  RefreshCw,
+  ExternalLink,
+  Code2,
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+  Award
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface LeetCodeSubmission {
-  title: string;
-  titleSlug: string;
-  status: string;
-  language: string;
-  timestamp: number;
-}
-
-interface LeetCodeBadge {
-  id: string;
-  displayName: string;
-  icon: string;
-  creationDate: string;
-}
-
-interface LeetCodeContest {
-  attendedContestsCount: number;
-  rating: number;
-  globalRanking: number;
-  topPercentage: number;
-}
-
-interface LeetCodeProfile {
-  displayName: string;
-  avatar: string;
-  bio: string | null;
-  country: string | null;
-  company: string | null;
-  school: string | null;
-  websites: string[] | null;
-  ranking: number;
-  reputation: number;
-}
-
-interface LeetCodeStats {
-  Easy: number;
-  Medium: number;
-  Hard: number;
-  All: number;
-}
 
 export function LeetCodeAnalyticsPage() {
   const { user } = useAuth();
-  const { syncPlatform, getCachedPlatformData } = usePlatformDataService();
-  
+  const {
+    leetcode,
+    leetcodeData,
+    connectLeetCode,
+    syncLeetCode,
+    validateLeetCodeUsername,
+    fetchDashboardData,
+  } = usePlatformStore();
+  const { getCachedPlatformData } = usePlatformDataService();
+
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<LeetCodeProfile | null>(null);
-  const [stats, setStats] = useState<LeetCodeStats | null>(null);
-  const [contest, setContest] = useState<LeetCodeContest | null>(null);
-  const [recentSubmissions, setRecentSubmissions] = useState<LeetCodeSubmission[]>([]);
-  const [badges, setBadges] = useState<LeetCodeBadge[]>([]);
-  const [acceptanceRate, setAcceptanceRate] = useState<number>(0);
+  const [connectUsername, setConnectUsername] = useState("");
+  const [connecting, setConnecting] = useState(false);
+
+  const [data, setData] = useState<any>(leetcodeData || null);
 
   useEffect(() => {
-    if (user?.id) {
-      loadLeetCodeData();
+    if (leetcodeData) {
+      setData(leetcodeData);
+    } else if (user?.id) {
+      loadData();
     }
-  }, [user?.id]);
+  }, [user?.id, leetcodeData]);
 
-  const loadLeetCodeData = async () => {
+  const loadData = async () => {
     if (!user?.id) return;
-    
     setLoading(true);
     setError(null);
     try {
-      const cachedData = await getCachedPlatformData('leetcode');
-      
-      if (cachedData) {
-        setProfile(cachedData.profile);
-        setStats(cachedData.stats);
-        setContest(cachedData.contest);
-        setRecentSubmissions(cachedData.recentSubmissions || []);
-        setBadges(cachedData.badges || []);
-        setAcceptanceRate(cachedData.acceptanceRate || 0);
-      } else {
-        await handleSync();
+      await fetchDashboardData(user.id);
+      const cached = await getCachedPlatformData("leetcode");
+      if (cached) {
+        setData(cached);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load LeetCode data");
@@ -100,12 +64,11 @@ export function LeetCodeAnalyticsPage() {
 
   const handleSync = async () => {
     if (!user?.id) return;
-    
     setSyncing(true);
     setError(null);
     try {
-      await syncPlatform('leetcode');
-      await loadLeetCodeData();
+      await syncLeetCode(user.id);
+      await fetchDashboardData(user.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sync LeetCode data");
     } finally {
@@ -113,286 +76,222 @@ export function LeetCodeAnalyticsPage() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "Easy":
-        return "text-emerald-600";
-      case "Medium":
-        return "text-yellow-600";
-      case "Hard":
-        return "text-red-600";
-      default:
-        return "text-muted-foreground";
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connectUsername.trim() || !user?.id) return;
+    setConnecting(true);
+    setError(null);
+    try {
+      await validateLeetCodeUsername(connectUsername.trim());
+      await connectLeetCode(user.id, connectUsername.trim());
+      await fetchDashboardData(user.id);
+      setConnectUsername("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect LeetCode profile");
+    } finally {
+      setConnecting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
-      </div>
-    );
-  }
+  const profile = data?.profile || leetcodeData?.profile;
+  const stats = data?.stats || leetcodeData?.stats || { Easy: 0, Medium: 0, Hard: 0, All: 0 };
+  const contest = data?.contest || leetcodeData?.contest;
+  const recentSubmissions = data?.recentSubmissions || leetcodeData?.recentSubmissions || [];
+  const badges = data?.badges || leetcodeData?.badges || [];
 
-  if (error) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <p className="text-destructive">{error}</p>
-          <Button onClick={loadLeetCodeData} className="mt-4">
-            Retry
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <Target className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">LeetCode Not Connected</h3>
-          <p className="text-muted-foreground mb-4">
-            Connect your LeetCode account to view detailed analytics
-          </p>
-          <Button onClick={() => window.location.href = '/connections'}>
-            Connect LeetCode
-          </Button>
-        </div>
-      </Card>
-    );
-  }
+  const easyCount = stats.Easy || 0;
+  const mediumCount = stats.Medium || 0;
+  const hardCount = stats.Hard || 0;
+  const totalSolved = stats.All || (easyCount + mediumCount + hardCount);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <img
-            src={profile.avatar}
-            alt={profile.displayName}
-            className="h-16 w-16 rounded-xl border border-border/70 object-cover"
-          />
-          <div>
-            <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-            <a
-              href={`https://leetcode.com/${profile.displayName}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand"
-            >
-              @{profile.displayName} <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
-        <Button
-          onClick={handleSync}
-          disabled={syncing}
-          className="gap-2"
+    <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
+      {/* Back Header */}
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <Link
+          to="/analytics"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
-          <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-          {syncing ? "Syncing..." : "Sync Data"}
-        </Button>
+          <ArrowLeft className="h-4 w-4" /> Back to Analytics
+        </Link>
+
+        {leetcode.connected && (
+          <Button
+            onClick={handleSync}
+            disabled={syncing}
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-border text-xs gap-1.5"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+            {syncing ? "Syncing..." : "Sync LeetCode"}
+          </Button>
+        )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Target className="h-4 w-4" />
-              <span className="text-sm">Problems Solved</span>
-            </div>
-            <div className="text-2xl font-bold">{stats?.All || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Trophy className="h-4 w-4" />
-              <span className="text-sm">Global Ranking</span>
-            </div>
-            <div className="text-2xl font-bold">#{profile.ranking?.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Flame className="h-4 w-4" />
-              <span className="text-sm">Contests</span>
-            </div>
-            <div className="text-2xl font-bold">{contest?.attendedContestsCount || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Award className="h-4 w-4" />
-              <span className="text-sm">Badges</span>
-            </div>
-            <div className="text-2xl font-bold">{badges.length}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Disconnected State */}
+      {!leetcode.connected && !profile && (
+        <Card className="border border-border bg-card p-8 text-center rounded-2xl shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/20">
+            <Code2 className="h-6 w-6 text-amber-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Connect Your LeetCode Profile</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Enter your LeetCode username to sync your solved problems, difficulty breakdown (Easy, Medium, Hard), and contest rating.
+            </p>
+          </div>
 
-      {/* Difficulty Breakdown */}
-      {stats && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Difficulty Breakdown</CardTitle>
-            <CardDescription>Your problem-solving progress by difficulty</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="rounded-lg border border-border/60 bg-secondary/40 p-4">
-                <div className="flex items-center justify-between">
-                  <span className={cn("text-sm font-medium", getDifficultyColor("Easy"))}>
-                    Easy
-                  </span>
-                  <span className="text-lg font-bold">{stats.Easy}</span>
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-secondary/40 p-4">
-                <div className="flex items-center justify-between">
-                  <span className={cn("text-sm font-medium", getDifficultyColor("Medium"))}>
-                    Medium
-                  </span>
-                  <span className="text-lg font-bold">{stats.Medium}</span>
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-secondary/40 p-4">
-                <div className="flex items-center justify-between">
-                  <span className={cn("text-sm font-medium", getDifficultyColor("Hard"))}>
-                    Hard
-                  </span>
-                  <span className="text-lg font-bold">{stats.Hard}</span>
-                </div>
-              </div>
-            </div>
-            {acceptanceRate > 0 && (
-              <div className="mt-4 text-sm text-muted-foreground">
-                Acceptance Rate: <span className="font-semibold text-foreground">{acceptanceRate.toFixed(2)}%</span>
-              </div>
-            )}
-          </CardContent>
+          <form onSubmit={handleConnect} className="flex max-w-xs mx-auto gap-2 mt-4">
+            <Input
+              placeholder="LeetCode Username"
+              value={connectUsername}
+              onChange={(e) => setConnectUsername(e.target.value)}
+              className="bg-background border-border text-xs"
+            />
+            <Button type="submit" disabled={connecting || !connectUsername.trim()} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs shrink-0">
+              {connecting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+            </Button>
+          </form>
+          {error && <p className="text-xs text-destructive mt-2">{error}</p>}
         </Card>
       )}
 
-      {/* Contest Performance */}
-      {contest && contest.attendedContestsCount > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Contest Performance</CardTitle>
-            <CardDescription>Your competitive programming statistics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border border-border/60 bg-secondary/40 p-4">
-                <div className="text-xs text-muted-foreground">Rating</div>
-                <div className="text-lg font-bold">{contest.rating}</div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-secondary/40 p-4">
-                <div className="text-xs text-muted-foreground">Global Ranking</div>
-                <div className="text-lg font-bold">#{contest.globalRanking?.toLocaleString()}</div>
-              </div>
-            </div>
-            {contest.topPercentage > 0 && (
-              <div className="mt-4 text-sm text-muted-foreground">
-                Top <span className="font-semibold text-foreground">{contest.topPercentage.toFixed(2)}%</span> globally
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Loading State */}
+      {loading && !profile && (
+        <div className="py-16 text-center space-y-2">
+          <RefreshCw className="h-6 w-6 animate-spin text-amber-500 mx-auto" />
+          <p className="text-xs text-muted-foreground">Loading LeetCode analytics...</p>
+        </div>
       )}
 
-      {/* Recent Submissions */}
-      {recentSubmissions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Submissions ({recentSubmissions.length})</CardTitle>
-            <CardDescription>Your latest problem submissions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {recentSubmissions.map((submission, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary">
-                    {submission.status === "Accepted" ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    )}
+      {/* Connected View */}
+      {profile && (
+        <>
+          {/* Header Card */}
+          <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <img
+                  src={profile.avatar || "https://assets.leetcode.com/users/avatars/avatar_1.png"}
+                  alt={profile.displayName || leetcode.username || "LeetCode Profile"}
+                  className="h-16 w-16 rounded-2xl border border-border object-cover"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-foreground">{profile.displayName || leetcode.username}</h2>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                      CONNECTED
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <a
-                      href={`https://leetcode.com/problems/${submission.titleSlug}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-sm hover:text-brand"
-                    >
-                      {submission.title}
-                    </a>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {submission.language}
+                  <a
+                    href={`https://leetcode.com/${leetcode.username || profile.displayName}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-amber-500 hover:underline inline-flex items-center gap-1 mt-0.5 font-medium"
+                  >
+                    @{leetcode.username || profile.displayName} <ExternalLink className="h-3 w-3" />
+                  </a>
+                  {profile.ranking > 0 && (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Global Rank: <span className="font-semibold text-foreground">#{profile.ranking.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Quick Metrics Snapshot */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Problems Solved</span>
+              <div className="text-2xl font-bold text-foreground mt-1">{totalSolved}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Contest Rating</span>
+              <div className="text-2xl font-bold text-amber-500 mt-1">{contest?.rating ? Math.round(contest.rating) : "N/A"}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Contests</span>
+              <div className="text-2xl font-bold text-foreground mt-1">{contest?.attendedContestsCount || 0}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Badges</span>
+              <div className="text-2xl font-bold text-foreground mt-1">{badges.length}</div>
+            </Card>
+          </div>
+
+          {/* Difficulty Breakdown & Recent Submissions Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Problem Difficulty Breakdown */}
+            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm space-y-4">
+              <h3 className="font-bold text-base text-foreground">Difficulty Breakdown</h3>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-emerald-500 font-medium">Easy</span>
+                    <span className="text-foreground font-semibold">{easyCount}</span>
+                  </div>
+                  <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, (easyCount / 400) * 100)}%` }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-amber-500 font-medium">Medium</span>
+                    <span className="text-foreground font-semibold">{mediumCount}</span>
+                  </div>
+                  <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, (mediumCount / 400) * 100)}%` }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-rose-500 font-medium">Hard</span>
+                    <span className="text-foreground font-semibold">{hardCount}</span>
+                  </div>
+                  <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                    <div className="bg-rose-500 h-full rounded-full" style={{ width: `${Math.min(100, (hardCount / 200) * 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Recent Submissions */}
+            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm">
+              <h3 className="font-bold text-base text-foreground mb-4">Recent Submissions</h3>
+              {recentSubmissions.length > 0 ? (
+                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                  {recentSubmissions.slice(0, 6).map((sub: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-background/50 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {sub.status === "Accepted" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                        )}
+                        <a href={`https://leetcode.com/problems/${sub.titleSlug}/`} target="_blank" rel="noreferrer" className="font-medium text-foreground hover:text-amber-500 truncate">
+                          {sub.title}
+                        </a>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-secondary text-muted-foreground shrink-0 ml-2">
+                        {sub.language}
                       </span>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(submission.timestamp)}
-                      </span>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Badges */}
-      {badges.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Badges ({badges.length})</CardTitle>
-            <CardDescription>Your earned achievements</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-secondary/40 p-3"
-                >
-                  <img
-                    src={badge.icon}
-                    alt={badge.displayName}
-                    className="h-10 w-10 rounded"
-                  />
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {badge.displayName}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(new Date(badge.creationDate).getTime())}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              ) : (
+                <p className="text-xs text-muted-foreground py-6 text-center">No recent submissions synchronized.</p>
+              )}
+            </Card>
+          </div>
+        </>
       )}
     </div>
   );

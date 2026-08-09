@@ -1,71 +1,56 @@
 import { useState, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
+import { usePlatformStore } from "@/lib/platform-store";
 import { usePlatformDataService } from "@/lib/services/platform-data-service";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ExternalLink, Target, Trophy, TrendingUp, Users, Award } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  RefreshCw,
+  ExternalLink,
+  Trophy,
+  ArrowLeft
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface CodeforcesProfile {
-  displayName: string;
-  avatar: string | null;
-  rating: number;
-  maxRating: number;
-  rank: string;
-  maxRank: string;
-  country: string | null;
-  city: string | null;
-  organization: string | null;
-  contribution: number;
-  friendOfCount: number;
-}
-
-interface CodeforcesRatingChange {
-  contestId: number;
-  contestName: string;
-  rank: number;
-  ratingUpdateTimeSeconds: number;
-  oldRating: number;
-  newRating: number;
-}
 
 export function CodeforcesAnalyticsPage() {
   const { user } = useAuth();
-  const { syncPlatform, getCachedPlatformData } = usePlatformDataService();
-  
+  const {
+    codeforces,
+    codeforcesData,
+    connectCodeforces,
+    syncCodeforces,
+    validateCodeforcesUsername,
+    fetchDashboardData,
+  } = usePlatformStore();
+  const { getCachedPlatformData } = usePlatformDataService();
+
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<CodeforcesProfile | null>(null);
-  const [ratingHistory, setRatingHistory] = useState<CodeforcesRatingChange[]>([]);
-  const [totalContests, setTotalContests] = useState(0);
+  const [connectUsername, setConnectUsername] = useState("");
+  const [connecting, setConnecting] = useState(false);
+
+  const [data, setData] = useState<any>(codeforcesData || null);
 
   useEffect(() => {
-    if (user?.id) {
-      loadCodeforcesData();
+    if (codeforcesData) {
+      setData(codeforcesData);
+    } else if (user?.id) {
+      loadData();
     }
-  }, [user?.id]);
+  }, [user?.id, codeforcesData]);
 
-  const loadCodeforcesData = async () => {
+  const loadData = async () => {
     if (!user?.id) return;
-    
     setLoading(true);
     setError(null);
     try {
-      const cachedData = await getCachedPlatformData('codeforces');
-      
-      if (cachedData) {
-        setProfile(cachedData.profile);
-        setRatingHistory(cachedData.ratingHistory || []);
-        setTotalContests(cachedData.totalContests || 0);
-      } else {
-        await handleSync();
+      await fetchDashboardData(user.id);
+      const cached = await getCachedPlatformData("codeforces");
+      if (cached) {
+        setData(cached);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load Codeforces data");
@@ -76,12 +61,11 @@ export function CodeforcesAnalyticsPage() {
 
   const handleSync = async () => {
     if (!user?.id) return;
-    
     setSyncing(true);
     setError(null);
     try {
-      await syncPlatform('codeforces');
-      await loadCodeforcesData();
+      await syncCodeforces(user.id);
+      await fetchDashboardData(user.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sync Codeforces data");
     } finally {
@@ -89,219 +73,141 @@ export function CodeforcesAnalyticsPage() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connectUsername.trim() || !user?.id) return;
+    setConnecting(true);
+    setError(null);
+    try {
+      await validateCodeforcesUsername(connectUsername.trim());
+      await connectCodeforces(user.id, connectUsername.trim());
+      await fetchDashboardData(user.id);
+      setConnectUsername("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect Codeforces handle");
+    } finally {
+      setConnecting(false);
+    }
   };
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= 2400) return "text-red-600";
-    if (rating >= 2100) return "text-orange-600";
-    if (rating >= 1900) return "text-purple-600";
-    if (rating >= 1600) return "text-blue-600";
-    if (rating >= 1400) return "text-cyan-600";
-    if (rating >= 1200) return "text-green-600";
-    return "text-gray-600";
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <p className="text-destructive">{error}</p>
-          <Button onClick={loadCodeforcesData} className="mt-4">
-            Retry
-          </Button>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <Target className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Codeforces Not Connected</h3>
-          <p className="text-muted-foreground mb-4">
-            Connect your Codeforces account to view detailed analytics
-          </p>
-          <Button onClick={() => window.location.href = '/connections'}>
-            Connect Codeforces
-          </Button>
-        </div>
-      </Card>
-    );
-  }
+  const profile = data?.profile || codeforcesData?.profile;
+  const ratingHistory = data?.ratingHistory || codeforcesData?.ratingHistory || [];
+  const currentRating = profile?.rating || 0;
+  const maxRating = profile?.maxRating || 0;
+  const rank = profile?.rank || 'Unrated';
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {profile.avatar ? (
-            <img
-              src={profile.avatar}
-              alt={profile.displayName}
-              className="h-16 w-16 rounded-xl border border-border/70 object-cover"
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-xl border border-border/70 bg-secondary flex items-center justify-center">
-              <Target className="h-8 w-8 text-muted-foreground" />
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-            <a
-              href={`https://codeforces.com/profile/${profile.displayName}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand"
-            >
-              @{profile.displayName} <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
-        <Button
-          onClick={handleSync}
-          disabled={syncing}
-          className="gap-2"
+    <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
+      {/* Back Header */}
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <Link
+          to="/analytics"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
-          <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-          {syncing ? "Syncing..." : "Sync Data"}
-        </Button>
+          <ArrowLeft className="h-4 w-4" /> Back to Analytics
+        </Link>
+
+        {codeforces.connected && (
+          <Button
+            onClick={handleSync}
+            disabled={syncing}
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-border text-xs gap-1.5"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} />
+            {syncing ? "Syncing..." : "Sync Codeforces"}
+          </Button>
+        )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Trophy className="h-4 w-4" />
-              <span className="text-sm">Current Rating</span>
-            </div>
-            <div className={cn("text-2xl font-bold", getRatingColor(profile.rating))}>
-              {profile.rating}
-            </div>
-            <div className="text-xs text-muted-foreground">{profile.rank}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Award className="h-4 w-4" />
-              <span className="text-sm">Max Rating</span>
-            </div>
-            <div className={cn("text-2xl font-bold", getRatingColor(profile.maxRating))}>
-              {profile.maxRating}
-            </div>
-            <div className="text-xs text-muted-foreground">{profile.maxRank}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Target className="h-4 w-4" />
-              <span className="text-sm">Contests</span>
-            </div>
-            <div className="text-2xl font-bold">{totalContests}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <Users className="h-4 w-4" />
-              <span className="text-sm">Friends</span>
-            </div>
-            <div className="text-2xl font-bold">{profile.friendOfCount}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Profile Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {profile.organization && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Organization</span>
-                <span className="font-medium">{profile.organization}</span>
-              </div>
-            )}
-            {profile.country && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Country</span>
-                <span className="font-medium">{profile.country}</span>
-              </div>
-            )}
-            {profile.city && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">City</span>
-                <span className="font-medium">{profile.city}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Contribution</span>
-              <span className="font-medium">{profile.contribution}</span>
-            </div>
+      {/* Disconnected State */}
+      {!codeforces.connected && !profile && (
+        <Card className="border border-border bg-card p-8 text-center rounded-2xl shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center mx-auto border border-cyan-500/20">
+            <Trophy className="h-6 w-6 text-cyan-500" />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Connect Your Codeforces Profile</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Enter your Codeforces handle to sync your competitive rating, rank title, and contest history.
+            </p>
+          </div>
 
-      {/* Rating History */}
-      {ratingHistory.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Rating History</CardTitle>
-            <CardDescription>Your recent contest performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {ratingHistory.slice().reverse().map((change, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 p-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{change.contestName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(change.ratingUpdateTimeSeconds)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="text-muted-foreground">
-                      {change.oldRating}
-                    </div>
-                    <div className={cn(
-                      "font-semibold",
-                      change.newRating > change.oldRating ? "text-emerald-600" : "text-red-600"
-                    )}>
-                      {change.newRating > change.oldRating ? "+" : ""}
-                      {change.newRating - change.oldRating}
-                    </div>
-                    <div className={cn("font-semibold", getRatingColor(change.newRating))}>
-                      {change.newRating}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+          <form onSubmit={handleConnect} className="flex max-w-xs mx-auto gap-2 mt-4">
+            <Input
+              placeholder="Codeforces Handle"
+              value={connectUsername}
+              onChange={(e) => setConnectUsername(e.target.value)}
+              className="bg-background border-border text-xs"
+            />
+            <Button type="submit" disabled={connecting || !connectUsername.trim()} className="bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-semibold text-xs shrink-0">
+              {connecting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+            </Button>
+          </form>
+          {error && <p className="text-xs text-destructive mt-2">{error}</p>}
         </Card>
+      )}
+
+      {/* Loading State */}
+      {loading && !profile && (
+        <div className="py-16 text-center space-y-2">
+          <RefreshCw className="h-6 w-6 animate-spin text-cyan-500 mx-auto" />
+          <p className="text-xs text-muted-foreground">Loading Codeforces analytics...</p>
+        </div>
+      )}
+
+      {/* Connected View */}
+      {profile && (
+        <>
+          <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-4">
+              <img
+                src={profile.avatar || `https://userpic.codeforces.org/no-avatar.jpg`}
+                alt={profile.displayName || codeforces.username || "Codeforces Profile"}
+                className="h-16 w-16 rounded-2xl border border-border object-cover"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-foreground">{profile.displayName || codeforces.username}</h2>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                    CONNECTED
+                  </span>
+                </div>
+                <a
+                  href={`https://codeforces.com/profile/${codeforces.username || profile.displayName}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-1 mt-0.5 font-medium"
+                >
+                  @{codeforces.username || profile.displayName} <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Current Rating</span>
+              <div className="text-2xl font-bold text-cyan-500 mt-1">{currentRating}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Max Rating</span>
+              <div className="text-2xl font-bold text-foreground mt-1">{maxRating}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Rank Title</span>
+              <div className="text-xl font-bold text-foreground capitalize mt-1 truncate">{rank}</div>
+            </Card>
+
+            <Card className="border border-border bg-card p-4 rounded-xl shadow-sm">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">Contests</span>
+              <div className="text-2xl font-bold text-foreground mt-1">{ratingHistory.length}</div>
+            </Card>
+          </div>
+        </>
       )}
     </div>
   );

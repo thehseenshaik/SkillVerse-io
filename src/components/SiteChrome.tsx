@@ -40,6 +40,7 @@ const publicNav = [
 
 const authedNav = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/analytics", label: "Analytics" },
   { to: "/resume", label: "Resume" },
   { to: "/practice", label: "Practice" },
   { to: "/assistant", label: "Copilot" },

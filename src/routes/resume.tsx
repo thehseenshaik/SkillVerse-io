@@ -102,36 +102,55 @@ function ResumePage() {
             </Link>
           </div>
 
-          {/* Features */}
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {[
-              {
-                icon: Sparkles,
-                title: "ATS-Friendly",
-                desc: "Optimized for applicant tracking systems",
-              },
-              {
-                icon: FileText,
-                title: "Professional Templates",
-                desc: "Choose from modern and classic designs",
-              },
-              {
-                icon: Wand2,
-                title: "AI-Powered",
-                desc: "Smart suggestions and content optimization",
-              },
-            ].map((f) => (
-              <div
-                key={f.title}
-                className="glass rounded-xl p-5 shadow-elegant"
-              >
-                <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-brand-gradient text-white shadow-glow">
-                  <f.icon className="h-5 w-5" />
-                </div>
-                <div className="text-sm font-semibold">{f.title}</div>
-                <p className="mt-1 text-xs text-muted-foreground">{f.desc}</p>
+          {/* How It Works Section */}
+          <div className="mt-20 pt-10 border-t border-border/50 animate-fade-up">
+            <div className="text-xs font-semibold uppercase tracking-widest text-brand">
+              How it works
+            </div>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              Create a professional resume in three simple steps.
+            </h2>
+
+            <div className="relative mt-10 grid gap-6 md:grid-cols-3">
+              {/* Step 1 */}
+              <div className="group relative rounded-2xl border border-border/60 bg-card/60 p-6 shadow-sm transition-all duration-200 hover:border-brand/40">
+                <span className="text-3xl font-extrabold text-brand block transition-transform duration-200 group-hover:scale-105">
+                  01
+                </span>
+                <h3 className="mt-3 text-base font-bold text-foreground">
+                  Complete your profile
+                </h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Add your education, skills, projects, experience, certifications, and other career information to your SkillVerse profile.
+                </p>
               </div>
-            ))}
+
+              {/* Step 2 */}
+              <div className="group relative rounded-2xl border border-border/60 bg-card/60 p-6 shadow-sm transition-all duration-200 hover:border-brand/40">
+                <span className="text-3xl font-extrabold text-brand block transition-transform duration-200 group-hover:scale-105">
+                  02
+                </span>
+                <h3 className="mt-3 text-base font-bold text-foreground">
+                  Choose how you want to build
+                </h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Generate a resume automatically from your profile or build one manually with full control.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="group relative rounded-2xl border border-border/60 bg-card/60 p-6 shadow-sm transition-all duration-200 hover:border-brand/40">
+                <span className="text-3xl font-extrabold text-brand block transition-transform duration-200 group-hover:scale-105">
+                  03
+                </span>
+                <h3 className="mt-3 text-base font-bold text-foreground">
+                  Customize & export
+                </h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Review your resume, make final changes, choose your preferred layout, and export your finished resume.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
       </div>

@@ -40,7 +40,6 @@ import { Route as ConnectionsPremiumRouteImport } from './routes/connections-pre
 import { Route as ContributionsRouteImport } from './routes/contributions'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DashboardAdaptiveRouteImport } from './routes/dashboard-adaptive'
-import { Route as EditProfileRouteImport } from './routes/edit-profile'
 import { Route as ErrorRouteImport } from './routes/error'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -223,11 +222,6 @@ const DashboardAdaptiveRoute = DashboardAdaptiveRouteImport.update({
   path: '/dashboard-adaptive',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EditProfileRoute = EditProfileRouteImport.update({
-  id: '/edit-profile',
-  path: '/edit-profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ErrorRoute = ErrorRouteImport.update({
   id: '/error',
   path: '/error',
@@ -391,7 +385,6 @@ export interface FileRoutesByFullPath {
   '/contributions': typeof ContributionsRoute
   '/dashboard': typeof DashboardRoute
   '/dashboard-adaptive': typeof DashboardAdaptiveRoute
-  '/edit-profile': typeof EditProfileRoute
   '/error': typeof ErrorRoute
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -451,7 +444,6 @@ export interface FileRoutesByTo {
   '/contributions': typeof ContributionsRoute
   '/dashboard': typeof DashboardRoute
   '/dashboard-adaptive': typeof DashboardAdaptiveRoute
-  '/edit-profile': typeof EditProfileRoute
   '/error': typeof ErrorRoute
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -512,7 +504,6 @@ export interface FileRoutesById {
   '/contributions': typeof ContributionsRoute
   '/dashboard': typeof DashboardRoute
   '/dashboard-adaptive': typeof DashboardAdaptiveRoute
-  '/edit-profile': typeof EditProfileRoute
   '/error': typeof ErrorRoute
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -574,7 +565,6 @@ export interface FileRouteTypes {
     | '/contributions'
     | '/dashboard'
     | '/dashboard-adaptive'
-    | '/edit-profile'
     | '/error'
     | '/features'
     | '/forgot-password'
@@ -634,7 +624,6 @@ export interface FileRouteTypes {
     | '/contributions'
     | '/dashboard'
     | '/dashboard-adaptive'
-    | '/edit-profile'
     | '/error'
     | '/features'
     | '/forgot-password'
@@ -694,7 +683,6 @@ export interface FileRouteTypes {
     | '/contributions'
     | '/dashboard'
     | '/dashboard-adaptive'
-    | '/edit-profile'
     | '/error'
     | '/features'
     | '/forgot-password'
@@ -755,7 +743,6 @@ export interface RootRouteChildren {
   ContributionsRoute: typeof ContributionsRoute
   DashboardRoute: typeof DashboardRoute
   DashboardAdaptiveRoute: typeof DashboardAdaptiveRoute
-  EditProfileRoute: typeof EditProfileRoute
   ErrorRoute: typeof ErrorRoute
   FeaturesRoute: typeof FeaturesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -994,13 +981,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard-adaptive'
       fullPath: '/dashboard-adaptive'
       preLoaderRoute: typeof DashboardAdaptiveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/edit-profile': {
-      id: '/edit-profile'
-      path: '/edit-profile'
-      fullPath: '/edit-profile'
-      preLoaderRoute: typeof EditProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/error': {
@@ -1254,7 +1234,6 @@ const rootRouteChildren: RootRouteChildren = {
   ContributionsRoute: ContributionsRoute,
   DashboardRoute: DashboardRoute,
   DashboardAdaptiveRoute: DashboardAdaptiveRoute,
-  EditProfileRoute: EditProfileRoute,
   ErrorRoute: ErrorRoute,
   FeaturesRoute: FeaturesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,

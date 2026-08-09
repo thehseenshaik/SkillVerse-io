@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { PageShell } from "@/components/SiteChrome";
 import { useResumeStore } from "@/lib/resume/store";
@@ -7,13 +7,20 @@ import { getThemePreset, getThemePresetNames, colorPalettes, fontOptions } from 
 import { analyzeATS, calculateHealthScore } from "@/lib/resume/ats-analyzer";
 import { ATSPanel } from "@/components/resume/ATSPanel";
 import { IdentityHubImportModal } from "@/components/resume/IdentityHubImportModal";
-import { generateProfessionalSummary } from "@/lib/resume/ai-assistant";
-import { exportResume } from "@/lib/resume/export-formats";
+import { ExportModal } from "@/components/resume/ExportModal";
+import { exportResume, exportAsPDF, exportAsWord, printNativePDF, generateDefaultFilename } from "@/lib/resume/export-formats";
 import { useIdentityHub } from "@/lib/identity-hub-context";
+import { useProfile } from "@/lib/profile-context";
 import { usePlatformStore } from "@/lib/platform-store";
-import { useState, useMemo, useEffect, useRef } from "react";
-import { X, Clock, Copy, Trash2, Plus, History, Search, User, Briefcase, Mail, Phone, MapPin, Download, Sparkles } from "lucide-react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { X, Clock, Copy, Trash2, Plus, History, Search, User, Briefcase, Mail, Phone, MapPin, Download, Sparkles, ArrowLeft, ArrowRight, Check, CheckCircle2, GraduationCap, Maximize2, Minimize2, ZoomIn, ZoomOut, Loader2, Code, FileText, RefreshCw, Pencil, MoreVertical, Save, Printer, FileCode, ShieldCheck, Globe, Link2 } from "lucide-react";
 import { ResumePrinter } from "@/components/ResumePrinter";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/resume-builder")({
   head: () => ({
@@ -39,15 +46,25 @@ export const Route = createFileRoute("/resume-builder")({
 });
 
 function ResumeBuilderPage() {
-  const { resume, template, theme, zoom, isFullscreen, setZoom, setIsFullscreen, setTemplate, setTheme, lastSaved, isSaving, setIsSaving, updateLastSaved, resumes, currentResumeId, loadResume, createNewResume, duplicateResume, deleteResume, setResume, updateProfile, updateContact, addExperience, updateExperience, removeExperience, addEducation, updateEducation, removeEducation, addSkill, updateSkill, removeSkill, addProject, updateProject, removeProject } = useResumeStore();
+  const { resume, template, theme, selectedPreset, setSelectedPreset, zoom, isFullscreen, setZoom, setIsFullscreen, setTemplate, setTheme, lastSaved, isSaving, setIsSaving, updateLastSaved, saveResume, resumes, currentResumeId, loadResume, createNewResume, renameResume, duplicateResume, deleteResume, setResume, updateProfile, updateContact, addExperience, updateExperience, removeExperience, addEducation, updateEducation, removeEducation, addSkill, updateSkill, removeSkill, addProject, updateProject, removeProject } = useResumeStore();
+  const { profile: userProfile, completion, hydrated } = useProfile();
   const { profile: identityProfile } = useIdentityHub();
   const { githubData, leetcodeData } = usePlatformStore();
   const [view, setView] = useState<"landing" | "theme-selection" | "editor">("landing");
-  const [activeTab, setActiveTab] = useState<"profile" | "experience" | "education" | "skills" | "projects">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "links" | "experience" | "education" | "skills" | "projects">("profile");
+  const [rightWorkspaceTab, setRightWorkspaceTab] = useState<"preview" | "ats">("preview");
+  const [showATSTab, setShowATSTab] = useState(true);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [showATSPanel, setShowATSPanel] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showProfileUpdateModal, setShowProfileUpdateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [newResumeName, setNewResumeName] = useState("Software Engineer Resume");
+  const [showRenameModal, setShowRenameModal] = useState<{ isOpen: boolean; resumeId: string; name: string }>({ isOpen: false, resumeId: "", name: "" });
+  const [showDeleteModal, setShowDeleteModal] = useState<{ isOpen: boolean; resumeId: string; resumeName: string }>({ isOpen: false, resumeId: "", resumeName: "" });
+  const [isProfileImported, setIsProfileImported] = useState(false);
   const [showPrinterAnimation, setShowPrinterAnimation] = useState(false);
   const [jobDescription, setJobDescription] = useState("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -61,26 +78,214 @@ function ResumeBuilderPage() {
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
+  const [selectedSections, setSelectedSections] = useState({
+    personal: true,
+    summary: true,
+    skills: true,
+    education: true,
+    experience: true,
+    projects: true,
+  });
+
+  // Relative Date Formatter
+  const formatRelativeDate = useCallback((dateStr?: string) => {
+    if (!dateStr) return "Just now";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (isNaN(diffInSeconds) || diffInSeconds < 30) return "Just now";
+    if (diffInSeconds < 3600) {
+      const mins = Math.floor(diffInSeconds / 60);
+      return `${mins} min${mins > 1 ? "s" : ""} ago`;
+    }
+    if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    }
+
+    const isToday = now.toDateString() === date.toDateString();
+    if (isToday) return "Today";
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (yesterday.toDateString() === date.toDateString()) return "Yesterday";
+
+    if (diffInSeconds < 86400 * 7) {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} days ago`;
+    }
+
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }, []);
+
+  // Sorted Resumes (Newest updated first)
+  const sortedResumes = useMemo(() => {
+    return [...resumes].sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+  }, [resumes]);
+
   const TemplateComponent = getTemplate(template);
-  
-  // Auto-fill profile from Identity Hub when creating new resume
-  useEffect(() => {
-    if (identityProfile && view === "theme-selection" && !resume.profile.fullName) {
-      updateProfile({
-        fullName: identityProfile.displayName || "",
-        title: "",
-        summary: identityProfile.bio || "",
-      });
-      updateContact({
-        email: "",
-        phone: "",
-        location: identityProfile.location || "",
-      });
-      if (identityProfile.avatar) {
+
+  // Auto-fill profile from SkillVerse Profile & Identity Hub
+  const populateFromProfile = useCallback((overrideSections?: Partial<typeof selectedSections>) => {
+    const sections = {
+      personal: true,
+      summary: true,
+      skills: true,
+      education: true,
+      experience: true,
+      projects: true,
+      ...overrideSections,
+    };
+
+    const currentStoreResume = useResumeStore.getState().resume;
+    const updated = { ...currentStoreResume };
+
+    // 1. Personal & Contact Info
+    if (sections.personal) {
+      const fullName = userProfile.fullName || identityProfile?.displayName || "";
+      const title = userProfile.headline || "";
+      const email = userProfile.email || "";
+      const phone = userProfile.phone || "";
+      const location = userProfile.location || identityProfile?.location || "";
+
+      updated.profile = {
+        ...updated.profile,
+        fullName: fullName || updated.profile.fullName,
+        title: title || updated.profile.title,
+        contact: {
+          email: email || updated.profile.contact.email,
+          phone: phone || updated.profile.contact.phone,
+          location: location || updated.profile.contact.location,
+        },
+      };
+
+      if (identityProfile?.avatar) {
         setProfilePhoto(identityProfile.avatar);
       }
     }
-  }, [identityProfile, view, resume.profile.fullName, updateProfile, updateContact]);
+
+    // 2. Summary
+    if (sections.summary) {
+      const summary = userProfile.summary || identityProfile?.bio || "";
+      if (summary) {
+        updated.profile.summary = summary;
+      }
+    }
+
+    // 3. Education
+    if (sections.education) {
+      if (userProfile.education && userProfile.education.length > 0) {
+        updated.education = userProfile.education.map((edu, idx) => ({
+          id: edu.id || `edu-${idx}-${Date.now()}`,
+          institution: edu.school || "",
+          degree: edu.degree || "",
+          field: edu.field || "",
+          startDate: edu.start || "",
+          endDate: edu.end || "",
+          current: false,
+        }));
+      } else if (identityProfile?.education && identityProfile.education.length > 0) {
+        updated.education = identityProfile.education.map((edu: any, idx: number) => ({
+          id: edu.id || `edu-id-${idx}-${Date.now()}`,
+          institution: edu.institution || edu.school || "",
+          degree: edu.degree || "",
+          field: edu.field || "",
+          startDate: edu.startDate || edu.start || "",
+          endDate: edu.endDate || edu.end || "",
+          current: !!edu.current,
+        }));
+      }
+    }
+
+    // 4. Experience
+    if (sections.experience) {
+      if (userProfile.experience && userProfile.experience.length > 0) {
+        updated.experience = userProfile.experience.map((exp, idx) => ({
+          id: exp.id || `exp-${idx}-${Date.now()}`,
+          company: exp.company || "",
+          position: exp.role || "",
+          startDate: exp.start || "",
+          endDate: exp.end || "",
+          current: false,
+          description: exp.summary ? exp.summary.split("\n").filter(Boolean) : [],
+        }));
+      } else if (identityProfile?.experience && identityProfile.experience.length > 0) {
+        updated.experience = identityProfile.experience.map((exp: any, idx: number) => ({
+          id: exp.id || `exp-id-${idx}-${Date.now()}`,
+          company: exp.company || "",
+          position: exp.position || exp.role || "",
+          startDate: exp.startDate || exp.start || "",
+          endDate: exp.endDate || exp.end || "",
+          current: !!exp.current,
+          description: Array.isArray(exp.description)
+            ? exp.description
+            : exp.summary
+            ? exp.summary.split("\n").filter(Boolean)
+            : [],
+        }));
+      }
+    }
+
+    // 5. Projects
+    if (sections.projects) {
+      if (userProfile.projects && userProfile.projects.length > 0) {
+        updated.projects = userProfile.projects.map((proj, idx) => ({
+          id: proj.id || `proj-${idx}-${Date.now()}`,
+          name: proj.name || "",
+          description: proj.summary || "",
+          technologies: proj.stack ? proj.stack.split(",").map((s) => s.trim()).filter(Boolean) : [],
+          link: proj.link || "",
+          github: "",
+        }));
+      } else if (identityProfile?.projects && identityProfile.projects.length > 0) {
+        updated.projects = identityProfile.projects.map((proj: any, idx: number) => ({
+          id: proj.id || `proj-id-${idx}-${Date.now()}`,
+          name: proj.name || "",
+          description: proj.description || proj.summary || "",
+          technologies: Array.isArray(proj.technologies)
+            ? proj.technologies
+            : proj.stack
+            ? proj.stack.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : [],
+          link: proj.link || "",
+          github: proj.github || "",
+        }));
+      }
+    }
+
+    // 6. Skills
+    if (sections.skills) {
+      let skillNames: string[] = [];
+      if (userProfile.skills && userProfile.skills.trim()) {
+        skillNames = userProfile.skills.split(",").map((s) => s.trim()).filter(Boolean);
+      } else if (identityProfile?.skills && identityProfile.skills.length > 0) {
+        skillNames = identityProfile.skills.map((s: any) => (typeof s === "string" ? s : s.name));
+      }
+
+      if (skillNames.length > 0) {
+        updated.skills = skillNames.map((name, idx) => ({
+          id: `skill-${idx}-${Date.now()}`,
+          name,
+          level: "Intermediate" as const,
+        }));
+      }
+    }
+
+    setResume(updated);
+    setIsProfileImported(true);
+  }, [userProfile, identityProfile, setResume]);
+
+  // Initial Auto-fill when resume is uninitialized
+  useEffect(() => {
+    if (hydrated && (!resume.profile.fullName || (resume.profile.fullName === "Shaik Thehseen" && !isProfileImported))) {
+      populateFromProfile();
+    }
+  }, [hydrated, populateFromProfile, resume.profile.fullName, isProfileImported]);
   
   // Calculate ATS analysis
   const atsAnalysis = useMemo(() => analyzeATS(resume, jobDescription), [resume, jobDescription]);
@@ -165,162 +370,349 @@ function ResumeBuilderPage() {
   return (
     <PageShell>
       {view === "landing" ? (
-        // Landing Page - Resume Selection
-        <div className="relative overflow-hidden min-h-screen">
-          {/* Animated Background */}
-          <div className="absolute inset-0 -z-10 overflow-hidden">
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand/10 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-brand/5 rounded-full blur-3xl animate-pulse delay-1000" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-brand/5 to-purple-500/5 rounded-full blur-3xl animate-blob" />
-            <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl animate-blob delay-2000" />
-            <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-green-500/5 rounded-full blur-3xl animate-blob delay-4000" />
-          </div>
-
-          <div className="max-w-6xl mx-auto px-6 py-12">
-            <div className="mb-8 animate-fade-up">
-              <div className="text-xs font-semibold uppercase tracking-widest text-brand">
-                Resume Builder
+        // Landing Page - Resume Management Center
+        <div className="relative min-h-screen bg-background text-foreground pb-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+            
+            {/* 1. HERO SECTION */}
+            <div className="space-y-2 animate-fade-up">
+              <div className="text-xs font-bold uppercase tracking-widest text-brand">
+                RESUME BUILDER
               </div>
-              <h1 className="mt-2 text-3xl font-bold text-foreground mb-2">
-                Create your perfect{" "}
-                <span className="text-gradient">resume</span>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                Create your perfect <span className="text-brand">resume</span>
               </h1>
-              <p className="text-muted-foreground text-sm">Create, edit, and manage your professional resumes with AI-powered tools</p>
+              <p className="text-sm text-muted-foreground max-w-2xl">
+                Create, customize, and manage professional resumes from your SkillVerse profile.
+              </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* Create New Resume Card */}
-              <button
-                onClick={() => {
-                  createNewResume();
-                  setView("theme-selection");
-                }}
-                className="group relative overflow-hidden p-5 rounded-2xl border-2 border-dashed border-border hover:border-brand hover:bg-brand/5 transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                <div className="relative z-10 flex flex-col items-center justify-center h-40">
-                  <div className="w-14 h-14 rounded-full bg-brand/10 flex items-center justify-center mb-3 group-hover:bg-brand/20 transition-colors">
-                    <Plus className="h-6 w-6 text-brand" />
+            {/* 2. CREATE NEW RESUME CTA CARD */}
+            <div className="animate-fade-up">
+              <div className="glass rounded-2xl border border-border/80 bg-card p-6 shadow-sm hover:shadow-md transition-all">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold">
+                        +
+                      </div>
+                      <h2 className="text-lg font-bold text-foreground">Create New Resume</h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground pl-10 sm:pl-10">
+                      Start with your SkillVerse profile data and build a job-ready resume in minutes.
+                    </p>
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Create New Resume</h3>
-                  <p className="text-xs text-muted-foreground">Start from scratch</p>
-                </div>
-                <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-brand/10 blur-2xl transition-all duration-300 group-hover:bg-brand/20" />
-              </button>
 
-              {/* Resume History Cards */}
-              {resumes.map((r) => (
-                <div
-                  key={r.id}
-                  className="group relative overflow-hidden p-5 rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:border-brand/50 hover:shadow-lg transition-all duration-200 shadow-sm"
-                >
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-foreground mb-1">{r.name}</h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>Last updated: {new Date(r.updatedAt).toLocaleDateString()}</span>
+                  <Button
+                    onClick={() => {
+                      setNewResumeName(`Software Engineer Resume`);
+                      setShowCreateModal(true);
+                    }}
+                    className="bg-brand text-brand-foreground hover:opacity-90 font-semibold px-5 h-10 rounded-xl text-xs shadow-sm shrink-0 w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" /> Create Resume
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. RESUME HISTORY SECTION */}
+            <div className="space-y-4 animate-fade-up">
+              <div>
+                <h2 className="text-lg font-bold uppercase tracking-wider text-foreground">
+                  RESUME HISTORY
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your saved resumes
+                </p>
+              </div>
+
+              {sortedResumes.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {sortedResumes.map((r) => {
+                    const templateDisplayName = templateNames[r.template || 'ats-professional'] || 'ATS Professional';
+                    return (
+                      <div
+                        key={r.id}
+                        className="group relative flex flex-col justify-between p-5 rounded-2xl bg-card border border-border/70 hover:border-brand/40 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="text-base font-bold text-foreground truncate" title={r.name || "My Resume"}>
+                                  {r.name || "My Resume"}
+                                </h3>
+                                <button
+                                  onClick={() => setShowRenameModal({ isOpen: true, resumeId: r.id, name: r.name || "My Resume" })}
+                                  className="text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors shrink-0"
+                                  title="Rename resume"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                              <p className="text-xs font-medium text-muted-foreground mt-0.5">
+                                {templateDisplayName}
+                              </p>
+                            </div>
+
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Saved
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-muted-foreground/70" /> Updated {formatRelativeDate(r.updatedAt || r.createdAt)}
+                          </p>
+                        </div>
+
+                        {/* Card Action Buttons */}
+                        <div className="flex items-center gap-2 pt-4 mt-4 border-t border-border/50">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              loadResume(r.id);
+                              setView("editor");
+                            }}
+                            className="flex-1 bg-brand text-brand-foreground hover:opacity-90 font-semibold text-xs h-9 rounded-xl"
+                          >
+                            Edit Resume
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              duplicateResume(r.id);
+                              toast.success("Resume duplicated!");
+                            }}
+                            className="h-9 px-3 text-xs font-medium rounded-xl text-muted-foreground hover:text-foreground"
+                            title="Duplicate resume"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowDeleteModal({ isOpen: true, resumeId: r.id, resumeName: r.name || "My Resume" });
+                            }}
+                            className="h-9 px-3 text-xs font-medium rounded-xl text-destructive hover:bg-destructive/10 border-destructive/30"
+                            title="Delete resume"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => {
-                            duplicateResume(r.id);
-                          }}
-                          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                          title="Duplicate"
-                        >
-                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this resume?')) {
-                              deleteResume(r.id);
-                            }
-                          }}
-                          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </button>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        loadResume(r.id);
-                        setView("editor");
-                      }}
-                      className="w-full py-2 bg-gradient-to-r from-brand to-brand-strong text-white rounded-lg font-medium hover:shadow-md transition-all duration-200 text-xs"
-                    >
-                      Edit Resume
-                    </button>
-                  </div>
-                  <div className="absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-brand/5 blur-2xl transition-all duration-300 group-hover:bg-brand/10" />
+                    );
+                  })}
                 </div>
-              ))}
+              ) : (
+                /* Compact Empty State */
+                <div className="p-8 rounded-2xl border border-dashed border-border/80 bg-card/50 text-center space-y-3">
+                  <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center mx-auto text-muted-foreground">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">No resumes yet</h3>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                      Create your first professional resume from your SkillVerse profile data.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setNewResumeName("Software Engineer Resume");
+                      setShowCreateModal(true);
+                    }}
+                    className="bg-brand text-brand-foreground hover:opacity-90 font-semibold text-xs h-9 rounded-xl px-4"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Create Resume
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {resumes.length === 0 && (
-              <div className="text-center py-16 animate-fade-up">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center shadow-elegant">
-                  <History className="h-12 w-12 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">No resumes yet</h3>
-                <p className="text-muted-foreground mb-6">Create your first resume to get started</p>
-              </div>
-            )}
           </div>
         </div>
       ) : view === "theme-selection" ? (
-        // Theme Selection View
-        <div className="min-h-screen animate-gradient">
-          <div className="max-w-4xl mx-auto px-6 py-12">
-            <div className="mb-6">
-              <button
-                onClick={() => setView("landing")}
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors text-sm"
-              >
-                ← Back
-              </button>
-              <h1 className="text-2xl font-bold text-foreground mb-2">Choose Your Theme</h1>
-              <p className="text-muted-foreground text-sm">Select a theme, color palette, and font for your resume</p>
+        // Theme Selection View — Premium SaaS Experience
+        <div className="min-h-screen bg-background text-foreground pb-28">
+          {/* Header Bar with Breadcrumb and Step Indicator */}
+          <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-xl">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setView("landing")}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg border border-border/60 hover:bg-secondary"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back
+                </button>
+                <span className="text-border">/</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  Resume Builder / <strong className="text-foreground font-semibold">Create Resume</strong>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[11px] font-semibold bg-secondary/50 text-foreground border-border/60">
+                  Step 1 of 3
+                </Badge>
+                <span className="hidden sm:inline text-xs font-medium text-muted-foreground">
+                  <span className="text-brand font-bold">Theme</span> → Details → Preview
+                </span>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content Container */}
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-up">
+            
+            {/* Title & Subtitle */}
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                Choose your resume style
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Start with a professional template. You can customize everything later.
+              </p>
             </div>
 
-            <div className="space-y-6">
-              {/* Resume Name */}
+            {/* 1. RESUME NAME CARD */}
+            <div className="glass rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-foreground">
+                Resume Name
+              </label>
+              <Input
+                type="text"
+                value={resume.name}
+                onChange={(e) => setResume({ ...resume, name: e.target.value })}
+                placeholder="e.g. Software Engineer Resume"
+                className="bg-background text-sm font-medium border-border rounded-xl focus-visible:ring-brand/20 h-11"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                This name is only visible to you.
+              </p>
+            </div>
+
+            {/* 2. THEME SECTION ("Choose a template") */}
+            <div className="space-y-4">
               <div>
-                <h2 className="text-sm font-semibold text-foreground mb-3">Resume Name</h2>
-                <input
-                  type="text"
-                  value={resume.name}
-                  onChange={(e) => setResume({ ...resume, name: e.target.value })}
-                  placeholder="My Resume"
-                  className="w-full px-3 py-2 text-xs border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 shadow-sm"
-                />
-              </div>
-              {/* Theme Presets */}
-              <div>
-                <h2 className="text-sm font-semibold text-foreground mb-3">Theme Presets</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {getThemePresetNames().map((presetName) => (
-                    <button
-                      key={presetName}
-                      onClick={() => {
-                        setTheme(getThemePreset(presetName));
-                      }}
-                      className="p-3 rounded-xl border-2 border-border hover:border-brand hover:bg-brand/5 transition-all duration-200 shadow-sm"
-                    >
-                      <div className="text-xs font-medium capitalize">{presetName}</div>
-                    </button>
-                  ))}
-                </div>
+                <h2 className="text-xl font-bold tracking-tight text-foreground">
+                  Choose a template
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Select a layout that matches your professional style.
+                </p>
               </div>
 
-              {/* Color Palette */}
+              {/* Template Cards Responsive Grid */}
+              <div 
+                role="radiogroup" 
+                aria-label="Choose resume template"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+              >
+                {getThemePresetNames().map((presetName) => {
+                  const presetTheme = getThemePreset(presetName);
+                  const isSelected = (selectedPreset || 'default') === presetName;
+                  
+                  const descriptions: Record<string, string> = {
+                    default: "Simple and balanced",
+                    professional: "Classic and corporate",
+                    modern: "Clean with a contemporary layout",
+                    minimal: "Elegant and distraction-free",
+                    creative: "Stand out with personality",
+                    tech: "Designed for technical roles",
+                  };
+
+                  const presetTemplateMap: Record<string, TemplateType> = {
+                    default: 'ats-professional',
+                    professional: 'executive',
+                    modern: 'modern-minimal',
+                    minimal: 'academic',
+                    creative: 'designer',
+                    tech: 'software-engineer',
+                  };
+
+                  const desc = descriptions[presetName] || "Professional layout";
+
+                  const handleSelect = () => {
+                    setSelectedPreset(presetName);
+                    setTheme(presetTheme);
+                    if (presetTemplateMap[presetName]) {
+                      setTemplate(presetTemplateMap[presetName]);
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={presetName}
+                      role="radio"
+                      aria-checked={isSelected}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelect();
+                        }
+                      }}
+                      onClick={handleSelect}
+                      className={cn(
+                        "group relative cursor-pointer overflow-hidden rounded-2xl border bg-card p-4 transition-all duration-200 hover:-translate-y-1 shadow-sm hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                        isSelected
+                          ? "border-brand ring-2 ring-brand/30 bg-brand/5 shadow-md"
+                          : "border-border/70 hover:border-brand/40"
+                      )}
+                    >
+                      {/* Selected Checkmark Badge (Only on active template) */}
+                      {isSelected && (
+                        <div className="absolute top-3 right-3 z-10 grid h-6 w-6 place-items-center rounded-full bg-brand text-brand-foreground shadow-sm">
+                          <Check className="h-3.5 w-3.5" />
+                        </div>
+                      )}
+
+                      {/* Realistic Mini Resume Mockup / Visual Thumbnail */}
+                      <div className="mb-4 aspect-[4/3] w-full overflow-hidden rounded-xl border border-border/50 bg-background/80 p-3 shadow-inner group-hover:border-brand/30 transition-colors">
+                        <TemplateThumbnail presetName={presetName} />
+                      </div>
+
+                      {/* Theme Details */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-sm text-foreground capitalize">
+                            {presetName}
+                          </h3>
+                          {isSelected && (
+                            <span className="text-[10px] font-bold text-brand uppercase tracking-wider">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {desc}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. COLOR PALETTE ("Choose your color") */}
+            <div className="glass rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-4">
               <div>
-                <h2 className="text-sm font-semibold text-foreground mb-3">Color Palette</h2>
-                <div className="flex flex-wrap gap-3">
-                  {colorPalettes.map((palette) => (
+                <h2 className="text-lg font-bold text-foreground">Choose your color</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Set the primary accent color for headers, borders, and skill tags.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {colorPalettes.map((palette) => {
+                  const isSelected = theme.colors.primary === palette.primary;
+                  return (
                     <button
                       key={palette.name}
                       onClick={() => {
@@ -334,19 +726,45 @@ function ResumeBuilderPage() {
                           },
                         });
                       }}
-                      className="w-12 h-12 rounded-xl border-2 border-border hover:border-brand hover:scale-105 transition-all duration-200 shadow-sm"
+                      className={cn(
+                        "relative h-12 w-12 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105",
+                        isSelected
+                          ? "ring-2 ring-brand ring-offset-2 scale-105 shadow-md"
+                          : "hover:ring-2 hover:ring-border"
+                      )}
                       style={{ backgroundColor: palette.primary }}
                       title={palette.name}
-                    />
-                  ))}
-                </div>
+                    >
+                      {isSelected && <Check className="h-5 w-5 text-white drop-shadow-md" />}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Font Family */}
+              {/* Selected Color Name Label */}
+              {(() => {
+                const match = colorPalettes.find((p) => p.primary === theme.colors.primary);
+                return match ? (
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 pt-1">
+                    Selected: <span className="font-bold text-foreground">{match.name}</span>
+                  </p>
+                ) : null;
+              })()}
+            </div>
+
+            {/* 4. FONT FAMILY ("Choose your font") */}
+            <div className="glass rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-4">
               <div>
-                <h2 className="text-sm font-semibold text-foreground mb-3">Font Family</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {fontOptions.map((font) => (
+                <h2 className="text-lg font-bold text-foreground">Choose your font</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Select typography that matches your professional tone.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {fontOptions.map((font) => {
+                  const isSelected = theme.typography.fontFamily === font.value;
+                  return (
                     <button
                       key={font.value}
                       onClick={() => {
@@ -360,454 +778,690 @@ function ResumeBuilderPage() {
                           },
                         });
                       }}
-                      className={`p-3 rounded-xl border-2 border-border hover:border-brand hover:bg-brand/5 transition-all duration-200 shadow-sm ${
-                        theme.typography.fontFamily === font.value ? "border-brand bg-brand/10" : ""
-                      }`}
-                      style={{ fontFamily: font.value }}
+                      className={cn(
+                        "flex flex-col justify-between p-4 rounded-xl border transition-all duration-200 text-left shadow-sm hover:shadow-md",
+                        isSelected
+                          ? "border-brand ring-2 ring-brand/30 bg-brand/5"
+                          : "border-border/70 bg-card hover:border-brand/40"
+                      )}
                     >
-                      <div className="text-xs font-medium">{font.label}</div>
-                      <div className="text-xs opacity-70 mt-1">Welcome</div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">{font.label}</span>
+                        {isSelected && <Check className="h-3.5 w-3.5 text-brand" />}
+                      </div>
+
+                      <div className="mt-3 space-y-0.5" style={{ fontFamily: font.value }}>
+                        <div className="text-xl font-bold text-foreground">Aa</div>
+                        <div className="text-[11px] text-muted-foreground truncate">Software Engineer</div>
+                      </div>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </main>
+
+          {/* Sticky Bottom Action Bar */}
+          <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border/70 bg-background/90 backdrop-blur-xl py-3.5 px-4 sm:px-6 shadow-lg">
+            <div className="max-w-5xl mx-auto flex items-center justify-between">
+              <div className="text-xs font-medium text-muted-foreground">
+                <span className="font-bold text-foreground">Step 1 of 3</span> — Choose Your Theme
               </div>
 
-              {/* Continue Button */}
-              <div className="pt-6">
-                <button
-                  onClick={() => setView("editor")}
-                  className="w-full py-3 bg-brand text-white rounded-xl font-semibold text-sm hover:bg-brand/90 transition-colors shadow-sm hover:shadow-md"
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("landing")}
+                  className="rounded-xl text-xs font-semibold px-4 h-10"
                 >
-                  Continue to Editor →
-                </button>
+                  Back
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    saveResume();
+                    setView("editor");
+                    toast.success("Theme saved!");
+                  }}
+                  className="bg-brand text-brand-foreground hover:opacity-90 font-semibold px-6 h-10 rounded-xl text-xs shadow-sm flex items-center gap-1.5"
+                >
+                  Save & Continue <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
         </div>
       ) : (
-        // Editor View - Three Panel Layout
-        <div className="flex h-screen bg-background">
-          {/* Left Panel - Editor */}
-          <div 
-            ref={leftPanelRef}
-            className="relative flex flex-col bg-card shadow-card"
-            style={{ width: `${leftPanelWidth}px` }}
-          >
-            {/* Resize Handle */}
-            <div
-              className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-brand/20 transition-colors z-10"
-              onMouseDown={() => setIsResizingLeft(true)}
-            />
-            {/* Toolbar */}
-            <div className="border-b border-border p-4 space-y-3 bg-gradient-to-r from-background to-muted/20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-xs font-bold">Resume Builder</h1>
-                  <p className="text-xs text-muted-foreground">{resume.name}</p>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {isSaving ? (
-                    <span className="flex items-center gap-1 text-brand animate-pulse">
-                      <Clock className="h-3 w-3" />
-                      Saving...
-                    </span>
-                  ) : lastSaved ? (
-                    <span className="flex items-center gap-1 text-green-600">
-                      <Clock className="h-3 w-3" />
-                      Saved
-                    </span>
-                  ) : (
-                    <span>Unsaved</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setView("landing")}
-                  className="flex-1 px-3 py-2 text-xs font-medium border border-border rounded-lg hover:bg-muted transition-all duration-200 shadow-sm hover:shadow-md"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={() => {
-                    setShowTemplateSelector(!showTemplateSelector);
-                  }}
-                  className={`flex-1 px-3 py-2 text-xs font-medium border border-border rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${
-                    showTemplateSelector 
-                      ? "bg-gradient-to-r from-brand to-brand-strong text-white border-transparent" 
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  Template
-                </button>
-                <button
-                  onClick={() => setShowImportModal(true)}
-                  className="flex-1 px-3 py-2 text-xs font-medium border border-border rounded-lg hover:bg-muted transition-all duration-200 shadow-sm hover:shadow-md"
-                >
-                  Import
-                </button>
-              </div>
+        // Editor View — Premium Modern Resume Workspace
+        <div className="flex flex-col h-screen bg-background overflow-hidden">
+          
+          {/* 1. TOP HEADER BAR */}
+          <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 backdrop-blur-xl shrink-0">
+            <div className="flex h-14 items-center justify-between px-4 sm:px-6">
               
-              {/* Template Selector */}
-              {showTemplateSelector && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground">Select Template</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(templateNames).map(([key, name]) => (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          setTemplate(key as any);
-                          setShowTemplateSelector(false);
-                        }}
-                        className={`px-2 py-1.5 text-xs rounded-lg transition-colors ${
-                          template === key
-                            ? "bg-brand text-white"
-                            : "bg-muted hover:bg-muted/80"
-                        }`}
-                      >
-                        {name}
-                      </button>
-                    ))}
+              {/* Left: Back, Title, Saved Badge */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    saveResume();
+                    setView("landing");
+                  }}
+                  className="h-8 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-lg"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Back
+                </Button>
+
+                <span className="text-border/70 hidden sm:inline">|</span>
+
+                <div className="hidden sm:block">
+                  <h1 className="text-xs font-bold text-foreground leading-none">
+                    SkillVerse Resume Builder
+                  </h1>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] font-medium text-muted-foreground truncate max-w-[170px]">
+                      {resume.name || "My Resume"}
+                    </p>
+                    <button
+                      onClick={() => setShowRenameModal({ isOpen: true, resumeId: resume.id, name: resume.name || "My Resume" })}
+                      className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
+                      title="Rename resume"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Premium Pill Navigation */}
-            <div className="px-4 py-3 bg-gradient-to-r from-background to-muted/20 border-b border-border">
-              <div className="flex gap-2 overflow-x-auto">
-                {[
-                  { id: "profile", label: "Profile" },
-                  { id: "experience", label: "Experience" },
-                  { id: "education", label: "Education" },
-                  { id: "skills", label: "Skills" },
-                  { id: "projects", label: "Projects" },
-                ].map((tab) => (
+                {/* Saved Status Badge */}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {isSaving ? "Saving..." : "Saved"}
+                </span>
+              </div>
+
+              {/* Right: Actions (Save, Update from Profile, Template, ATS Panel, Export PDF) */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    saveResume();
+                    toast.success("Resume saved successfully!");
+                  }}
+                  className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                >
+                  <Save className="h-3.5 w-3.5" /> <span>Save</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowProfileUpdateModal(true)}
+                  className="h-8 text-xs font-semibold rounded-xl gap-1.5 border-brand/30 text-brand hover:bg-brand/5"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Update from Profile</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("theme-selection")}
+                  className="h-8 text-xs font-semibold rounded-xl gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-brand" /> <span className="hidden sm:inline">Template</span>
+                </Button>
+
+                {identityProfile && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowImportModal(true)}
+                    className="h-8 text-xs font-medium rounded-xl gap-1.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <Download className="h-3.5 w-3.5" /> <span className="hidden md:inline">Import</span>
+                  </Button>
+                )}
+
+                <Button
+                  variant={showATSTab && rightWorkspaceTab === "ats" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    if (showATSTab && rightWorkspaceTab === "ats") {
+                      setRightWorkspaceTab("preview");
+                    } else {
+                      setShowATSTab(true);
+                      setRightWorkspaceTab("ats");
+                    }
+                  }}
+                  className={cn(
+                    "h-8 text-xs font-semibold rounded-xl gap-1.5",
+                    showATSTab && rightWorkspaceTab === "ats" && "bg-brand text-brand-foreground"
+                  )}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">ATS Scanner</span>
+                  <span className={cn(
+                    "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
+                    atsAnalysis.score >= 80
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                      : atsAnalysis.score >= 60
+                      ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                      : "bg-rose-500/20 text-rose-600 dark:text-rose-400"
+                  )}>
+                    {atsAnalysis.score}%
+                  </span>
+                </Button>
+
+                {/* Primary CTA: Export Resume */}
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    saveResume();
+                    setShowExportModal(true);
+                  }}
+                  className="h-8 bg-brand text-brand-foreground hover:opacity-90 font-semibold px-4 rounded-xl text-xs shadow-sm gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          {/* Profile Completion & Auto-fill Notice Banner */}
+          {completion > 0 && completion < 100 && (
+            <div className="bg-brand/5 border-b border-brand/20 px-4 sm:px-6 py-2 flex items-center justify-between text-xs shrink-0">
+              <span className="text-muted-foreground font-medium">
+                Your profile is <strong className="text-brand font-bold">{completion}% complete</strong>. Complete it to pre-fill more resume sections.
+              </span>
+              <Link to="/profile" className="text-brand hover:underline font-bold inline-flex items-center gap-1 shrink-0 ml-4">
+                Complete Profile →
+              </Link>
+            </div>
+          )}
+
+          {/* 2. SECTION NAVIGATION BAR (Step Tabs) */}
+          <div className="border-b border-border/70 bg-card/60 backdrop-blur-md px-4 sm:px-6 py-2 shrink-0 overflow-x-auto">
+            <div className="flex items-center gap-1.5 min-w-max">
+              {[
+                { id: "profile", label: "Profile" },
+                { id: "links", label: "Profile Links" },
+                { id: "experience", label: "Experience" },
+                { id: "education", label: "Education" },
+                { id: "skills", label: "Skills" },
+                { id: "projects", label: "Projects" },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`relative px-4 py-2 text-xs font-medium rounded-full transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? "bg-gradient-to-r from-brand to-brand-strong text-white shadow-md"
-                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                      isActive
+                        ? "bg-brand text-brand-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                    )}
                   >
                     {tab.label}
-                    {activeTab === tab.id && (
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand to-brand-strong opacity-0 animate-pulse" />
-                    )}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
+          </div>
 
-            {/* Section Content */}
-            <div className="flex-1 overflow-y-auto p-4 antialiased">
-              {activeTab === "profile" && (
-                <div className="space-y-4 animate-slide-in">
-                  {/* Profile Photo */}
-                  <div className="p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <label className="block text-xs font-semibold mb-3 text-foreground">Profile Photo</label>
-                    <div className="flex items-center gap-4">
-                      {profilePhoto ? (
-                        <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-brand/20 shadow-md">
-                          <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => setProfilePhoto("")}
-                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-5 w-5 text-white" />
-                          </button>
+          {/* 3. TWO-PANEL WORKSPACE (Left Form Editor + Right Preview Workspace) */}
+          <div className="flex-1 flex overflow-hidden">
+            
+            {/* LEFT PANEL: Form Editor */}
+            <div 
+              ref={leftPanelRef}
+              className="relative flex flex-col bg-card border-r border-border/70 overflow-hidden shrink-0"
+              style={{ width: `${leftPanelWidth}px` }}
+            >
+              {/* Resize Handle */}
+              <div
+                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-brand/30 transition-colors z-10"
+                onMouseDown={() => setIsResizingLeft(true)}
+              />
+
+              {/* Form Content Area (Independent Slim Scrollbar) */}
+              <div className="flex-1 overflow-y-auto custom-editor-scrollbar p-5 space-y-5">
+                
+                {/* PROFILE TAB */}
+                {activeTab === "profile" && (
+                  <div className="space-y-5 animate-fade-up">
+                    
+                    {/* Basic Information (No Profile Photo) */}
+                    <div className="space-y-3">
+                      <h3 className="text-[13px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                        Basic Information
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block">Full Name</label>
+                          <Input
+                            type="text"
+                            value={resume.profile.fullName}
+                            onChange={(e) => updateProfile({ fullName: e.target.value })}
+                            placeholder="Shaik Thehseen"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
                         </div>
-                      ) : (
-                        <div className="w-20 h-20 rounded-full border-2 border-dashed border-brand/30 flex items-center justify-center bg-muted/50 hover:bg-muted/70 transition-colors cursor-pointer">
-                          <span className="text-xs text-muted-foreground">Upload</span>
+
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block">Job Title</label>
+                          <Input
+                            type="text"
+                            value={resume.profile.title}
+                            onChange={(e) => updateProfile({ title: e.target.value })}
+                            placeholder="Java Full Stack Developer"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setProfilePhoto(reader.result as string);
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                          className="text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-brand/10 file:text-brand hover:file:bg-brand/20"
+                      </div>
+                    </div>
+
+                    {/* Contact Details */}
+                    <div className="space-y-3 pt-4 border-t border-border/50">
+                      <h3 className="text-[13px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                        Contact Details
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block">Email</label>
+                          <Input
+                            type="email"
+                            value={resume.profile.contact.email}
+                            onChange={(e) => updateContact({ email: e.target.value })}
+                            placeholder="thehseenshaik@gmail.com"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block">Phone</label>
+                          <Input
+                            type="tel"
+                            value={resume.profile.contact.phone}
+                            onChange={(e) => updateContact({ phone: e.target.value })}
+                            placeholder="9398683053"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block">Location</label>
+                          <Input
+                            type="text"
+                            value={resume.profile.contact.location}
+                            onChange={(e) => updateContact({ location: e.target.value })}
+                            placeholder="Tadepalli, AP"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Online Profiles & Links */}
+                    <div className="space-y-3 pt-4 border-t border-border/50">
+                      <h3 className="text-[13px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                        Online Profiles & Links
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block flex items-center justify-between">
+                            <span>LinkedIn Profile URL</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">Recommended for ATS</span>
+                          </label>
+                          <Input
+                            type="url"
+                            value={resume.profile.contact.linkedin || ""}
+                            onChange={(e) => updateContact({ linkedin: e.target.value })}
+                            placeholder="linkedin.com/in/thehseenshaik"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block flex items-center justify-between">
+                            <span>GitHub Profile URL</span>
+                            <span className="text-[10px] text-muted-foreground font-normal">Developer Portfolio</span>
+                          </label>
+                          <Input
+                            type="url"
+                            value={resume.profile.contact.github || ""}
+                            onChange={(e) => updateContact({ github: e.target.value })}
+                            placeholder="github.com/thehseenshaik"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[12px] font-bold text-foreground mb-1.5 block">
+                            Portfolio / Website URL
+                          </label>
+                          <Input
+                            type="url"
+                            value={resume.profile.contact.portfolio || resume.profile.contact.website || ""}
+                            onChange={(e) => updateContact({ portfolio: e.target.value, website: e.target.value })}
+                            placeholder="thehseen.dev"
+                            className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Professional Summary */}
+                    <div className="space-y-2 pt-4 border-t border-border/50">
+                      <h3 className="text-[13px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                        Professional Summary
+                      </h3>
+                      <div>
+                        <label className="text-[12px] font-bold text-foreground mb-1.5 block">Professional Summary</label>
+                        <textarea
+                          value={resume.profile.summary || ""}
+                          onChange={(e) => updateProfile({ summary: e.target.value })}
+                          placeholder="Write a concise professional summary..."
+                          className="w-full rounded-xl border border-border bg-background p-3 text-[14px] font-normal text-foreground/90 leading-relaxed focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/30 min-h-24 resize-y"
                         />
-                        <p className="text-xs text-muted-foreground mt-1">JPG, PNG up to 5MB</p>
                       </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Basic Information */}
-                  <div className="p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4">
-                    <label className="block text-xs font-semibold text-foreground">Basic Information</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={resume.profile.fullName}
-                        onChange={(e) => updateProfile({ fullName: e.target.value })}
-                        placeholder="Full Name"
-                        className="w-full pl-10 pr-4 py-3 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                      />
+                {/* PROFILE LINKS TAB */}
+                {activeTab === "links" && (
+                  <div className="space-y-5 animate-fade-up">
+                    <div className="space-y-1">
+                      <h3 className="text-[14px] font-bold uppercase tracking-wider text-foreground">
+                        Profile Links & Socials
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Add your LinkedIn, GitHub, and Portfolio URLs. These links will appear in your resume header.
+                      </p>
                     </div>
-                    <div className="relative">
-                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={resume.profile.title}
-                        onChange={(e) => updateProfile({ title: e.target.value })}
-                        placeholder="Job Title"
-                        className="w-full pl-10 pr-4 py-3 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                      />
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[12px] font-bold text-foreground mb-1.5 block flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Link2 className="h-3.5 w-3.5 text-blue-500" /> LinkedIn Profile
+                          </span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                            Recommended for ATS
+                          </span>
+                        </label>
+                        <Input
+                          type="url"
+                          value={resume.profile.contact.linkedin || ""}
+                          onChange={(e) => updateContact({ linkedin: e.target.value })}
+                          placeholder="linkedin.com/in/thehseenshaik"
+                          className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[12px] font-bold text-foreground mb-1.5 block flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Code className="h-3.5 w-3.5 text-foreground" /> GitHub Profile
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-normal">Code & Repositories</span>
+                        </label>
+                        <Input
+                          type="url"
+                          value={resume.profile.contact.github || ""}
+                          onChange={(e) => updateContact({ github: e.target.value })}
+                          placeholder="github.com/thehseenshaik"
+                          className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[12px] font-bold text-foreground mb-1.5 block flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Globe className="h-3.5 w-3.5 text-brand" /> Portfolio / Personal Website
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-normal">Live Projects</span>
+                        </label>
+                        <Input
+                          type="url"
+                          value={resume.profile.contact.portfolio || resume.profile.contact.website || ""}
+                          onChange={(e) => updateContact({ portfolio: e.target.value, website: e.target.value })}
+                          placeholder="thehseen.dev"
+                          className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[12px] font-bold text-foreground mb-1.5 block flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Code className="h-3.5 w-3.5 text-amber-500" /> LeetCode / Coding Profile
+                          </span>
+                          <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
+                        </label>
+                        <Input
+                          type="url"
+                          value={resume.profile.contact.leetcode || ""}
+                          onChange={(e) => updateContact({ leetcode: e.target.value } as any)}
+                          placeholder="leetcode.com/thehseenshaik"
+                          className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                        />
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Contact Details */}
-                  <div className="p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4">
-                    <label className="block text-xs font-semibold text-foreground">Contact Details</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="email"
-                        value={resume.profile.contact.email}
-                        onChange={(e) => updateContact({ email: e.target.value })}
-                        placeholder="Email Address"
-                        className="w-full pl-10 pr-4 py-3 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                      />
-                    </div>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="tel"
-                        value={resume.profile.contact.phone}
-                        onChange={(e) => updateContact({ phone: e.target.value })}
-                        placeholder="Phone Number"
-                        className="w-full pl-10 pr-4 py-3 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                      />
-                    </div>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        value={resume.profile.contact.location}
-                        onChange={(e) => updateContact({ location: e.target.value })}
-                        placeholder="Location"
-                        className="w-full pl-10 pr-4 py-3 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                      />
-                    </div>
-                  </div>
+                {/* EXPERIENCE TAB */}
+                {activeTab === "experience" && (
+                  <div className="space-y-4 animate-fade-up">
+                    <Button
+                      onClick={() => addExperience({ company: "", position: "", startDate: "", endDate: "", current: false, description: [] })}
+                      className="w-full rounded-xl bg-brand text-brand-foreground text-xs font-semibold h-[42px] gap-1.5"
+                    >
+                      <Plus className="h-4 w-4" /> Add Experience
+                    </Button>
 
-                  {/* Professional Summary */}
-                  <div className="p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4">
-                    <label className="block text-xs font-semibold text-foreground">Professional Summary</label>
-                    <textarea
-                      value={resume.profile.summary || ""}
-                      onChange={(e) => updateProfile({ summary: e.target.value })}
-                      placeholder="Write a brief summary of your professional background..."
-                      className="w-full px-4 py-3 text-sm border border-border/50 rounded-xl bg-background min-h-24 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200 resize-none"
-                    />
-                  </div>
-                </div>
-              )}
+                    {resume.experience.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground py-6">
+                        No experience added yet. Click above to add.
+                      </div>
+                    ) : (
+                      resume.experience.map((exp) => (
+                        <div key={exp.id} className="p-4 rounded-xl border border-border/70 bg-background/50 space-y-3 relative">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-bold text-foreground">Experience Item</span>
+                            <button
+                              onClick={() => removeExperience(exp.id)}
+                              className="text-xs text-destructive hover:bg-destructive/10 p-1 rounded-md transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
 
-              {activeTab === "experience" && (
-                <div className="space-y-4 animate-slide-in">
-                  <button
-                    onClick={() => addExperience({ company: "", position: "", startDate: "", endDate: "", current: false, description: [] })}
-                    className="w-full py-3 text-xs font-medium bg-gradient-to-r from-brand to-brand-strong text-white rounded-xl hover:shadow-md transition-all duration-200 shadow-sm"
-                  >
-                    + Add Experience
-                  </button>
-                  {resume.experience.map((exp, index) => (
-                    <div key={exp.id} className="relative p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200">
-                      {/* Timeline indicator */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-brand to-brand-strong rounded-l-2xl" />
-                      
-                      <div className="ml-4 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <input
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Position Title</label>
+                            <Input
                               type="text"
                               value={exp.position}
                               onChange={(e) => updateExperience(exp.id, { position: e.target.value })}
-                              className="w-full px-3 py-2 text-sm font-medium border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
                               placeholder="Position Title"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
                             />
                           </div>
-                          <button
-                            onClick={() => removeExperience(exp.id)}
-                            className="ml-3 p-2 text-xs text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                        
-                        <input
-                          type="text"
-                          value={exp.company}
-                          onChange={(e) => updateExperience(exp.id, { company: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                          placeholder="Company Name"
-                        />
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            value={exp.startDate}
-                            onChange={(e) => updateExperience(exp.id, { startDate: e.target.value })}
-                            className="px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                            placeholder="Start Date"
-                          />
-                          <input
-                            type="text"
-                            value={exp.endDate || ""}
-                            onChange={(e) => updateExperience(exp.id, { endDate: e.target.value })}
-                            className="px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                            placeholder="End Date"
-                          />
-                        </div>
-                        
-                        <textarea
-                          value={exp.description.join("\n")}
-                          onChange={(e) => updateExperience(exp.id, { description: e.target.value.split("\n") })}
-                          className="w-full px-3 py-2 text-sm border border-border/50 rounded-xl bg-background min-h-20 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200 resize-none"
-                          placeholder="Description (one point per line)"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
-              {activeTab === "education" && (
-                <div className="space-y-3">
-                  <button
-                    onClick={() => addEducation({ institution: "", degree: "", field: "", startDate: "", endDate: "", current: false })}
-                    className="w-full py-1.5 text-xs border border-border rounded-lg hover:bg-muted transition-colors font-medium"
-                  >
-                    + Add Education
-                  </button>
-                  {resume.education.map((edu) => (
-                    <div key={edu.id} className="p-3 border border-border rounded-lg space-y-2 bg-card">
-                      <div className="flex justify-between items-center">
-                        <input
-                          type="text"
-                          value={edu.degree}
-                          onChange={(e) => updateEducation(edu.id, { degree: e.target.value })}
-                          className="flex-1 px-2 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand/50"
-                          placeholder="Degree"
-                        />
-                        <button
-                          onClick={() => removeEducation(edu.id)}
-                          className="ml-2 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        value={edu.institution}
-                        onChange={(e) => updateEducation(edu.id, { institution: e.target.value })}
-                        className="w-full px-2 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand/50"
-                        placeholder="Institution"
-                      />
-                      <input
-                        type="text"
-                        value={edu.field}
-                        onChange={(e) => updateEducation(edu.id, { field: e.target.value })}
-                        className="w-full px-2 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand/50"
-                        placeholder="Field of Study"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={edu.startDate}
-                          onChange={(e) => updateEducation(edu.id, { startDate: e.target.value })}
-                          className="px-2 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand/50"
-                          placeholder="Start Date"
-                        />
-                        <input
-                          type="text"
-                          value={edu.endDate || ""}
-                          onChange={(e) => updateEducation(edu.id, { endDate: e.target.value })}
-                          className="px-2 py-1.5 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-brand/50"
-                          placeholder="End Date"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Company Name</label>
+                            <Input
+                              type="text"
+                              value={exp.company}
+                              onChange={(e) => updateExperience(exp.id, { company: e.target.value })}
+                              placeholder="Company Name"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                            />
+                          </div>
 
-              {activeTab === "skills" && (
-                <div className="space-y-4 animate-slide-in">
-                  {(githubData || leetcodeData) && (
-                    <button
-                      onClick={() => {
-                        // Auto-import skills from connected platforms
-                        const skillsToAdd: string[] = [];
-                        
-                        // Add GitHub languages as skills
-                        if (githubData?.languages) {
-                          Object.keys(githubData.languages).forEach(lang => {
-                            if (!resume.skills.some(s => s.name.toLowerCase() === lang.toLowerCase())) {
-                              skillsToAdd.push(lang);
-                            }
-                          });
-                        }
-                        
-                        // Add LeetCode topics as skills
-                        if (leetcodeData?.recentSubmissions) {
-                          const topics = new Set<string>();
-                          leetcodeData.recentSubmissions.forEach(sub => {
-                            const title = sub.title.toLowerCase();
-                            if (title.includes('array')) topics.add('Arrays');
-                            if (title.includes('string')) topics.add('Strings');
-                            if (title.includes('tree')) topics.add('Trees');
-                            if (title.includes('graph')) topics.add('Graphs');
-                            if (title.includes('dynamic') || title.includes('dp')) topics.add('Dynamic Programming');
-                            if (title.includes('linked list')) topics.add('Linked Lists');
-                            if (title.includes('hash')) topics.add('Hash Tables');
-                            if (title.includes('sorting')) topics.add('Sorting');
-                            if (title.includes('search')) topics.add('Searching');
-                            if (title.includes('recursion')) topics.add('Recursion');
-                            if (title.includes('backtracking')) topics.add('Backtracking');
-                            if (title.includes('greedy')) topics.add('Greedy Algorithms');
-                          });
-                          topics.forEach(topic => {
-                            if (!resume.skills.some(s => s.name.toLowerCase() === topic.toLowerCase())) {
-                              skillsToAdd.push(topic);
-                            }
-                          });
-                        }
-                        
-                        // Add all unique skills
-                        skillsToAdd.forEach(skillName => {
-                          addSkill({ name: skillName, level: "Intermediate" });
-                        });
-                      }}
-                      className="w-full py-2.5 text-sm font-medium bg-gradient-to-r from-brand to-brand-strong text-white rounded-xl hover:shadow-md transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[12px] font-bold text-foreground mb-1.5 block">Start Date</label>
+                              <Input
+                                type="text"
+                                value={exp.startDate}
+                                onChange={(e) => updateExperience(exp.id, { startDate: e.target.value })}
+                                placeholder="Start Date"
+                                className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[12px] font-bold text-foreground mb-1.5 block">End Date</label>
+                              <Input
+                                type="text"
+                                value={exp.endDate || ""}
+                                onChange={(e) => updateExperience(exp.id, { endDate: e.target.value })}
+                                placeholder="End Date"
+                                className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Bullet Points (one per line)</label>
+                            <textarea
+                              value={exp.description.join("\n")}
+                              onChange={(e) => updateExperience(exp.id, { description: e.target.value.split("\n") })}
+                              placeholder="Bullet points..."
+                              className="w-full rounded-xl border border-border bg-background p-3 text-[14px] font-normal text-foreground/90 min-h-20 resize-y focus:border-brand focus:ring-1 focus:ring-brand/30"
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* EDUCATION TAB */}
+                {activeTab === "education" && (
+                  <div className="space-y-4 animate-fade-up">
+                    <Button
+                      onClick={() => addEducation({ institution: "", degree: "", field: "", startDate: "", endDate: "", current: false })}
+                      className="w-full rounded-xl bg-brand text-brand-foreground text-xs font-semibold h-[42px] gap-1.5"
                     >
-                      <Sparkles className="h-4 w-4" />
-                      Auto-import from Connected Platforms
-                    </button>
-                  )}
-                  
-                  <div className="p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm space-y-4">
-                    <div className="flex gap-2">
-                      <input
+                      <Plus className="h-4 w-4" /> Add Education
+                    </Button>
+
+                    {resume.education.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground py-6">
+                        No education added yet. Click above to add.
+                      </div>
+                    ) : (
+                      resume.education.map((edu) => (
+                        <div key={edu.id} className="p-4 rounded-xl border border-border/70 bg-background/50 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-bold text-foreground">Education Item</span>
+                            <button
+                              onClick={() => removeEducation(edu.id)}
+                              className="text-xs text-destructive hover:bg-destructive/10 p-1 rounded-md transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Degree</label>
+                            <Input
+                              type="text"
+                              value={edu.degree}
+                              onChange={(e) => updateEducation(edu.id, { degree: e.target.value })}
+                              placeholder="Degree (e.g. B.Tech)"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Institution</label>
+                            <Input
+                              type="text"
+                              value={edu.institution}
+                              onChange={(e) => updateEducation(edu.id, { institution: e.target.value })}
+                              placeholder="Institution / University"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Field of Study</label>
+                            <Input
+                              type="text"
+                              value={edu.field}
+                              onChange={(e) => updateEducation(edu.id, { field: e.target.value })}
+                              placeholder="Field of Study"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[12px] font-bold text-foreground mb-1.5 block">Start Date</label>
+                              <Input
+                                type="text"
+                                value={edu.startDate}
+                                onChange={(e) => updateEducation(edu.id, { startDate: e.target.value })}
+                                placeholder="Start Date"
+                                className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[12px] font-bold text-foreground mb-1.5 block">End Date</label>
+                              <Input
+                                type="text"
+                                value={edu.endDate || ""}
+                                onChange={(e) => updateEducation(edu.id, { endDate: e.target.value })}
+                                placeholder="End Date"
+                                className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* SKILLS TAB */}
+                {activeTab === "skills" && (
+                  <div className="space-y-4 animate-fade-up">
+                    {(githubData || leetcodeData) && (
+                      <Button
+                        onClick={() => {
+                          const skillsToAdd: string[] = [];
+                          if (githubData?.languages) {
+                            Object.keys(githubData.languages).forEach(lang => {
+                              if (!resume.skills.some(s => s.name.toLowerCase() === lang.toLowerCase())) {
+                                skillsToAdd.push(lang);
+                              }
+                            });
+                          }
+                          skillsToAdd.forEach(skillName => {
+                            addSkill({ name: skillName, level: "Intermediate" });
+                          });
+                        }}
+                        variant="outline"
+                        className="w-full rounded-xl text-xs font-semibold h-[42px] gap-1.5"
+                      >
+                        <Sparkles className="h-4 w-4 text-brand" /> Auto-import from Platforms
+                      </Button>
+                    )}
+
+                    <div className="space-y-2">
+                      <label className="text-[12px] font-bold text-foreground block mb-1.5">Add New Skill</label>
+                      <Input
                         type="text"
-                        placeholder="Add a skill..."
-                        className="flex-1 px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
+                        placeholder="Type skill & press Enter..."
+                        className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                             addSkill({ name: e.currentTarget.value.trim(), level: "Intermediate" });
@@ -815,394 +1469,259 @@ function ResumeBuilderPage() {
                           }
                         }}
                       />
-                      <select
-                        className="px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                        defaultValue="Intermediate"
-                      >
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate">Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                        <option value="Expert">Expert</option>
-                      </select>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {resume.skills.map((skill) => (
+                        <div key={skill.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-secondary/80 text-foreground rounded-full text-xs font-semibold border border-border">
+                          <span>{skill.name}</span>
+                          <button
+                            onClick={() => removeSkill(skill.id)}
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {resume.skills.map((skill) => (
-                      <div key={skill.id} className="group relative px-3 py-1.5 bg-gradient-to-r from-brand/10 to-brand/5 border border-brand/20 rounded-full text-sm font-medium text-foreground hover:shadow-md transition-all duration-200">
-                        <span>{skill.name}</span>
-                        <button
-                          onClick={() => removeSkill(skill.id)}
-                          className="ml-2 text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {activeTab === "projects" && (
-                <div className="space-y-4 animate-slide-in">
-                  {githubData && (
-                    <button
-                      onClick={() => {
-                        // Auto-import projects from GitHub repositories
-                        githubData.repositories.slice(0, 5).forEach(repo => {
-                          if (!resume.projects.some(p => p.name.toLowerCase() === repo.name.toLowerCase())) {
-                            addProject({
-                              name: repo.name,
-                              description: repo.description || "",
-                              technologies: repo.language ? [repo.language] : [],
-                              link: repo.homepage || repo.url,
-                              github: repo.url,
-                            });
-                          }
-                        });
-                      }}
-                      className="w-full py-2.5 text-sm font-medium bg-gradient-to-r from-brand to-brand-strong text-white rounded-xl hover:shadow-md transition-all duration-200 shadow-sm flex items-center justify-center gap-2"
+                {/* PROJECTS TAB */}
+                {activeTab === "projects" && (
+                  <div className="space-y-4 animate-fade-up">
+                    <Button
+                      onClick={() => addProject({ name: "", description: "", technologies: [], link: "", github: "" })}
+                      className="w-full rounded-xl bg-brand text-brand-foreground text-xs font-semibold h-[42px] gap-1.5"
                     >
-                      <Sparkles className="h-4 w-4" />
-                      Auto-import from GitHub Repositories
-                    </button>
-                  )}
-                  
-                  <button
-                    onClick={() => addProject({ name: "", description: "", technologies: [], link: "", github: "" })}
-                    className="w-full py-3 text-xs font-medium bg-gradient-to-r from-brand to-brand-strong text-white rounded-xl hover:shadow-md transition-all duration-200 shadow-sm"
-                  >
-                    + Add Project Manually
-                  </button>
-                  {resume.projects.map((project) => (
-                    <div key={project.id} className="relative p-4 bg-gradient-to-br from-muted/30 to-muted/10 rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200">
-                      {/* Project indicator */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-brand to-brand-strong rounded-l-2xl" />
-                      
-                      <div className="ml-4 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <input
+                      <Plus className="h-4 w-4" /> Add Project
+                    </Button>
+
+                    {resume.projects.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground py-6">
+                        No projects added yet. Click above to add.
+                      </div>
+                    ) : (
+                      resume.projects.map((project) => (
+                        <div key={project.id} className="p-4 rounded-xl border border-border/70 bg-background/50 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-bold text-foreground">Project Item</span>
+                            <button
+                              onClick={() => removeProject(project.id)}
+                              className="text-xs text-destructive hover:bg-destructive/10 p-1 rounded-md transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Project Name</label>
+                            <Input
                               type="text"
                               value={project.name}
                               onChange={(e) => updateProject(project.id, { name: e.target.value })}
-                              className="w-full px-3 py-2 text-sm font-medium border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
                               placeholder="Project Name"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
                             />
                           </div>
-                          <button
-                            onClick={() => removeProject(project.id)}
-                            className="ml-3 p-2 text-xs text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                        
-                        <textarea
-                          value={project.description}
-                          onChange={(e) => updateProject(project.id, { description: e.target.value })}
-                          className="w-full px-3 py-2 text-sm border border-border/50 rounded-xl bg-background min-h-20 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200 resize-none"
-                          placeholder="Project Description"
-                        />
-                        
-                        <input
-                          type="text"
-                          value={project.technologies.join(", ")}
-                          onChange={(e) => updateProject(project.id, { technologies: e.target.value.split(",").map(t => t.trim()) })}
-                          className="w-full px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                          placeholder="Technologies (comma separated)"
-                        />
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            value={project.link || ""}
-                            onChange={(e) => updateProject(project.id, { link: e.target.value })}
-                            className="px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                            placeholder="Live Demo URL"
-                          />
-                          <input
-                            type="text"
-                            value={project.github || ""}
-                            onChange={(e) => updateProject(project.id, { github: e.target.value })}
-                            className="px-3 py-2 text-sm border border-border/50 rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent transition-all duration-200"
-                            placeholder="GitHub URL"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
 
-          {/* Live Preview */}
-          <div className="flex-1 flex flex-col bg-muted/30">
-            {/* Preview Toolbar */}
-            <div className="border-b border-border bg-card p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Preview</span>
-                <span className="text-xs text-muted-foreground">
-                  ({templateNames[template]})
-                </span>
-                <div className="flex items-center gap-1 border border-border rounded-md">
-                  {[50, 75, 100, 125, 150].map((z) => (
-                    <button
-                      key={z}
-                      onClick={() => setZoom(z as any)}
-                      className={`px-2 py-1 text-xs font-medium transition-colors ${
-                        zoom === z ? "bg-brand text-white" : "hover:bg-muted"
-                      }`}
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Description</label>
+                            <textarea
+                              value={project.description}
+                              onChange={(e) => updateProject(project.id, { description: e.target.value })}
+                              placeholder="Project Description..."
+                              className="w-full rounded-xl border border-border bg-background p-3 text-[14px] font-normal text-foreground/90 min-h-20 resize-y focus:border-brand focus:ring-1 focus:ring-brand/30"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[12px] font-bold text-foreground mb-1.5 block">Technologies</label>
+                            <Input
+                              type="text"
+                              value={project.technologies.join(", ")}
+                              onChange={(e) => updateProject(project.id, { technologies: e.target.value.split(",").map(t => t.trim()) })}
+                              placeholder="Technologies (comma separated)"
+                              className="bg-background text-[14px] font-normal text-foreground/90 h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* RIGHT PANEL: Workspace (Chrome-Style Tab Switcher between Live Resume Preview & Full ATS Scanner) */}
+            <div className="flex-1 flex flex-col bg-muted/20 overflow-hidden relative">
+              
+              {/* Chrome-Style Tab Header Bar */}
+              <div className="h-11 border-b border-border/70 bg-card/80 backdrop-blur-md px-3 sm:px-4 flex items-center justify-between shrink-0 shadow-xs">
+                {/* Chrome-Style Tab List */}
+                <div className="flex items-center gap-1.5 h-full pt-1.5" role="tablist">
+                  {/* Tab 1: Live Resume Preview (Permanent — NO CLOSE BUTTON) */}
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={rightWorkspaceTab === "preview"}
+                    onClick={() => setRightWorkspaceTab("preview")}
+                    className={cn(
+                      "h-9 px-3.5 rounded-t-xl text-xs font-semibold flex items-center gap-2 border-t border-x transition-all relative cursor-pointer outline-none",
+                      rightWorkspaceTab === "preview"
+                        ? "bg-background border-border text-foreground font-bold shadow-xs -mb-px z-10"
+                        : "bg-transparent border-transparent text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                    )}
+                  >
+                    <FileText className="h-3.5 w-3.5 text-brand" />
+                    <span>Resume Preview</span>
+                    <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 h-4 bg-secondary/60 text-muted-foreground border-border/60">
+                      {template}
+                    </Badge>
+                  </button>
+
+                  {/* Tab 2: ATS Scanner & Job Match (Has Close Button ✕) */}
+                  {showATSTab && (
+                    <div
+                      className={cn(
+                        "h-9 pl-3 pr-1.5 rounded-t-xl text-xs font-semibold flex items-center gap-1.5 border-t border-x transition-all relative group",
+                        rightWorkspaceTab === "ats"
+                          ? "bg-background border-border text-foreground font-bold shadow-xs -mb-px z-10"
+                          : "bg-transparent border-transparent text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                      )}
                     >
-                      {z}%
-                    </button>
-                  ))}
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={rightWorkspaceTab === "ats"}
+                        onClick={() => setRightWorkspaceTab("ats")}
+                        className="flex items-center gap-1.5 cursor-pointer outline-none"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                        <span>ATS Scanner</span>
+                        <span className={cn(
+                          "text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-none",
+                          atsAnalysis.score >= 80
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            : atsAnalysis.score >= 60
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                            : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                        )}>
+                          {atsAnalysis.score}%
+                        </span>
+                      </button>
+
+                      {/* Close Tab Button (✕) — Only for ATS Scanner, NOT for preview */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowATSTab(false);
+                          setRightWorkspaceTab("preview");
+                        }}
+                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors p-0.5"
+                        title="Close ATS Scanner tab"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Controls: Zoom Controls in Preview mode, or Back to Resume in ATS mode */}
+                <div className="flex items-center gap-2">
+                  {rightWorkspaceTab === "preview" ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setZoom(Math.max(50, zoom - 10) as any)}
+                        className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="h-3.5 w-3.5" />
+                      </Button>
+                      
+                      <span className="text-xs font-bold text-foreground w-9 text-center">
+                        {zoom}%
+                      </span>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setZoom(Math.min(150, zoom + 10) as any)}
+                        className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+                        title="Zoom In"
+                      >
+                        <ZoomIn className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRightWorkspaceTab("preview")}
+                      className="h-7 text-[11px] font-semibold text-muted-foreground hover:text-foreground gap-1"
+                    >
+                      <FileText className="h-3 w-3 text-brand" /> Back to Resume
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowThemeSelector(!showThemeSelector)}
-                  className={`px-3 py-1.5 text-sm border border-border rounded-md transition-colors ${
-                    showThemeSelector ? "bg-brand text-white" : "hover:bg-muted"
-                  }`}
-                >
-                  Theme
-                </button>
-                <button
-                  onClick={() => setShowATSPanel(!showATSPanel)}
-                  className={`px-3 py-1.5 text-sm border border-border rounded-md transition-colors ${
-                    showATSPanel ? "bg-brand text-white" : "hover:bg-muted"
-                  }`}
-                >
-                  ATS Panel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!previewRef.current) return;
-                    setShowPrinterAnimation(true);
-                    setIsExporting(true);
-                    try {
-                      await exportResume('pdf', previewRef.current, resume);
-                    } catch (error) {
-                      console.error('Export failed:', error);
-                      alert('Export failed. Please try again or check the console for details.');
-                    } finally {
-                      setIsExporting(false);
-                      setShowPrinterAnimation(false);
-                    }
-                  }}
-                  disabled={isExporting}
-                  className="px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors disabled:opacity-50"
-                >
-                  {isExporting ? 'Exporting...' : 'Export PDF'}
-                </button>
-                <button
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors"
-                >
-                  {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                </button>
-              </div>
-            </div>
 
-            {/* Preview Content - Center Panel */}
-            <div 
-              className="flex-1 flex flex-col bg-muted/30 overflow-hidden"
-            >
-              {/* Preview Toolbar */}
-              <div className="border-b border-border bg-card p-4 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="range"
-                      min="50"
-                      max="150"
-                      step="5"
-                      value={zoom}
-                      onChange={(e) => setZoom(Number(e.target.value) as any)}
-                      className="w-32 accent-brand"
-                    />
-                    <span className="text-xs text-muted-foreground font-medium">{zoom}%</span>
+              {/* Active Tab View */}
+              {rightWorkspaceTab === "preview" ? (
+                /* Centered A4 Resume Paper Canvas */
+                <div 
+                  className={cn(
+                    "flex-1 overflow-auto p-6 sm:p-10 flex justify-center items-start",
+                    isFullscreen && "fixed inset-0 z-50 bg-background p-12"
+                  )}
+                >
+                  {/* Floating Exit Fullscreen Button */}
+                  {isFullscreen && (
+                    <button
+                      onClick={() => setIsFullscreen(false)}
+                      className="fixed top-4 right-4 z-[60] flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-xl shadow-lg hover:opacity-90 transition-opacity text-xs font-bold"
+                    >
+                      <X className="h-4 w-4" />
+                      <span>Exit Fullscreen</span>
+                    </button>
+                  )}
+
+                  <div 
+                    id="resume-preview-document"
+                    ref={previewRef}
+                    className="bg-white text-black shadow-2xl rounded-sm transition-transform duration-200 resume-page"
+                    style={{
+                      width: "210mm",
+                      minHeight: "297mm",
+                      padding: "16mm 18mm",
+                      transform: `scale(${zoom / 100})`,
+                      transformOrigin: "top center",
+                    }}
+                  >
+                    <TemplateComponent resume={resume} theme={theme} />
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowATSPanel(!showATSPanel)}
-                    className={`px-3 py-1.5 text-xs font-medium border border-border rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${
-                      showATSPanel ? "bg-gradient-to-r from-brand to-brand-strong text-white border-transparent" : "hover:bg-muted"
-                    }`}
-                  >
-                    ATS Panel
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (!previewRef.current) return;
-                      setShowPrinterAnimation(true);
-                      setIsExporting(true);
-                      try {
-                        await exportResume('pdf', previewRef.current, resume);
-                      } catch (error) {
-                        console.error('Export failed:', error);
-                        alert('Export failed. Please try again or check the console for details.');
-                      } finally {
-                        setIsExporting(false);
-                        setShowPrinterAnimation(false);
-                      }
-                    }}
-                    disabled={isExporting}
-                    className="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-brand to-brand-strong text-white rounded-lg hover:shadow-md transition-all duration-200 shadow-sm disabled:opacity-50"
-                  >
-                    {isExporting ? 'Exporting...' : 'Export PDF'}
-                  </button>
-                  <button
-                    onClick={() => setIsFullscreen(!isFullscreen)}
-                    className="px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-muted transition-all duration-200 shadow-sm hover:shadow-md"
-                  >
-                    {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Resume Preview */}
-              <div 
-                className={`flex-1 overflow-auto p-8 flex justify-center ${
-                  isFullscreen ? "fixed inset-0 z-50 bg-background" : ""
-                }`}
-              >
-                {/* Floating Exit Fullscreen Button */}
-                {isFullscreen && (
-                  <button
-                    onClick={() => setIsFullscreen(false)}
-                    className="fixed top-4 right-4 z-[60] flex items-center gap-2 px-3 py-1.5 bg-foreground text-background rounded-lg shadow-lg hover:opacity-90 transition-opacity"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">Exit Fullscreen</span>
-                  </button>
-                )}
-                <div 
-                  ref={previewRef}
-                  className="bg-white shadow-2xl rounded-lg"
-                  style={{
-                    width: "210mm",
-                    minHeight: "297mm",
-                    padding: "20mm",
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: "top center",
-                  }}
-                >
-                  <TemplateComponent resume={resume} theme={theme} />
-                </div>
-              </div>
-            </div>
-
-            {/* ATS Panel - Right Panel */}
-            {showATSPanel && (
-              <div 
-                ref={rightPanelRef}
-                className="relative flex flex-col bg-card shadow-card border-l border-border"
-                style={{ width: `${rightPanelWidth}px` }}
-              >
-                {/* Resize Handle */}
-                <div
-                  className="absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-brand/20 transition-colors z-10"
-                  onMouseDown={() => setIsResizingRight(true)}
-                />
-                <div className="p-4 border-b border-border">
-                  <h3 className="text-sm font-semibold text-foreground">ATS Analysis</h3>
-                </div>
-                <div className="flex-1 overflow-auto p-4">
+              ) : (
+                /* Full-Width ATS Panel View */
+                <div className="flex-1 overflow-hidden">
                   <ATSPanel
                     atsAnalysis={atsAnalysis}
                     healthScore={healthScore}
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
+                    onAddSkill={(skillName) => addSkill({ name: skillName, level: "Intermediate" } as any)}
+                    resume={resume}
                   />
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Theme Selector Panel */}
-            {showThemeSelector && (
-              <div className="border-t border-border bg-card p-4">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Theme Presets</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {getThemePresetNames().map((presetName) => (
-                        <button
-                          key={presetName}
-                          onClick={() => {
-                            setTheme(getThemePreset(presetName));
-                          }}
-                          className="px-3 py-2 text-xs bg-muted hover:bg-muted/80 rounded-md transition-colors capitalize"
-                        >
-                          {presetName}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Color Palette</p>
-                    <div className="flex flex-wrap gap-2">
-                      {colorPalettes.map((palette) => (
-                        <button
-                          key={palette.name}
-                          onClick={() => {
-                            setTheme({
-                              ...theme,
-                              colors: {
-                                ...theme.colors,
-                                primary: palette.primary,
-                                secondary: palette.secondary,
-                                accent: palette.accent,
-                              },
-                            });
-                          }}
-                          className="w-8 h-8 rounded-full border-2 border-border hover:border-brand transition-colors"
-                          style={{ backgroundColor: palette.primary }}
-                          title={palette.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Font Family</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {fontOptions.map((font) => (
-                        <button
-                          key={font.value}
-                          onClick={() => {
-                            setTheme({
-                              ...theme,
-                              typography: {
-                                ...theme.typography,
-                                fontFamily: font.value,
-                                headingFont: font.value,
-                                bodyFont: font.value,
-                              },
-                            });
-                          }}
-                          className={`px-3 py-2 text-xs rounded-lg transition-colors ${
-                            theme.typography.fontFamily === font.value
-                              ? "bg-brand text-white"
-                              : "bg-muted hover:bg-muted/80"
-                          }`}
-                          style={{ fontFamily: font.value }}
-                        >
-                          <div className="font-medium">{font.label}</div>
-                          <div className="text-xs opacity-70">Welcome</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
+
         </div>
       )}
 
@@ -1212,6 +1731,222 @@ function ResumeBuilderPage() {
           identityProfile={identityProfile}
           currentResume={resume}
           onClose={() => setShowImportModal(false)}
+        />
+      )}
+
+      {/* Update from Profile Section Selection Modal */}
+      {showProfileUpdateModal && (
+        <Dialog open={showProfileUpdateModal} onOpenChange={setShowProfileUpdateModal}>
+          <DialogContent className="sm:max-w-md bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Update Resume from Profile
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Select which resume sections to update with your latest SkillVerse profile information.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-3 space-y-2">
+              {Object.entries({
+                personal: "Personal Information & Contact",
+                summary: "Professional Summary",
+                skills: "Skills & Technical Stack",
+                education: "Education Entries",
+                experience: "Experience Entries",
+                projects: "Project Entries",
+              }).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-background/50 cursor-pointer hover:bg-secondary/40">
+                  <input
+                    type="checkbox"
+                    checked={selectedSections[key as keyof typeof selectedSections]}
+                    onChange={(e) => setSelectedSections({ ...selectedSections, [key]: e.target.checked })}
+                    className="h-4 w-4 rounded accent-brand"
+                  />
+                  <span className="text-xs font-semibold text-foreground">{label}</span>
+                </label>
+              ))}
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" size="sm" onClick={() => setShowProfileUpdateModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  populateFromProfile(selectedSections);
+                  setShowProfileUpdateModal(false);
+                  toast.success("Resume updated from SkillVerse profile!");
+                }}
+                className="bg-brand text-brand-foreground font-semibold"
+              >
+                Update Resume
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Create New Resume Modal */}
+      {showCreateModal && (
+        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+          <DialogContent className="sm:max-w-md bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Create a new resume
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Give your resume a title to easily identify it in your job applications.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-3 space-y-3">
+              <div>
+                <label className="text-[12px] font-bold text-foreground mb-1.5 block">
+                  Resume Name
+                </label>
+                <Input
+                  type="text"
+                  value={newResumeName}
+                  onChange={(e) => setNewResumeName(e.target.value)}
+                  placeholder="e.g. Java Backend — 2026"
+                  className="bg-background text-[14px] font-normal text-foreground h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const nameToUse = newResumeName.trim() || "My Resume";
+                      createNewResume(nameToUse);
+                      populateFromProfile();
+                      setShowCreateModal(false);
+                      setView("theme-selection");
+                      toast.success("Resume created!");
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const nameToUse = newResumeName.trim() || "My Resume";
+                  createNewResume(nameToUse);
+                  populateFromProfile();
+                  setShowCreateModal(false);
+                  setView("theme-selection");
+                  toast.success("Resume created!");
+                }}
+                className="bg-brand text-brand-foreground font-semibold"
+              >
+                Create Resume
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Rename Resume Modal */}
+      {showRenameModal.isOpen && (
+        <Dialog open={showRenameModal.isOpen} onOpenChange={(open) => setShowRenameModal({ ...showRenameModal, isOpen: open })}>
+          <DialogContent className="sm:max-w-md bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Rename Resume
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Enter a new name for this resume.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-3 space-y-3">
+              <div>
+                <label className="text-[12px] font-bold text-foreground mb-1.5 block">
+                  Resume Name
+                </label>
+                <Input
+                  type="text"
+                  value={showRenameModal.name}
+                  onChange={(e) => setShowRenameModal({ ...showRenameModal, name: e.target.value })}
+                  placeholder="e.g. Software Engineer Resume"
+                  className="bg-background text-[14px] font-normal text-foreground h-[42px] px-3.5 border-border rounded-xl focus-visible:ring-1 focus-visible:ring-brand/30 focus-visible:border-brand"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && showRenameModal.name.trim()) {
+                      renameResume(showRenameModal.resumeId, showRenameModal.name.trim());
+                      setShowRenameModal({ isOpen: false, resumeId: "", name: "" });
+                      toast.success("Resume renamed!");
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" size="sm" onClick={() => setShowRenameModal({ isOpen: false, resumeId: "", name: "" })}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (showRenameModal.name.trim()) {
+                    renameResume(showRenameModal.resumeId, showRenameModal.name.trim());
+                    setShowRenameModal({ isOpen: false, resumeId: "", name: "" });
+                    toast.success("Resume renamed!");
+                  }
+                }}
+                className="bg-brand text-brand-foreground font-semibold"
+              >
+                Save Name
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal.isOpen && (
+        <Dialog open={showDeleteModal.isOpen} onOpenChange={(open) => setShowDeleteModal({ ...showDeleteModal, isOpen: open })}>
+          <DialogContent className="sm:max-w-md bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-foreground">
+                Delete Resume?
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Are you sure you want to delete <strong className="text-foreground font-semibold">"{showDeleteModal.resumeName}"</strong>? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteModal({ isOpen: false, resumeId: "", resumeName: "" })}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  deleteResume(showDeleteModal.resumeId);
+                  setShowDeleteModal({ isOpen: false, resumeId: "", resumeName: "" });
+                  toast.success("Resume deleted!");
+                }}
+                className="font-semibold"
+              >
+                Delete Resume
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Export Resume Modal */}
+      {showExportModal && (
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          resume={resume}
+          previewElement={previewRef.current}
         />
       )}
 
@@ -1229,4 +1964,120 @@ function ResumeBuilderPage() {
       )}
     </PageShell>
   );
+}
+
+function TemplateThumbnail({ presetName }: { presetName: string }) {
+  switch (presetName) {
+    case "professional":
+      return (
+        <div className="h-full w-full flex flex-col gap-1.5 p-1">
+          <div className="h-5 w-full rounded bg-blue-700 dark:bg-blue-600 flex flex-col justify-center px-2 py-0.5 shadow-xs">
+            <div className="h-1.5 w-14 rounded bg-white font-bold" />
+            <div className="h-1 w-20 rounded bg-blue-200 mt-0.5" />
+          </div>
+          <div className="space-y-1 pt-1 px-1">
+            <div className="h-1.5 w-12 rounded bg-blue-700/70" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+            <div className="h-1 w-4/5 rounded bg-muted-foreground/20" />
+          </div>
+          <div className="space-y-1 pt-1 px-1">
+            <div className="h-1.5 w-10 rounded bg-blue-700/70" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+          </div>
+        </div>
+      );
+
+    case "modern":
+      return (
+        <div className="h-full w-full flex gap-2 p-1">
+          <div className="w-1/3 h-full rounded-md bg-pink-500/10 dark:bg-pink-500/20 border-r border-pink-500/20 p-1.5 space-y-1.5">
+            <div className="h-5 w-5 rounded-full bg-pink-500/40 mx-auto" />
+            <div className="h-1 w-full rounded bg-pink-500/40" />
+            <div className="h-1 w-3/4 rounded bg-pink-500/25" />
+            <div className="h-1 w-full rounded bg-pink-500/25" />
+          </div>
+          <div className="flex-1 space-y-1.5 pt-0.5">
+            <div className="h-2 w-16 rounded bg-foreground/80" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+            <div className="h-1 w-4/5 rounded bg-muted-foreground/20" />
+            <div className="h-1.5 w-10 rounded bg-pink-500/60 pt-1" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+          </div>
+        </div>
+      );
+
+    case "minimal":
+      return (
+        <div className="h-full w-full flex flex-col justify-between p-2 bg-background border border-border/40 rounded-md">
+          <div className="space-y-1">
+            <div className="h-2.5 w-20 rounded-none bg-foreground font-bold" />
+            <div className="h-1 w-28 rounded-none bg-muted-foreground/40" />
+          </div>
+          <div className="space-y-1">
+            <div className="h-1 w-full rounded-none bg-muted-foreground/30" />
+            <div className="h-1 w-5/6 rounded-none bg-muted-foreground/20" />
+            <div className="h-1 w-4/6 rounded-none bg-muted-foreground/20" />
+          </div>
+          <div className="space-y-1">
+            <div className="h-1.5 w-12 rounded-none bg-foreground/60" />
+            <div className="h-1 w-full rounded-none bg-muted-foreground/20" />
+          </div>
+        </div>
+      );
+
+    case "creative":
+      return (
+        <div className="h-full w-full flex flex-col gap-1.5 p-1.5">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-red-500 to-amber-500 shrink-0" />
+            <div className="space-y-1 flex-1">
+              <div className="h-2 w-16 rounded bg-red-600 font-serif" />
+              <div className="h-1 w-12 rounded bg-amber-500/70" />
+            </div>
+          </div>
+          <div className="h-0.5 w-full bg-gradient-to-r from-red-500 via-amber-500 to-red-500 rounded" />
+          <div className="space-y-1 pt-0.5">
+            <div className="h-1.5 w-12 rounded bg-red-500/70 font-semibold" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+            <div className="h-1 w-3/4 rounded bg-muted-foreground/20" />
+          </div>
+        </div>
+      );
+
+    case "tech":
+      return (
+        <div className="h-full w-full flex flex-col gap-1.5 p-1.5">
+          <div className="h-5 w-full rounded bg-zinc-900 text-emerald-400 p-1 flex items-center justify-between border border-emerald-500/30">
+            <div className="h-1.5 w-14 rounded bg-emerald-400" />
+            <div className="h-1 w-8 rounded bg-emerald-500/40" />
+          </div>
+          <div className="flex gap-1">
+            <span className="h-2.5 px-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-[7px] text-emerald-600 font-mono flex items-center">CLI</span>
+            <span className="h-2.5 px-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-[7px] text-emerald-600 font-mono flex items-center">GIT</span>
+          </div>
+          <div className="space-y-1 pt-0.5">
+            <div className="h-1.5 w-12 rounded bg-emerald-600/70" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+          </div>
+        </div>
+      );
+
+    default: // default theme
+      return (
+        <div className="h-full w-full flex flex-col gap-1.5 p-1.5">
+          <div className="h-2.5 w-24 rounded bg-foreground font-bold" />
+          <div className="h-1 w-32 rounded bg-muted-foreground/40" />
+          <div className="h-px w-full bg-border" />
+          <div className="space-y-1 pt-0.5">
+            <div className="h-1.5 w-14 rounded bg-brand/70 font-semibold" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+            <div className="h-1 w-4/5 rounded bg-muted-foreground/20" />
+          </div>
+          <div className="space-y-1 pt-0.5">
+            <div className="h-1.5 w-10 rounded bg-brand/70 font-semibold" />
+            <div className="h-1 w-full rounded bg-muted-foreground/30" />
+          </div>
+        </div>
+      );
+  }
 }

@@ -12,6 +12,7 @@ export interface ContactInfo {
   github?: string;
   portfolio?: string;
   website?: string;
+  leetcode?: string;
 }
 
 // Profile section
@@ -148,6 +149,8 @@ export interface CustomSection {
 export interface ResumeData {
   id: string;
   name: string;
+  template?: TemplateType;
+  selectedPreset?: string;
   createdAt: string;
   updatedAt: string;
   profile: Profile;
