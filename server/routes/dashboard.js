@@ -12,12 +12,18 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID. Please ensure you are logged in.' });
     }
 
-    const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
-    
-    if (!userData) {
-      console.log('[Dashboard] User not found:', uid);
-      return res.status(404).json({ error: 'User not found' });
+    const database = db || global.db;
+    let userData = null;
+
+    if (database && database.collection) {
+      try {
+        const userDoc = await database.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+          userData = userDoc.data();
+        }
+      } catch (dbErr) {
+        console.warn('[Dashboard] Firestore lookup warning:', dbErr.message);
+      }
     }
 
     const getConn = (platform) => {

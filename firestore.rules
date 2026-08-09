@@ -51,44 +51,14 @@ service cloud.firestore {
     // ============================================================================
     
     match /users/{userId} {
-      // Users can read their own profile
-      allow read: if isOwner(userId) || isAdmin() || isBootstrapAdmin();
+      // Users can read and write their own profile
+      allow read, write: if isOwner(userId) || isAdmin() || isBootstrapAdmin();
       
-      // Users can create their own profile on signup
-      allow create: if isOwner(userId) && 
-                       request.resource.data.role == 'user' &&
-                       request.resource.data.metadata.accountStatus == 'active' &&
-                       request.resource.data.basicInfo.email.matches('.+@.+\\..+');
-      
-      // Users can update their own profile
-      // Allow both structured UserDocument updates and flat profile data from ProfileContext
-      // Allow admin bootstrap for users in the allowlist
-      allow update: if isOwner(userId) || isAdmin() || isBootstrapAdmin();
-      
-      // Only admins can delete users
-      allow delete: if isAdmin() || isBootstrapAdmin();
-      
-      // ============================================================================
-      // USER SUBCOLLECTIONS
-      // ============================================================================
-      
-      // Basic info - user can read/write their own
-      match /basicInfo/{document=**} {
-        allow read, write: if isOwner(userId);
+      // All user subcollections
+      match /{document=**} {
+        allow read, write: if isOwner(userId) || isAdmin() || isBootstrapAdmin();
       }
-      
-      // Auth info - user can read, limited write
-      match /authInfo/{document=**} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId) && 
-                       !request.resource.data.diff(resource.data).affectedKeys()
-                         .hasAny(['email', 'provider', 'providers']);
-      }
-      
-      // Profile - user can read/write their own
-      match /profile/{document=**} {
-        allow read, write: if isOwner(userId);
-      }
+    }
       
       // Settings - user can read/write their own
       match /settings/{document=**} {

@@ -11,7 +11,16 @@ router.get('/:uid', async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    const userDoc = await db.collection('users').doc(uid).get();
+    const database = db || global.db;
+    if (!database || !database.collection) {
+      return res.json({
+        connections: {},
+        cachedData: {},
+        profile: {}
+      });
+    }
+
+    const userDoc = await database.collection('users').doc(uid).get();
 
     if (!userDoc.exists) {
       // Return empty user object instead of 404
