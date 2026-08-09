@@ -8,8 +8,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   define: {
-    "process.env.NODE_ENV": JSON.stringify(
-      process.env.NODE_ENV || "development",
-    ),
+    "process.env": {},
+    global: "globalThis",
   },
 });

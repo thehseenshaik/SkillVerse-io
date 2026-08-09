@@ -44,7 +44,7 @@ async function callGatewayJSON<T = unknown>(opts: {
   model?: string;
   messages: ChatMessage[];
 }): Promise<T> {
-  const key = import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const key = import.meta.env.VITE_OPENAI_API_KEY || "";
   if (!key) throw new Error("Missing OPENAI_API_KEY");
 
   const body: Record<string, unknown> = {

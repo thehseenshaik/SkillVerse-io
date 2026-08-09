@@ -38,7 +38,7 @@ class GeminiProvider implements AIProviderClient {
 
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY || "") as string;
 
       if (!apiKey) {
         throw new AIError(

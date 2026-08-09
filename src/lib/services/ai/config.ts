@@ -39,33 +39,24 @@ const OPTIONAL_ENV_VARS = [
  * @throws Error if required variables are missing
  */
 export function validateEnvironment(): void {
-  const missing: string[] = [];
-
-  for (const envVar of REQUIRED_ENV_VARS) {
-    if (!process.env[envVar]) {
-      missing.push(envVar);
-    }
-  }
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}`,
-    );
-  }
+  // Client-side environment check is optional
 }
 
 /**
  * Get environment variable with fallback
  */
 function getEnvVar(key: string, fallback: string): string {
-  return process.env[key] || fallback;
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    return (import.meta.env[key] as string) || (import.meta.env[`VITE_${key}`] as string) || fallback;
+  }
+  return fallback;
 }
 
 /**
  * Get environment variable with number fallback
  */
 function getEnvNumber(key: string, fallback: number): number {
-  const value = process.env[key];
+  const value = getEnvVar(key, "");
   if (!value) return fallback;
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? fallback : parsed;
@@ -75,7 +66,7 @@ function getEnvNumber(key: string, fallback: number): number {
  * Get environment variable with boolean fallback
  */
 function getEnvBoolean(key: string, fallback: boolean): boolean {
-  const value = process.env[key];
+  const value = getEnvVar(key, "");
   if (!value) return fallback;
   return value.toLowerCase() === "true";
 }

@@ -97,12 +97,12 @@ function addLogEntry(entry: AILogEntry): void {
     console.warn(`[AI] ${sanitizedEntry.message}`, sanitizedEntry);
   } else if (
     sanitizedEntry.level === "debug" &&
-    process.env.VITE_DEBUG === "true"
+    import.meta.env.VITE_DEBUG === "true"
   ) {
     console.debug(`[AI] ${sanitizedEntry.message}`, sanitizedEntry);
   } else if (
     sanitizedEntry.level === "info" &&
-    process.env.VITE_ENABLE_LOGGING === "true"
+    import.meta.env.VITE_ENABLE_LOGGING === "true"
   ) {
     console.info(`[AI] ${sanitizedEntry.message}`, sanitizedEntry);
   }
@@ -120,7 +120,7 @@ function sanitizeLogEntry(entry: AILogEntry): AILogEntry {
   }
 
   // Don't log full prompt/response content in production
-  if (process.env.VITE_APP_ENV === "production") {
+  if (import.meta.env.PROD || import.meta.env.VITE_APP_ENV === "production") {
     if (sanitized.data?.prompt) {
       sanitized.data.prompt = "[REDACTED]";
     }
