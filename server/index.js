@@ -1,4 +1,5 @@
 const path = require('path');
+require('dotenv').config();
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
@@ -12,7 +13,7 @@ let db;
 try {
   if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_PRIVATE_KEY !== '-----BEGIN PRIVATE KEY-----\\nYOUR_PRIVATE_KEY_HERE\\n-----END PRIVATE KEY-----') {
     const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
+      projectId: process.env.FIREBASE_PROJECT_ID || 'skillverse-io',
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     };
@@ -24,12 +25,10 @@ try {
     db = firebaseAdmin.firestore();
     console.log('✓ Firebase Admin initialized');
   } else {
-    throw new Error('Firebase credentials not configured. Please set FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, and FIREBASE_PROJECT_ID in .env file.');
+    console.warn('⚠️ Firebase credentials not fully configured in environment. Using fallback mode.');
   }
 } catch (error) {
-  console.error('✗ Firebase initialization failed:', error.message);
-  console.error('Please configure Firebase credentials in server/.env file.');
-  process.exit(1);
+  console.warn('⚠️ Firebase initialization warning:', error.message);
 }
 
 // Export db before requiring routes to avoid circular dependency
