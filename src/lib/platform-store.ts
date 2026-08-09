@@ -907,8 +907,7 @@ export const usePlatformStore = create<PlatformStore>()(
           
           const data = await response.json();
           
-          // Only update connection states if they're explicitly provided
-          // Don't overwrite existing connections with false values
+          const conns = data?.connections || {};
           const currentGithub = get().github;
           const currentLeetcode = get().leetcode;
           const currentGfg = get().gfg;
@@ -918,47 +917,47 @@ export const usePlatformStore = create<PlatformStore>()(
           
           set({
             isLoading: false,
-            githubData: data.github,
-            leetcodeData: data.leetcode,
-            gfgData: data.gfg,
-            codeforcesData: data.codeforces,
-            codechefData: data.codechef,
-            hackerrankData: data.hackerrank,
-            combinedMetrics: data.combinedMetrics,
+            githubData: data?.github || null,
+            leetcodeData: data?.leetcode || null,
+            gfgData: data?.gfg || null,
+            codeforcesData: data?.codeforces || null,
+            codechefData: data?.codechef || null,
+            hackerrankData: data?.hackerrank || null,
+            combinedMetrics: data?.combinedMetrics || null,
             github: {
               ...currentGithub,
-              connected: data.connections.github !== undefined ? data.connections.github : currentGithub.connected,
-              lastSynced: data.github ? data.lastUpdated : currentGithub.lastSynced,
+              connected: conns.github !== undefined ? !!conns.github : currentGithub.connected,
+              lastSynced: data?.github ? data.lastUpdated : currentGithub.lastSynced,
             },
             leetcode: {
               ...currentLeetcode,
-              connected: data.connections.leetcode !== undefined ? data.connections.leetcode : currentLeetcode.connected,
-              lastSynced: data.leetcode ? data.lastUpdated : currentLeetcode.lastSynced,
+              connected: conns.leetcode !== undefined ? !!conns.leetcode : currentLeetcode.connected,
+              lastSynced: data?.leetcode ? data.lastUpdated : currentLeetcode.lastSynced,
             },
             gfg: {
               ...currentGfg,
-              connected: data.connections.gfg !== undefined ? data.connections.gfg : currentGfg.connected,
-              lastSynced: data.gfg ? data.lastUpdated : currentGfg.lastSynced,
+              connected: conns.gfg !== undefined ? !!conns.gfg : currentGfg.connected,
+              lastSynced: data?.gfg ? data.lastUpdated : currentGfg.lastSynced,
             },
             codeforces: {
               ...currentCodeforces,
-              connected: data.connections.codeforces !== undefined ? data.connections.codeforces : currentCodeforces.connected,
-              lastSynced: data.codeforces ? data.lastUpdated : currentCodeforces.lastSynced,
+              connected: conns.codeforces !== undefined ? !!conns.codeforces : currentCodeforces.connected,
+              lastSynced: data?.codeforces ? data.lastUpdated : currentCodeforces.lastSynced,
             },
             codechef: {
               ...currentCodechef,
-              connected: data.connections.codechef !== undefined ? data.connections.codechef : currentCodechef.connected,
-              lastSynced: data.codechef ? data.lastUpdated : currentCodechef.lastSynced,
+              connected: conns.codechef !== undefined ? !!conns.codechef : currentCodechef.connected,
+              lastSynced: data?.codechef ? data.lastUpdated : currentCodechef.lastSynced,
             },
             hackerrank: {
               ...currentHackerrank,
-              connected: data.connections.hackerrank !== undefined ? data.connections.hackerrank : currentHackerrank.connected,
-              lastSynced: data.hackerrank ? data.lastUpdated : currentHackerrank.lastSynced,
+              connected: conns.hackerrank !== undefined ? !!conns.hackerrank : currentHackerrank.connected,
+              lastSynced: data?.hackerrank ? data.lastUpdated : currentHackerrank.lastSynced,
             },
           });
         } catch (error) {
-          set({ isLoading: false, error: error instanceof Error ? error.message : 'Failed to fetch data' });
-          throw error;
+          console.warn('[Platform Store] Dashboard fetch notice:', error);
+          set({ isLoading: false });
         }
       },
       

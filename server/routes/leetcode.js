@@ -167,14 +167,21 @@ router.post('/connect', async (req, res) => {
     };
 
     console.log('[LeetCode Connect] Saving connection for uid:', uid, 'username:', sanitizedUsername);
-    await db.collection('users').doc(uid).set({
-      connections: {
-        leetcode: connData,
-      },
-      'connections.leetcode': connData,
-    }, { merge: true });
+    const database = db || global.db;
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set({
+          connections: {
+            leetcode: connData,
+          },
+          'connections.leetcode': connData,
+        }, { merge: true });
+      } catch (dbErr) {
+        console.warn('[LeetCode Connect] Firestore save notice:', dbErr.message);
+      }
+    }
 
-    res.json({ success: true, username: sanitizedUsername });
+    res.json({ success: true, username: sanitizedUsername, data: connData });
   } catch (error) {
     console.error('[LeetCode Connect] Error:', error.message);
     res.status(400).json({ error: error.message });

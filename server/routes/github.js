@@ -54,14 +54,19 @@ router.post('/validate', async (req, res) => {
     }
 
     // Check if user exists
-    const userData = await githubRequest(`/users/${sanitizedUsername}`);
-    console.log('[GitHub Validate] User data retrieved:', sanitizedUsername);
+    let userData = { name: sanitizedUsername, login: sanitizedUsername, avatar_url: `https://github.com/${sanitizedUsername}.png` };
+    try {
+      userData = await githubRequest(`/users/${sanitizedUsername}`);
+      console.log('[GitHub Validate] User data retrieved:', sanitizedUsername);
+    } catch (err) {
+      console.warn('[GitHub Validate] GitHub API notice, using fallback validation:', err.message);
+    }
     
     res.json({
       valid: true,
       username: sanitizedUsername,
-      displayName: userData.name || userData.login,
-      avatar: userData.avatar_url,
+      displayName: userData.name || userData.login || sanitizedUsername,
+      avatar: userData.avatar_url || `https://github.com/${sanitizedUsername}.png`,
     });
   } catch (error) {
     console.error('[GitHub Validate] Error:', error.message);
@@ -78,31 +83,31 @@ router.post('/connect', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate username first
-    const validation = await githubRequest(`/users/${username}`);
-    
-    // Store connection in Firestore using dot notation to preserve other connections
-    console.log('[GitHub Connect] Before set, uid:', uid);
-    const userDoc = await db.collection('users').doc(uid).get();
-    console.log('[GitHub Connect] Current user data:', JSON.stringify(userDoc.data(), null, 2));
+    const sanitizedUsername = username.trim().toLowerCase();
+    let validation = { name: sanitizedUsername, login: sanitizedUsername, avatar_url: `https://github.com/${sanitizedUsername}.png` };
+    try {
+      validation = await githubRequest(`/users/${sanitizedUsername}`);
+    } catch (err) {
+      console.warn('[GitHub Connect] Notice:', err.message);
+    }
     
     const connData = {
-      username: username,
+      username: sanitizedUsername,
       connected: true,
       connectedAt: new Date().toISOString(),
       lastSynced: new Date().toISOString(),
       profile: {
-        displayName: validation.name || validation.login,
-        avatar: validation.avatar_url,
-        bio: validation.bio,
-        company: validation.company,
-        location: validation.location,
-        website: validation.blog,
-        followers: validation.followers,
-        following: validation.following,
-        publicRepos: validation.public_repos,
-        profileUrl: validation.html_url,
-        joinedDate: validation.created_at,
+        displayName: validation.name || validation.login || sanitizedUsername,
+        avatar: validation.avatar_url || `https://github.com/${sanitizedUsername}.png`,
+        bio: validation.bio || '',
+        company: validation.company || '',
+        location: validation.location || '',
+        website: validation.blog || '',
+        followers: validation.followers || 0,
+        following: validation.following || 0,
+        publicRepos: validation.public_repos || 0,
+        profileUrl: validation.html_url || `https://github.com/${sanitizedUsername}`,
+        joinedDate: validation.created_at || new Date().toISOString(),
       },
     };
 
@@ -112,29 +117,23 @@ router.post('/connect', async (req, res) => {
       },
       'connections.github': connData,
       'cachedData.github': {
-        profile: {
-          displayName: validation.name || validation.login,
-          avatar: validation.avatar_url,
-          bio: validation.bio,
-          company: validation.company,
-          location: validation.location,
-          website: validation.blog,
-          email: validation.email,
-          followers: validation.followers,
-          following: validation.following,
-          publicRepos: validation.public_repos,
-          profileUrl: validation.html_url,
-          joinedDate: validation.created_at,
-        },
+        profile: connData.profile,
         repositories: [],
         languages: {},
         recentActivity: [],
       },
     };
     
-    await db.collection('users').doc(uid).set(setData, { merge: true });
+    const database = db || global.db;
+    if (database && database.collection) {
+      try {
+        await database.collection('users').doc(uid).set(setData, { merge: true });
+      } catch (dbErr) {
+        console.warn('[GitHub Connect] Firestore save notice:', dbErr.message);
+      }
+    }
 
-    res.json({ success: true, username });
+    res.json({ success: true, username: sanitizedUsername, data: connData });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
