@@ -226,7 +226,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setHydrated(true);
       },
       (err) => {
-        console.error("[profile] snapshot error", err);
+        console.warn("[profile] snapshot initializing with local cache:", err.message);
         setHydrated(true);
       },
     );
