@@ -1,34 +1,24 @@
-/**
- * Enhanced Login Form
- * Login form with remember me, forgot password, and multiple auth methods
- */
-
 import { useState } from "react";
-import { useNavigate, Link } from "@tanstack/react-router";
-import { z } from "zod";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  AlertCircle,
+  Mail,
+  Lock,
   Eye,
   EyeOff,
+  AlertCircle,
   Loader2,
-  Lock,
-  Mail,
   ShieldCheck,
-  Wand2,
+  CheckCircle2,
 } from "lucide-react";
-import { FcGoogle } from "react-icons/fc";
-import { FaGithub } from "react-icons/fa";
+import { FaGoogle, FaGithub, FaApple } from "react-icons/fa";
 import {
   signIn,
   signInWithGoogle,
   signInWithGithub,
-  sendMagicLink,
 } from "@/services/auth.service";
-import { loginSchema, magicLinkSchema } from "@/lib/validation/auth";
+import { loginSchema } from "@/lib/validation/auth";
 import type { LoginFormData } from "@/lib/validation/auth";
 import { toast } from "sonner";
-
-type Mode = "login" | "magic";
 
 export function EnhancedLoginForm() {
   const navigate = useNavigate();
@@ -39,7 +29,6 @@ export function EnhancedLoginForm() {
     return urlParams.get('redirect');
   };
   
-  const [mode, setMode] = useState<Mode>("login");
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -48,9 +37,8 @@ export function EnhancedLoginForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState<
-    null | "email" | "google" | "github" | "magic"
+    null | "email" | "google" | "github"
   >(null);
-  const [magicSent, setMagicSent] = useState(false);
 
   const handleInputChange = (
     field: keyof LoginFormData,
@@ -69,8 +57,7 @@ export function EnhancedLoginForm() {
   };
 
   const validateForm = (): boolean => {
-    const schema = mode === "login" ? loginSchema : magicLinkSchema;
-    const result = schema.safeParse(formData);
+    const result = loginSchema.safeParse(formData);
     if (!result.success) {
       const formErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
@@ -88,11 +75,6 @@ export function EnhancedLoginForm() {
 
     if (!validateForm()) {
       toast.error("Please fix the errors in the form");
-      return;
-    }
-
-    if (mode === "magic") {
-      await handleMagicLink();
       return;
     }
 
@@ -116,29 +98,12 @@ export function EnhancedLoginForm() {
     }
   };
 
-  const handleMagicLink = async () => {
-    setIsSubmitting("magic");
-    try {
-      await sendMagicLink(formData.email);
-      setMagicSent(true);
-      toast.success(
-        "Magic link sent to your email! Click the link in your email to sign in.",
-      );
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send magic link");
-      setErrors({ form: error.message });
-    } finally {
-      setIsSubmitting(null);
-    }
-  };
-
   const handleGoogleSignIn = async () => {
     setIsSubmitting("google");
     try {
       await signInWithGoogle();
-      toast.success("Signed in with Google successfully!");
+      toast.success("Signed in with Google!");
       
-      // Redirect to intended destination or dashboard
       const redirect = getRedirectParam();
       if (redirect && redirect !== "/") {
         navigate({ to: redirect, replace: true });
@@ -147,6 +112,7 @@ export function EnhancedLoginForm() {
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in with Google");
+      setErrors({ form: error.message });
     } finally {
       setIsSubmitting(null);
     }
@@ -156,9 +122,8 @@ export function EnhancedLoginForm() {
     setIsSubmitting("github");
     try {
       await signInWithGithub();
-      toast.success("Signed in with GitHub successfully!");
+      toast.success("Signed in with GitHub!");
       
-      // Redirect to intended destination or dashboard
       const redirect = getRedirectParam();
       if (redirect && redirect !== "/") {
         navigate({ to: redirect, replace: true });
@@ -167,43 +132,50 @@ export function EnhancedLoginForm() {
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in with GitHub");
+      setErrors({ form: error.message });
     } finally {
       setIsSubmitting(null);
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-md">
-      <div className="glass rounded-3xl p-8 shadow-elegant">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold tracking-tight">
+    <div className="w-full max-w-md">
+      <div className="glass rounded-2xl border border-border/70 p-8 shadow-elegant">
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-brand">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+            SkillVerse Access
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Welcome back
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Log in to your Career Command Center.
+          <p className="mt-1 text-xs text-muted-foreground">
+            Sign in to your SkillVerse account to continue
           </p>
         </div>
 
         {/* OAuth Buttons */}
-        <div className="grid gap-2.5 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-2.5">
           <button
             type="button"
-            disabled={!!isSubmitting}
             onClick={handleGoogleSignIn}
-            className="group inline-flex h-11 items-center justify-center gap-2.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground shadow-sm transition-all hover:border-foreground/40 hover:bg-secondary/60 disabled:opacity-60"
+            disabled={!!isSubmitting}
+            className="inline-flex h-11 items-center justify-center gap-2.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground transition-all hover:bg-secondary/60 disabled:opacity-60"
           >
             {isSubmitting === "google" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <FcGoogle className="h-[18px] w-[18px]" />
+              <FaGoogle className="h-4 w-4" />
             )}
             Continue with Google
           </button>
+
           <button
             type="button"
-            disabled={!!isSubmitting}
             onClick={handleGithubSignIn}
-            className="inline-flex h-11 items-center justify-center gap-2.5 rounded-lg border border-[#24292f]/60 bg-[#24292f] text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1b1f24] disabled:opacity-60 dark:border-white/15"
+            disabled={!!isSubmitting}
+            className="inline-flex h-11 items-center justify-center gap-2.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground transition-all hover:bg-secondary/60 disabled:opacity-60"
           >
             {isSubmitting === "github" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -214,46 +186,10 @@ export function EnhancedLoginForm() {
           </button>
         </div>
 
-        {/* Magic Link */}
-        <div className="mb-6">
-          {magicSent ? (
-            <div className="flex items-start gap-2 rounded-lg border border-brand/40 bg-brand/5 p-3 text-xs">
-              <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-brand" />
-              <span>
-                Magic link sent to <b>{formData.email}</b>. Open your inbox and
-                tap the link to sign in.
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMagicSent(false);
-                    setMode("login");
-                  }}
-                  className="ml-1 underline"
-                >
-                  Use a different email
-                </button>
-              </span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setMode("magic");
-                setErrors({});
-              }}
-              disabled={!!isSubmitting}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-dashed border-brand/50 bg-brand/5 text-xs font-semibold text-brand transition-colors hover:bg-brand/10 disabled:opacity-60"
-            >
-              <Wand2 className="h-3.5 w-3.5" />
-              Email me a magic link (passwordless)
-            </button>
-          )}
-        </div>
-
         <div className="flex items-center gap-3 my-6">
           <div className="h-px flex-1 bg-border" />
           <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-            or
+            or with email
           </span>
           <div className="h-px flex-1 bg-border" />
         </div>
@@ -273,59 +209,55 @@ export function EnhancedLoginForm() {
             required
           />
 
-          {/* Password - Only show in login mode */}
-          {mode === "login" && (
-            <FormField
-              label="Password"
-              icon={<Lock className="h-4 w-4" />}
-              type={showPassword ? "text" : "password"}
-              id="password"
-              value={formData.password}
-              onChange={(v) => handleInputChange("password", v)}
-              error={errors.password}
-              placeholder="Your password"
-              autoComplete="current-password"
-              required
-              suffix={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              }
-            />
-          )}
-
-          {/* Remember Me & Forgot Password - Only in login mode */}
-          {mode === "login" && (
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.rememberMe}
-                  onChange={(e) =>
-                    handleInputChange("rememberMe", e.target.checked)
-                  }
-                  className="h-4 w-4 rounded border-border bg-background text-brand focus:ring-brand focus:ring-offset-0"
-                />
-                <span className="text-xs text-muted-foreground">
-                  Remember me
-                </span>
-              </label>
-              <Link
-                to="/forgot-password"
-                className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          {/* Password */}
+          <FormField
+            label="Password"
+            icon={<Lock className="h-4 w-4" />}
+            type={showPassword ? "text" : "password"}
+            id="password"
+            value={formData.password}
+            onChange={(v) => handleInputChange("password", v)}
+            error={errors.password}
+            placeholder="Your password"
+            autoComplete="current-password"
+            required
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                Forgot password?
-              </Link>
-            </div>
-          )}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            }
+          />
+
+          {/* Remember Me & Forgot Password */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.rememberMe}
+                onChange={(e) =>
+                  handleInputChange("rememberMe", e.target.checked)
+                }
+                className="h-4 w-4 rounded border-border bg-background text-brand focus:ring-brand focus:ring-offset-0"
+              />
+              <span className="text-xs text-muted-foreground">
+                Remember me
+              </span>
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-xs font-medium text-brand hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           {/* Form Error */}
           {errors.form && (
@@ -338,16 +270,13 @@ export function EnhancedLoginForm() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting === "email" || isSubmitting === "magic"}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand-gradient text-sm font-semibold text-white shadow-glow transition-transform hover:scale-[1.01] disabled:opacity-60"
+            disabled={isSubmitting === "email"}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand text-brand-foreground text-sm font-semibold shadow-glow transition-transform hover:scale-[1.01] hover:opacity-90 disabled:opacity-60 cursor-pointer"
           >
-            {isSubmitting === "email" || isSubmitting === "magic" ? (
+            {isSubmitting === "email" ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />{" "}
-                {mode === "magic" ? "Sending..." : "Logging in..."}
+                <Loader2 className="h-4 w-4 animate-spin" /> Logging in...
               </>
-            ) : mode === "magic" ? (
-              "Send Magic Link"
             ) : (
               "Log in"
             )}
@@ -358,21 +287,21 @@ export function EnhancedLoginForm() {
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-brand" />
             <span>
               Secured with Firebase Authentication. Your credentials never touch
-              our servers.
+              our servers directly.
             </span>
           </div>
         </form>
 
-        {/* Sign Up Link */}
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          New to SkillVerse?{" "}
+        {/* Footer */}
+        <div className="mt-6 text-center text-xs text-muted-foreground">
+          Don't have an account?{" "}
           <Link
-            to="/signup"
-            className="font-semibold text-foreground hover:underline"
+            to="/auth"
+            className="font-semibold text-brand hover:underline"
           >
-            Create an account
+            Create account
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );
@@ -406,42 +335,36 @@ function FormField({
   suffix,
 }: FormFieldProps) {
   return (
-    <div>
+    <div className="space-y-1.5 text-left">
       <label
         htmlFor={id}
-        className="mb-1.5 block text-xs font-medium text-foreground"
+        className="block text-xs font-semibold text-foreground"
       >
         {label} {required && <span className="text-destructive">*</span>}
       </label>
-      <div
-        className={`flex h-11 items-center gap-2 rounded-md border bg-background px-3 transition-colors focus-within:border-foreground ${
-          error ? "border-destructive" : "border-border"
-        }`}
-      >
-        <span className="text-muted-foreground">{icon}</span>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+          {icon}
+        </div>
         <input
-          id={id}
-          name={id}
           type={type}
-          autoComplete={autoComplete}
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="h-full flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
-          aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : undefined}
+          autoComplete={autoComplete}
           required={required}
+          className={`block h-10 w-full rounded-md border bg-background pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand ${
+            error ? "border-destructive focus:border-destructive focus:ring-destructive" : "border-border"
+          } ${suffix ? "pr-10" : ""}`}
         />
-        {suffix && <span className="text-muted-foreground">{suffix}</span>}
+        {suffix && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            {suffix}
+          </div>
+        )}
       </div>
-      {error && (
-        <p
-          id={`${id}-error`}
-          className="mt-1.5 flex items-center gap-1.5 text-xs text-destructive"
-        >
-          <AlertCircle className="h-3 w-3" /> {error}
-        </p>
-      )}
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>
   );
 }

@@ -91,32 +91,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<
-    null | "email" | "google" | "github" | "magic"
+    null | "email" | "google" | "github"
   >(null);
-  const [magicSent, setMagicSent] = useState(false);
 
   const goDashboard = () => navigate({ to: "/dashboard", replace: true });
-
-  const onMagicLink = async () => {
-    setErrors({});
-    const parsed = emailSchema.safeParse(email);
-    if (!parsed.success) {
-      setErrors({
-        email: parsed.error.issues[0]?.message ?? "Enter a valid email",
-      });
-      return;
-    }
-    setSubmitting("magic");
-    try {
-      await sendMagicLink(parsed.data);
-      setMagicSent(true);
-      toast.success("Magic link sent! Check your email to sign in.");
-    } catch (err) {
-      setErrors({ form: friendlyAuthError(err) });
-    } finally {
-      setSubmitting(null);
-    }
-  };
 
   const onEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,38 +196,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </button>
         </div>
 
-        <div className="mt-4">
-          {magicSent ? (
-            <div className="flex items-start gap-2 rounded-lg border border-brand/40 bg-brand/5 p-3 text-xs">
-              <Mail className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-brand" />
-              <span>
-                Magic link sent to <b>{email}</b>. Open your inbox and tap the
-                link to sign in.
-                <button
-                  type="button"
-                  onClick={() => setMagicSent(false)}
-                  className="ml-1 underline"
-                >
-                  Use a different email
-                </button>
-              </span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onMagicLink}
-              disabled={!!submitting}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-dashed border-brand/50 bg-brand/5 text-xs font-semibold text-brand transition-colors hover:bg-brand/10 disabled:opacity-60"
-            >
-              {submitting === "magic" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Wand2 className="h-3.5 w-3.5" />
-              )}
-              Email me a magic link (passwordless)
-            </button>
-          )}
-        </div>
+
 
         <div className="my-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-border" />
