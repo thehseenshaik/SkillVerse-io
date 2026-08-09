@@ -11,7 +11,7 @@ import { fbAuth } from "@/lib/firebase";
  */
 export function AuthGate({
   children,
-  requireVerified = true,
+  requireVerified = false,
   requireOnboarding = false,
 }: {
   children: ReactNode;

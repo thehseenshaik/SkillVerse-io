@@ -92,29 +92,20 @@ function RootComponent() {
   if (!mounted) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ProfileProvider>
-            <RouteProgress />
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="animate-spin h-8 w-8 border-2 border-brand border-t-transparent rounded-full" />
-            </div>
-            <Toaster position="top-center" richColors />
-          </ProfileProvider>
-        </AuthProvider>
+        <RouteProgress />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-2 border-brand border-t-transparent rounded-full" />
+        </div>
       </QueryClientProvider>
     );
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ProfileProvider>
-          <RouteProgress />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster position="top-center" richColors />
-        </ProfileProvider>
-      </AuthProvider>
+      <RouteProgress />
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+      <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
 }

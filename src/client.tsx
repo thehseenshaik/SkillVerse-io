@@ -103,17 +103,21 @@ function SessionManager() {
   return null;
 }
 
+import { ProfileProvider } from "@/lib/profile-context";
+
 // Render the app
 const rootElement = document.getElementById("root")!;
 const root = createRoot(rootElement);
 root.render(
   <ErrorBoundary>
     <AuthProvider>
-      <IdentityHubProvider>
-        <SessionManager />
-        <RouterProvider router={router} />
-        <Toaster />
-      </IdentityHubProvider>
+      <ProfileProvider>
+        <IdentityHubProvider>
+          <SessionManager />
+          <RouterProvider router={router} />
+          <Toaster />
+        </IdentityHubProvider>
+      </ProfileProvider>
     </AuthProvider>
   </ErrorBoundary>,
 );
