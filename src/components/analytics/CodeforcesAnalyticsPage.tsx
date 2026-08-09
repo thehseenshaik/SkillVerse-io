@@ -137,7 +137,7 @@ export function CodeforcesAnalyticsPage() {
           <p className="text-muted-foreground mb-4">
             Connect your Codeforces account to view detailed analytics
           </p>
-          <Button onClick={() => window.location.href = '/identity-hub'}>
+          <Button onClick={() => window.location.href = '/connections'}>
             Connect Codeforces
           </Button>
         </div>

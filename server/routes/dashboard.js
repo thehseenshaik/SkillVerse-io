@@ -20,8 +20,31 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const connections = userData.connections || {};
-    const cachedData = userData.cachedData || {};
+    const getConn = (platform) => {
+      return userData?.connections?.[platform] || userData?.[`connections.${platform}`] || {};
+    };
+
+    const getCache = (platform) => {
+      return userData?.cachedData?.[platform] || userData?.[`cachedData.${platform}`] || null;
+    };
+
+    const connections = {
+      github: getConn('github'),
+      leetcode: getConn('leetcode'),
+      gfg: getConn('gfg'),
+      codeforces: getConn('codeforces'),
+      codechef: getConn('codechef'),
+      hackerrank: getConn('hackerrank'),
+    };
+
+    const cachedData = {
+      github: getCache('github'),
+      leetcode: getCache('leetcode'),
+      gfg: getCache('gfg'),
+      codeforces: getCache('codeforces'),
+      codechef: getCache('codechef'),
+      hackerrank: getCache('hackerrank'),
+    };
     
     console.log('[Dashboard] Successfully loaded data for user:', uid);
     console.log('[Dashboard] Connections:', JSON.stringify(connections, null, 2));

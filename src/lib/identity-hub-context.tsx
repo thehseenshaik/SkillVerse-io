@@ -109,19 +109,31 @@ export function IdentityHubProvider({ children }: { children: ReactNode }) {
       const userData = await response.json();
       const connectionsData = userData.connections || {};
 
-      const platformConnections: PlatformConnection[] = Object.entries(connectionsData).map(
-        ([platform, data]: [string, any]) => ({
-          platform: platform as Platform,
-          status: data.connected ? 'connected' : 'disconnected',
-          username: data.username || '',
-          lastSynced: data.lastSynced ? new Date(data.lastSynced) : undefined,
-          syncStatus: undefined,
-        })
+      const ALL_PLATFORMS: Platform[] = [
+        "github",
+        "leetcode",
+        "gfg",
+        "codeforces",
+        "codechef",
+        "hackerrank",
+      ];
+
+      const platformConnections: PlatformConnection[] = ALL_PLATFORMS.map(
+        (platform) => {
+          const data = connectionsData[platform] || {};
+          return {
+            platform,
+            status: data.connected ? "connected" : "disconnected",
+            username: data.username || "",
+            lastSynced: data.lastSynced ? new Date(data.lastSynced) : undefined,
+            syncStatus: data.connected ? "synced" : undefined,
+          };
+        },
       );
 
       setConnections(platformConnections);
     } catch (error) {
-      console.error('Failed to load connections:', error);
+      console.error("Failed to load connections:", error);
     }
   }, [user?.id]);
 

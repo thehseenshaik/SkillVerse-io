@@ -174,7 +174,7 @@ export function GitHubAnalyticsPage() {
           <p className="text-muted-foreground mb-4">
             Connect your GitHub account to view detailed analytics
           </p>
-          <Button onClick={() => window.location.href = '/identity-hub'}>
+          <Button onClick={() => window.location.href = '/connections'}>
             Connect GitHub
           </Button>
         </div>

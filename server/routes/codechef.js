@@ -74,25 +74,29 @@ router.post('/connect', async (req, res) => {
 
     const profile = data.profile || {};
     
-    // Store connection in Firestore using dot notation to preserve other connections
-    await db.collection('users').doc(uid).set({
-      'connections.codechef': {
-        username: sanitizedUsername,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        lastSynced: new Date().toISOString(),
-        profile: {
-          displayName: profile.name || sanitizedUsername,
-          avatar: profile.profile || null,
-          currentRating: profile.currentRating || 0,
-          highestRating: profile.highestRating || 0,
-          countryFlag: profile.countryFlag || null,
-          countryName: profile.countryName || null,
-          globalRank: profile.globalRank || 0,
-          countryRank: profile.countryRank || 0,
-          stars: profile.stars || null,
-        },
+    const connData = {
+      username: sanitizedUsername,
+      connected: true,
+      connectedAt: new Date().toISOString(),
+      lastSynced: new Date().toISOString(),
+      profile: {
+        displayName: profile.name || sanitizedUsername,
+        avatar: profile.profile || null,
+        currentRating: profile.currentRating || 0,
+        highestRating: profile.highestRating || 0,
+        countryFlag: profile.countryFlag || null,
+        countryName: profile.countryName || null,
+        globalRank: profile.globalRank || 0,
+        countryRank: profile.countryRank || 0,
+        stars: profile.stars || null,
       },
+    };
+
+    await db.collection('users').doc(uid).set({
+      connections: {
+        codechef: connData,
+      },
+      'connections.codechef': connData,
     }, { merge: true });
 
     res.json({ success: true, username: sanitizedUsername });
@@ -112,13 +116,15 @@ router.post('/sync', async (req, res) => {
 
     // Get user's CodeChef connection
     const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.data() || {};
     
-    if (!userData?.connections?.codechef?.connected) {
+    const codechefConn = userData?.connections?.codechef || userData?.['connections.codechef'];
+
+    if (!codechefConn || !codechefConn.connected || !codechefConn.username) {
       return res.status(400).json({ error: 'CodeChef not connected' });
     }
 
-    const username = userData.connections.codechef.username;
+    const username = codechefConn.username;
     
     // Fetch comprehensive CodeChef data
     const data = await codechefRequest(username);

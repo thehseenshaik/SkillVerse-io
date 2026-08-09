@@ -134,16 +134,6 @@ function ProfilePage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Seed name/email from auth once, if empty.
-  useEffect(() => {
-    if (!hydrated || !user) return;
-    const patch: Partial<typeof profile> = {};
-    if (!profile.fullName) patch.fullName = user.name;
-    if (!profile.email) patch.email = user.email;
-    if (Object.keys(patch).length) update(patch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, user?.id]);
-
   // Refresh connections on mount
   useEffect(() => {
     refreshConnections();
@@ -176,8 +166,10 @@ function ProfilePage() {
 
   // Track unsaved changes
   useEffect(() => {
-    setHasUnsavedChanges(true);
-  }, [profile]);
+    if (!hasUnsavedChanges) {
+      setHasUnsavedChanges(true);
+    }
+  }, [profile, hasUnsavedChanges]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -718,7 +710,7 @@ function TextField(props: {
         )}
         <input
           type={props.type ?? "text"}
-          value={props.value}
+          value={props.value ?? ""}
           onChange={(e) => props.onChange(e.target.value)}
           maxLength={props.maxLength}
           placeholder={props.placeholder}
@@ -726,11 +718,13 @@ function TextField(props: {
           required={props.required}
         />
       </div>
-      {props.error && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3 w-3" /> {props.error}
-        </p>
-      )}
+      <div className="min-h-[1.25rem] pt-1">
+        {props.error && (
+          <p className="flex items-center gap-1 text-xs text-destructive">
+            <AlertCircle className="h-3 w-3 shrink-0" /> {props.error}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -752,7 +746,7 @@ function SelectField(props: {
           <span className="text-muted-foreground">{props.icon}</span>
         )}
         <select
-          value={props.value}
+          value={props.value ?? ""}
           onChange={(e) => props.onChange(e.target.value)}
           className="h-full flex-1 cursor-pointer bg-transparent text-sm outline-none"
         >
@@ -763,6 +757,7 @@ function SelectField(props: {
           ))}
         </select>
       </div>
+      <div className="min-h-[1.25rem]" />
     </div>
   );
 }
@@ -803,7 +798,7 @@ function RepeaterSection<T extends { id: string }>(props: {
   };
   const patch = (id: string, key: keyof T, value: string) => {
     props.onChange(
-      props.items.map((r) => (r.id === id ? { ...r, [key]: value.trim() } : r)),
+      props.items.map((r) => (r.id === id ? { ...r, [key]: value } : r)),
     );
   };
 
@@ -940,12 +935,14 @@ function RepeaterSection<T extends { id: string }>(props: {
                         }`}
                       />
                     )}
-                    {errors[row.id]?.[String(f.key)] && (
-                      <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
-                        <AlertCircle className="h-3 w-3" />{" "}
-                        {errors[row.id][String(f.key)]}
-                      </p>
-                    )}
+                    <div className="min-h-[1.25rem] pt-1">
+                      {errors[row.id]?.[String(f.key)] && (
+                        <p className="flex items-center gap-1 text-xs text-destructive">
+                          <AlertCircle className="h-3 w-3 shrink-0" />{" "}
+                          {errors[row.id][String(f.key)]}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -93,17 +93,24 @@ interface LeetCodeBadge {
   creationDate: string;
 }
 
+interface GFGPOTD {
+  currentStreak: number;
+  longestStreak: number;
+  globalLongestStreak: number;
+  totalSolved: number;
+  currentStreakInclTimeMachine: number;
+  todaySolved: boolean;
+}
+
 interface GFGProfile {
   displayName: string;
   avatar: string | null;
-  institute: string | null;
+  codingScore: number;
+  monthlyScore: number;
+  problemsSolved: number;
+  instituteName: string | null;
   instituteRank: string | null;
-  currentStreak: string;
-  maxStreak: string;
-  codingScore: string;
-  monthlyScore: string;
-  totalProblemsSolved: string;
-  languagesUsed: string | null;
+  articlesPublished: number;
 }
 
 interface GFGStats {
@@ -112,7 +119,7 @@ interface GFGStats {
   easy: number;
   medium: number;
   hard: number;
-  total: string;
+  total: number;
 }
 
 interface GFGQuestion {
@@ -120,71 +127,11 @@ interface GFGQuestion {
   questionUrl: string;
 }
 
-interface CodeforcesProfile {
-  displayName: string;
-  avatar: string | null;
-  rating: number;
-  maxRating: number;
-  rank: string;
-  maxRank: string;
-  country: string | null;
-  city: string | null;
-  organization: string | null;
-  contribution: number;
-  friendOfCount: number;
-}
-
-interface CodeforcesRatingChange {
-  contestId: number;
-  contestName: string;
-  rank: number;
-  ratingUpdateTimeSeconds: number;
-  oldRating: number;
-  newRating: number;
-}
-
-interface CodeforcesData {
-  profile: CodeforcesProfile;
-  ratingHistory: CodeforcesRatingChange[];
-  totalContests: number;
-}
-
-interface CodeChefProfile {
-  displayName: string;
-  avatar: string | null;
-  currentRating: number;
-  highestRating: number;
-  countryFlag: string | null;
-  countryName: string | null;
-  globalRank: number;
-  countryRank: number;
-  stars: string | null;
-}
-
-interface CodeChefData {
-  profile: CodeChefProfile;
-}
-
-interface HackerRankProfile {
-  displayName: string;
-  avatar: string | null;
-}
-
-interface HackerRankData {
-  profile: HackerRankProfile;
-  stats: any;
-}
-
 interface GFGData {
   profile: GFGProfile;
-  stats: GFGStats;
-  solvedQuestions: {
-    school: GFGQuestion[];
-    basic: GFGQuestion[];
-    easy: GFGQuestion[];
-    medium: GFGQuestion[];
-    hard: GFGQuestion[];
-  };
+  potd: GFGPOTD;
+  problems: GFGStats;
+  stats?: GFGStats;
 }
 
 interface LeetCodeData {
@@ -483,6 +430,7 @@ export const usePlatformStore = create<PlatformStore>()(
               connectedAt: new Date().toISOString(),
             },
           });
+          await get().syncLeetCode(uid);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
@@ -490,6 +438,7 @@ export const usePlatformStore = create<PlatformStore>()(
       },
       
       syncLeetCode: async (uid: string) => {
+        if (get().isSyncing) return;
         set({ isSyncing: true, error: null });
         try {
           const response = await fetch(`${API_BASE}/api/leetcode/sync`, {
@@ -583,6 +532,7 @@ export const usePlatformStore = create<PlatformStore>()(
               connectedAt: new Date().toISOString(),
             },
           });
+          await get().syncGFG(uid);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
@@ -683,6 +633,7 @@ export const usePlatformStore = create<PlatformStore>()(
               connectedAt: new Date().toISOString(),
             },
           });
+          await get().syncCodeforces(uid);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
@@ -783,6 +734,7 @@ export const usePlatformStore = create<PlatformStore>()(
               connectedAt: new Date().toISOString(),
             },
           });
+          await get().syncCodeChef(uid);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
@@ -883,6 +835,7 @@ export const usePlatformStore = create<PlatformStore>()(
               connectedAt: new Date().toISOString(),
             },
           });
+          await get().syncHackerRank(uid);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;

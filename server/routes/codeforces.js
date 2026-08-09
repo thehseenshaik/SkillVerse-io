@@ -83,29 +83,33 @@ router.post('/connect', async (req, res) => {
 
     const user = users[0];
     
-    // Store connection in Firestore using dot notation to preserve other connections
-    await db.collection('users').doc(uid).set({
-      'connections.codeforces': {
-        username: sanitizedUsername,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        lastSynced: new Date().toISOString(),
-        profile: {
-          displayName: user.firstName && user.lastName 
-            ? `${user.firstName} ${user.lastName}` 
-            : sanitizedUsername,
-          avatar: user.avatar ? `https:${user.avatar}` : null,
-          rating: user.rating || 0,
-          maxRating: user.maxRating || 0,
-          rank: user.rank || 'unrated',
-          maxRank: user.maxRank || 'unrated',
-          country: user.country || null,
-          city: user.city || null,
-          organization: user.organization || null,
-          contribution: user.contribution || 0,
-          friendOfCount: user.friendOfCount || 0,
-        },
+    const connData = {
+      username: sanitizedUsername,
+      connected: true,
+      connectedAt: new Date().toISOString(),
+      lastSynced: new Date().toISOString(),
+      profile: {
+        displayName: user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : sanitizedUsername,
+        avatar: user.avatar ? `https:${user.avatar}` : null,
+        rating: user.rating || 0,
+        maxRating: user.maxRating || 0,
+        rank: user.rank || 'unrated',
+        maxRank: user.maxRank || 'unrated',
+        country: user.country || null,
+        city: user.city || null,
+        organization: user.organization || null,
+        contribution: user.contribution || 0,
+        friendOfCount: user.friendOfCount || 0,
       },
+    };
+
+    await db.collection('users').doc(uid).set({
+      connections: {
+        codeforces: connData,
+      },
+      'connections.codeforces': connData,
     }, { merge: true });
 
     res.json({ success: true, username: sanitizedUsername });
@@ -125,13 +129,15 @@ router.post('/sync', async (req, res) => {
 
     // Get user's Codeforces connection
     const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.data() || {};
     
-    if (!userData?.connections?.codeforces?.connected) {
+    const codeforcesConn = userData?.connections?.codeforces || userData?.['connections.codeforces'];
+
+    if (!codeforcesConn || !codeforcesConn.connected || !codeforcesConn.username) {
       return res.status(400).json({ error: 'Codeforces not connected' });
     }
 
-    const username = userData.connections.codeforces.username;
+    const username = codeforcesConn.username;
     
     // Fetch comprehensive Codeforces data
     const [users, ratingHistory] = await Promise.all([

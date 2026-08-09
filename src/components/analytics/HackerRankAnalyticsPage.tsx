@@ -104,7 +104,7 @@ export function HackerRankAnalyticsPage() {
           <p className="text-muted-foreground mb-4">
             Connect your HackerRank account to view detailed analytics
           </p>
-          <Button onClick={() => window.location.href = '/identity-hub'}>
+          <Button onClick={() => window.location.href = '/connections'}>
             Connect HackerRank
           </Button>
         </div>

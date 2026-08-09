@@ -512,8 +512,8 @@ function DashboardPage() {
                           return (
                             <li
                               key={name}
-                              className={`flex items-center justify-between rounded-xl border border-border/60 bg-background/40 px-3 py-2.5 transition-all hover:border-brand/40 hover:bg-background/70 ${isConnected ? 'cursor-pointer' : ''}`}
-                              onClick={() => isConnected && navigate({ to: `/analytics/${platform}` })}
+                              className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 px-3 py-2.5 transition-all hover:border-brand/40 hover:bg-background/70 cursor-pointer"
+                              onClick={() => isConnected ? navigate({ to: `/analytics/${platform}` }) : navigate({ to: '/connections' })}
                             >
                               <span className="flex min-w-0 items-center gap-3">
                                 <span className="grid h-8 w-8 place-items-center rounded-lg border border-border/60 bg-background">
@@ -542,7 +542,7 @@ function DashboardPage() {
                                 </button>
                               ) : (
                                 <Link
-                                  to="/identity-hub"
+                                  to="/connections"
                                   className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                                   onClick={(e) => e.stopPropagation()}
                                 >

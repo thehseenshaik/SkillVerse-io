@@ -39,9 +39,9 @@ export function OnboardingCard({ className }: OnboardingCardProps) {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/identity-hub">
+            <Link to="/connections">
               <Button size="sm" variant="outline">
-                Explore Features
+                Manage Connections
               </Button>
             </Link>
           </div>

@@ -86,26 +86,31 @@ router.post('/connect', async (req, res) => {
     const userDoc = await db.collection('users').doc(uid).get();
     console.log('[GitHub Connect] Current user data:', JSON.stringify(userDoc.data(), null, 2));
     
-    const setData = {
-      'connections.github': {
-        username: username,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        lastSynced: new Date().toISOString(),
-        profile: {
-          displayName: validation.name || validation.login,
-          avatar: validation.avatar_url,
-          bio: validation.bio,
-          company: validation.company,
-          location: validation.location,
-          website: validation.blog,
-          followers: validation.followers,
-          following: validation.following,
-          publicRepos: validation.public_repos,
-          profileUrl: validation.html_url,
-          joinedDate: validation.created_at,
-        },
+    const connData = {
+      username: username,
+      connected: true,
+      connectedAt: new Date().toISOString(),
+      lastSynced: new Date().toISOString(),
+      profile: {
+        displayName: validation.name || validation.login,
+        avatar: validation.avatar_url,
+        bio: validation.bio,
+        company: validation.company,
+        location: validation.location,
+        website: validation.blog,
+        followers: validation.followers,
+        following: validation.following,
+        publicRepos: validation.public_repos,
+        profileUrl: validation.html_url,
+        joinedDate: validation.created_at,
       },
+    };
+
+    const setData = {
+      connections: {
+        github: connData,
+      },
+      'connections.github': connData,
       'cachedData.github': {
         profile: {
           displayName: validation.name || validation.login,
@@ -126,13 +131,8 @@ router.post('/connect', async (req, res) => {
         recentActivity: [],
       },
     };
-    console.log('[GitHub Connect] Data to set:', JSON.stringify(setData, null, 2));
     
     await db.collection('users').doc(uid).set(setData, { merge: true });
-    
-    console.log('[GitHub Connect] After set');
-    const afterDoc = await db.collection('users').doc(uid).get();
-    console.log('[GitHub Connect] After user data:', JSON.stringify(afterDoc.data(), null, 2));
 
     res.json({ success: true, username });
   } catch (error) {
@@ -151,13 +151,15 @@ router.post('/sync', async (req, res) => {
 
     // Get user's GitHub connection
     const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.data() || {};
     
-    if (!userData?.connections?.github?.connected) {
+    const githubConn = userData?.connections?.github || userData?.['connections.github'];
+
+    if (!githubConn || !githubConn.connected || !githubConn.username) {
       return res.status(400).json({ error: 'GitHub not connected' });
     }
 
-    const username = userData.connections.github.username;
+    const username = githubConn.username;
     
     // Fetch comprehensive GitHub data
     const [profile, repos, events] = await Promise.all([

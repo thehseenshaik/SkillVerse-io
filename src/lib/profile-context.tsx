@@ -153,34 +153,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const currentUidRef = useRef<string | null>(null);
   const isDirtyRef = useRef(false);
 
-  // Ensure hydration is set to true on client
-  useEffect(() => {
-    if (typeof window !== "undefined" && !hydrated) {
-      setHydrated(true);
-    }
-  }, [hydrated]);
-
   // Subscribe to the user's profile doc (with local cache hydration).
   useEffect(() => {
     if (!authHydrated) return;
     currentUidRef.current = uid;
     isDirtyRef.current = false;
+
     if (!uid) {
       setProfile(EMPTY_PROFILE);
       setHydrated(true);
       return;
     }
 
-    // Ensure hydration is set to true on client
-    if (typeof window !== "undefined" && !hydrated) {
-      setHydrated(true);
-    }
-
-    // Hydrate from local cache first for instant UI.
+    // Hydrate from local cache first for instant UI responsiveness.
     try {
       const raw = localStorage.getItem(cacheKey(uid));
-      if (raw)
-        setProfile({ ...EMPTY_PROFILE, ...(JSON.parse(raw) as ResumeProfile) });
+      if (raw) {
+        const cached = JSON.parse(raw) as ResumeProfile;
+        setProfile({ ...EMPTY_PROFILE, ...cached });
+      }
     } catch {
       /* ignore */
     }
@@ -190,15 +181,47 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       ref,
       (snap) => {
         if (snap.exists()) {
+          // If local state has unsaved edits, do not overwrite with remote snapshot
+          if (isDirtyRef.current) return;
+
           const data = snap.data() as Partial<ResumeProfile>;
           suppressWriteRef.current = true;
-          const next = { ...EMPTY_PROFILE, ...data };
+          const next: ResumeProfile = {
+            fullName: data.fullName ?? user?.name ?? "",
+            headline: data.headline ?? "",
+            role: data.role ?? "Student",
+            gender: data.gender ?? "",
+            pronouns: data.pronouns ?? "",
+            email: data.email ?? user?.email ?? "",
+            phone: data.phone ?? "",
+            location: data.location ?? "",
+            summary: data.summary ?? "",
+            links: {
+              website: data.links?.website ?? "",
+              linkedin: data.links?.linkedin ?? "",
+              github: data.links?.github ?? "",
+              leetcode: data.links?.leetcode ?? "",
+            },
+            skills: data.skills ?? "",
+            education: Array.isArray(data.education) ? data.education : [],
+            experience: Array.isArray(data.experience) ? data.experience : [],
+            projects: Array.isArray(data.projects) ? data.projects : [],
+            achievements: data.achievements ?? "",
+          };
           setProfile(next);
           try {
             localStorage.setItem(cacheKey(uid), JSON.stringify(next));
           } catch {
             /* ignore */
           }
+        } else if (user) {
+          // New user document in Firestore - initialize with Auth name/email
+          const next: ResumeProfile = {
+            ...EMPTY_PROFILE,
+            fullName: user.name || "",
+            email: user.email || "",
+          };
+          setProfile(next);
         }
         setHydrated(true);
       },
@@ -211,7 +234,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       unsub();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [uid, authHydrated]);
+  }, [uid, authHydrated, user]);
 
   // Debounced write on every profile change (after hydration).
   useEffect(() => {

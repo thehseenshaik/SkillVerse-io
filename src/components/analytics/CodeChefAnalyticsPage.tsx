@@ -113,7 +113,7 @@ export function CodeChefAnalyticsPage() {
           <p className="text-muted-foreground mb-4">
             Connect your CodeChef account to view detailed analytics
           </p>
-          <Button onClick={() => window.location.href = '/identity-hub'}>
+          <Button onClick={() => window.location.href = '/connections'}>
             Connect CodeChef
           </Button>
         </div>

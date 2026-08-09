@@ -1,20 +1,128 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const { db } = require('../index');
 
-const GFG_API_BASE = 'https://geeks-for-geeks-api.vercel.app';
+// Helper function to fetch and parse public GFG profile and POTD data
+async function fetchGfgPublicProfile(username) {
+  if (!username || typeof username !== 'string') {
+    throw new Error('Invalid GFG username');
+  }
 
-// Helper function to make GFG API requests
-async function gfgRequest(username) {
+  const sanitizedUsername = username.trim();
+  
+  // Validate username format (alphanumeric, underscores, hyphens)
+  if (!/^[a-zA-Z0-9_-]+$/.test(sanitizedUsername)) {
+    throw new Error('Invalid GeeksforGeeks username format');
+  }
+
+  const url = `https://www.geeksforgeeks.org/user/${encodeURIComponent(sanitizedUsername)}/`;
+  console.log('[GFG Scraper] Fetching public profile:', url);
+
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+  };
+
   try {
-    const response = await axios.get(`${GFG_API_BASE}/${username}`);
-    return response.data;
-  } catch (error) {
-    if (error.response?.status === 404 || error.response?.data?.error === 'Profile Not Found') {
-      throw new Error('GeeksforGeeks user not found');
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('GFG profile not found. Check your username and try again.');
+      }
+      throw new Error(`Failed to fetch GFG profile (HTTP ${response.status})`);
     }
-    throw new Error('Failed to fetch GeeksforGeeks data');
+
+    const html = await response.text();
+    const matches = html.match(/self\.__next_f\.push\((.*?)\)/gs) || [];
+
+    let articleCountData = null;
+    let mentorData = null;
+
+    for (const m of matches) {
+      if (!articleCountData && (m.includes('articleCount') || m.includes('total_problems_solved'))) {
+        const match = m.match(/\\"articleCount\\":(\{.*?\}),\\"userData\\"/);
+        if (match) {
+          try {
+            const unescaped = match[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+            articleCountData = JSON.parse(unescaped);
+          } catch (e) {
+            console.error('[GFG Scraper] articleCount parse error:', e.message);
+          }
+        }
+      }
+
+      if (!mentorData && m.includes('"mentor":')) {
+        const match = m.match(/\\"mentor\\":(\{.*?\}),\\"username\\"/);
+        if (match) {
+          try {
+            const unescaped = match[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+            mentorData = JSON.parse(unescaped);
+          } catch (e) {
+            console.error('[GFG Scraper] mentor parse error:', e.message);
+          }
+        }
+      }
+    }
+
+    if (!articleCountData && !mentorData) {
+      throw new Error('GFG profile not found. Check your username and try again.');
+    }
+
+    // Parse problem difficulty breakdown if present
+    let difficultyStats = {
+      school: 0,
+      basic: 0,
+      easy: 0,
+      medium: 0,
+      hard: 0,
+      total: articleCountData?.total_problems_solved ?? 0
+    };
+
+    const diffMatch = html.match(/\"solvedStats\":(\{.*?\})/);
+    if (diffMatch) {
+      try {
+        const parsedDiff = JSON.parse(diffMatch[1]);
+        difficultyStats.school = parsedDiff.school?.count || 0;
+        difficultyStats.basic = parsedDiff.basic?.count || 0;
+        difficultyStats.easy = parsedDiff.easy?.count || 0;
+        difficultyStats.medium = parsedDiff.medium?.count || 0;
+        difficultyStats.hard = parsedDiff.hard?.count || 0;
+      } catch (e) {
+        /* ignore */
+      }
+    }
+
+    const currentStreak = articleCountData?.pod_solved_current_streak ?? 0;
+
+    return {
+      platform: 'gfg',
+      username: sanitizedUsername,
+      profileUrl: `https://www.geeksforgeeks.org/user/${encodeURIComponent(sanitizedUsername)}/`,
+      profile: {
+        displayName: articleCountData?.name || mentorData?.name || sanitizedUsername,
+        avatar: articleCountData?.profile_image_url || mentorData?.profile_image_url || null,
+        codingScore: articleCountData?.score ?? 0,
+        monthlyScore: articleCountData?.monthly_score ?? 0,
+        problemsSolved: articleCountData?.total_problems_solved ?? 0,
+        instituteName: articleCountData?.institute_name || mentorData?.school_info?.[0]?.institution_name || null,
+        instituteRank: articleCountData?.institute_rank || null,
+        articlesPublished: articleCountData?.total_articles_published ?? 0,
+      },
+      potd: {
+        currentStreak: currentStreak,
+        longestStreak: articleCountData?.pod_solved_longest_streak ?? 0,
+        globalLongestStreak: articleCountData?.pod_solved_global_longest_streak ?? 0,
+        totalSolved: articleCountData?.pod_correct_submissions_count ?? 0,
+        currentStreakInclTimeMachine: articleCountData?.pod_solved_current_streak_incl_timemachine ?? 0,
+        todaySolved: currentStreak > 0,
+      },
+      problems: difficultyStats,
+    };
+  } catch (error) {
+    console.error('[GFG Scraper] Error:', error.message);
+    throw error;
   }
 }
 
@@ -27,27 +135,13 @@ router.post('/validate', async (req, res) => {
       return res.status(400).json({ error: 'Invalid username' });
     }
 
-    const sanitizedUsername = username.trim();
-    
-    // Validate username format (alphanumeric and some special chars)
-    if (!/^[a-zA-Z0-9_-]+$/.test(sanitizedUsername)) {
-      return res.status(400).json({ error: 'Invalid GeeksforGeeks username format' });
-    }
-
-    // Check if user exists
-    const data = await gfgRequest(sanitizedUsername);
-    
-    if (data.error === 'Profile Not Found') {
-      return res.status(400).json({ error: 'GeeksforGeeks user not found' });
-    }
-
-    const info = data.info || {};
+    const data = await fetchGfgPublicProfile(username);
     
     res.json({
       valid: true,
-      username: sanitizedUsername,
-      displayName: info.fullName || sanitizedUsername,
-      avatar: info.profilePicture || null,
+      username: data.username,
+      displayName: data.profile.displayName,
+      avatar: data.profile.avatar,
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -63,41 +157,27 @@ router.post('/connect', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const sanitizedUsername = username.trim();
+    const data = await fetchGfgPublicProfile(username);
     
-    // Validate and fetch profile
-    const data = await gfgRequest(sanitizedUsername);
-    
-    if (data.error === 'Profile Not Found') {
-      return res.status(400).json({ error: 'GeeksforGeeks user not found' });
-    }
+    const connData = {
+      username: data.username,
+      connected: true,
+      connectedAt: new Date().toISOString(),
+      lastSynced: new Date().toISOString(),
+      profile: data.profile,
+      potd: data.potd,
+    };
 
-    const info = data.info || {};
-    const solvedStats = data.solvedStats || {};
-    
-    // Store connection in Firestore using dot notation to preserve other connections
+    console.log('[GFG Connect] Saving connection for uid:', uid, 'username:', data.username);
+
     await db.collection('users').doc(uid).set({
-      'connections.gfg': {
-        username: sanitizedUsername,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        lastSynced: new Date().toISOString(),
-        profile: {
-          displayName: info.fullName || sanitizedUsername,
-          avatar: info.profilePicture || null,
-          institute: info.institution || null,
-          instituteRank: info.instituteRank || null,
-          currentStreak: info.currentStreak || '0',
-          maxStreak: info.maxStreak || '0',
-          codingScore: info.codingScore || '0',
-          monthlyScore: info.monthlyCodingScore || '0',
-          totalProblemsSolved: info.totalProblemsSolved || '0',
-          languagesUsed: info.languagesUsed || null,
-        },
+      connections: {
+        gfg: connData,
       },
+      'connections.gfg': connData,
     }, { merge: true });
 
-    res.json({ success: true, username: sanitizedUsername });
+    res.json({ success: true, username: data.username });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -114,59 +194,43 @@ router.post('/sync', async (req, res) => {
 
     // Get user's GFG connection
     const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.data() || {};
     
-    if (!userData?.connections?.gfg?.connected) {
+    const gfgConn = userData?.connections?.gfg || userData?.['connections.gfg'];
+
+    if (!gfgConn || !gfgConn.connected || !gfgConn.username) {
       return res.status(400).json({ error: 'GeeksforGeeks not connected' });
     }
 
-    const username = userData.connections.gfg.username;
+    const username = gfgConn.username;
     
     // Fetch comprehensive GFG data
-    const data = await gfgRequest(username);
+    const data = await fetchGfgPublicProfile(username);
     
-    if (data.error === 'Profile Not Found') {
-      return res.status(400).json({ error: 'GeeksforGeeks user not found' });
-    }
-
-    const info = data.info || {};
-    const solvedStats = data.solvedStats || {};
-    
-    // Calculate difficulty distribution
-    const difficultyStats = {
-      school: solvedStats.school?.count || 0,
-      basic: solvedStats.basic?.count || 0,
-      easy: solvedStats.easy?.count || 0,
-      medium: solvedStats.medium?.count || 0,
-      hard: solvedStats.hard?.count || 0,
-      total: info.totalProblemsSolved || '0',
+    const connData = {
+      ...gfgConn,
+      lastSynced: new Date().toISOString(),
+      profile: data.profile,
+      potd: data.potd,
     };
 
-    // Update Firestore synced data using dot notation to preserve other connections
+    const cachedObj = {
+      profile: data.profile,
+      potd: data.potd,
+      problems: data.problems,
+      stats: data.problems,
+    };
+
     await db.collection('users').doc(uid).set({
-      'connections.gfg.lastSynced': new Date().toISOString(),
-      'cachedData.gfg': {
-        profile: {
-          displayName: info.fullName || username,
-          avatar: info.profilePicture || null,
-          institute: info.institution || null,
-          instituteRank: info.instituteRank || null,
-          currentStreak: info.currentStreak || '0',
-          maxStreak: info.maxStreak || '0',
-          codingScore: info.codingScore || '0',
-          monthlyScore: info.monthlyCodingScore || '0',
-          totalProblemsSolved: info.totalProblemsSolved || '0',
-          languagesUsed: info.languagesUsed || null,
-        },
-        stats: difficultyStats,
-        solvedQuestions: {
-          school: solvedStats.school?.questions || [],
-          basic: solvedStats.basic?.questions || [],
-          easy: solvedStats.easy?.questions || [],
-          medium: solvedStats.medium?.questions || [],
-          hard: solvedStats.hard?.questions || [],
-        },
+      connections: {
+        gfg: connData,
       },
+      'connections.gfg': connData,
+      'connections.gfg.lastSynced': new Date().toISOString(),
+      cachedData: {
+        gfg: cachedObj,
+      },
+      'cachedData.gfg': cachedObj,
     }, { merge: true });
 
     res.json({ success: true, syncedAt: new Date().toISOString() });

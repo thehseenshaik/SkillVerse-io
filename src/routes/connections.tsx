@@ -76,28 +76,29 @@ function ConnectionsPage() {
   // Animation states
   const [mounted, setMounted] = useState(false);
   
-  // Staggered animation on mount
+  // Load connections and data on mount
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (user?.id) {
+      fetchDashboardData(user.id);
+      refreshConnections();
+    }
+  }, [user?.id]);
 
   // Handler functions - must be defined before platforms array
   const handleGitHubConnect = async () => {
     if (!githubUsername.trim() || !user?.id) return;
-    
+
     console.log('[GitHub Connect] Attempting to connect with username:', githubUsername);
     setIsValidating(true);
     clearError();
-    
+
     try {
       await validateGitHubUsername(githubUsername);
       await connectGitHub(user.id, githubUsername);
-      await fetchDashboardData(user.id);
       await refreshConnections();
       setGithubUsername('');
-      console.log('[GitHub Connect] Connection successful, refreshing connections...');
-      // Force reload of page to ensure all contexts update
-      setTimeout(() => window.location.reload(), 1000);
+      console.log('[GitHub Connect] Connection successful, refreshed connections.');
     } catch (err) {
       console.error('GitHub connection failed:', err);
     } finally {
@@ -114,7 +115,6 @@ function ConnectionsPage() {
     try {
       await validateLeetCodeUsername(leetcodeUsername);
       await connectLeetCode(user.id, leetcodeUsername);
-      await fetchDashboardData(user.id);
       await refreshConnections();
       setLeetcodeUsername('');
     } catch (err) {
@@ -133,7 +133,6 @@ function ConnectionsPage() {
     try {
       await validateGFGUsername(gfgUsername);
       await connectGFG(user.id, gfgUsername);
-      await fetchDashboardData(user.id);
       await refreshConnections();
       setGfgUsername('');
     } catch (err) {
@@ -152,7 +151,6 @@ function ConnectionsPage() {
     try {
       await validateCodeforcesUsername(codeforcesUsername);
       await connectCodeforces(user.id, codeforcesUsername);
-      await fetchDashboardData(user.id);
       await refreshConnections();
       setCodeforcesUsername('');
     } catch (err) {
@@ -171,7 +169,6 @@ function ConnectionsPage() {
     try {
       await validateCodeChefUsername(codechefUsername);
       await connectCodeChef(user.id, codechefUsername);
-      await fetchDashboardData(user.id);
       await refreshConnections();
       setCodechefUsername('');
     } catch (err) {
@@ -190,7 +187,6 @@ function ConnectionsPage() {
     try {
       await validateHackerRankUsername(hackerrankUsername);
       await connectHackerRank(user.id, hackerrankUsername);
-      await fetchDashboardData(user.id);
       await refreshConnections();
       setHackerrankUsername('');
     } catch (err) {
@@ -741,18 +737,22 @@ function ConnectionsPage() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/50">
+                  <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.totalProblemsSolved}</p>
-                      <p className="text-xs text-muted-foreground">Solved</p>
+                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.codingScore ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Score</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.codingScore}</p>
-                      <p className="text-xs text-muted-foreground">Score</p>
+                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.problemsSolved ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Problems</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.currentStreak}</p>
-                      <p className="text-xs text-muted-foreground">Streak</p>
+                      <p className="text-sm font-bold text-emerald-500">{gfgData?.potd?.currentStreak ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">POTD Streak</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-foreground">{gfgData?.potd?.longestStreak ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Max Streak</p>
                     </div>
                   </div>
                 </div>

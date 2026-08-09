@@ -70,18 +70,22 @@ router.post('/connect', async (req, res) => {
       return res.status(400).json({ error: 'HackerRank user not found' });
     }
 
-    // Store connection in Firestore using dot notation to preserve other connections
-    await db.collection('users').doc(uid).set({
-      'connections.hackerrank': {
-        username: sanitizedUsername,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        lastSynced: new Date().toISOString(),
-        profile: {
-          displayName: sanitizedUsername,
-          avatar: null,
-        },
+    const connData = {
+      username: sanitizedUsername,
+      connected: true,
+      connectedAt: new Date().toISOString(),
+      lastSynced: new Date().toISOString(),
+      profile: {
+        displayName: sanitizedUsername,
+        avatar: null,
       },
+    };
+
+    await db.collection('users').doc(uid).set({
+      connections: {
+        hackerrank: connData,
+      },
+      'connections.hackerrank': connData,
     }, { merge: true });
 
     res.json({ success: true, username: sanitizedUsername });
@@ -101,13 +105,15 @@ router.post('/sync', async (req, res) => {
 
     // Get user's HackerRank connection
     const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.data() || {};
     
-    if (!userData?.connections?.hackerrank?.connected) {
+    const hackerrankConn = userData?.connections?.hackerrank || userData?.['connections.hackerrank'];
+
+    if (!hackerrankConn || !hackerrankConn.connected || !hackerrankConn.username) {
       return res.status(400).json({ error: 'HackerRank not connected' });
     }
 
-    const username = userData.connections.hackerrank.username;
+    const username = hackerrankConn.username;
     
     // Fetch comprehensive HackerRank data
     const data = await hackerrankRequest(username);

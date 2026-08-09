@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     // Firebase onAuthStateChanged will be called automatically with the current auth state
     // This handles session restoration on page refresh
     const unsub = onAuthStateChanged(fbAuth(), (u) => {
@@ -86,17 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u ? mapUser(u) : null);
       setHydrated(true);
     });
-    
+
     return () => unsub();
   }, []);
-
-  // Ensure hydration is set to true on client (for SSR compatibility)
-  useEffect(() => {
-    if (typeof window !== "undefined" && !hydrated) {
-      console.log("[Auth] Setting hydrated to true on client");
-      setHydrated(true);
-    }
-  }, [hydrated]);
 
   // Sync role from Firestore users/{uid}.role — auto-bootstrap admin allowlist.
   // Note: User document creation is handled in auth.service.ts to avoid duplicates

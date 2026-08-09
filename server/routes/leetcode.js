@@ -148,29 +148,35 @@ router.post('/connect', async (req, res) => {
 
     const profile = result.data.matchedUser.profile;
     
-    // Store connection in Firestore using dot notation to preserve other connections
-    await db.collection('users').doc(uid).set({
-      'connections.leetcode': {
-        username: sanitizedUsername,
-        connected: true,
-        connectedAt: new Date().toISOString(),
-        lastSynced: new Date().toISOString(),
-        profile: {
-          displayName: profile.realName || sanitizedUsername,
-          avatar: profile.userAvatar,
-          bio: profile.aboutMe,
-          country: profile.country,
-          company: profile.company,
-          school: profile.school,
-          websites: profile.websites,
-          ranking: profile.ranking,
-          reputation: profile.reputation,
-        },
+    const connData = {
+      username: sanitizedUsername,
+      connected: true,
+      connectedAt: new Date().toISOString(),
+      lastSynced: new Date().toISOString(),
+      profile: {
+        displayName: profile.realName || sanitizedUsername,
+        avatar: profile.userAvatar,
+        bio: profile.aboutMe,
+        country: profile.country,
+        company: profile.company,
+        school: profile.school,
+        websites: profile.websites,
+        ranking: profile.ranking,
+        reputation: profile.reputation,
       },
+    };
+
+    console.log('[LeetCode Connect] Saving connection for uid:', uid, 'username:', sanitizedUsername);
+    await db.collection('users').doc(uid).set({
+      connections: {
+        leetcode: connData,
+      },
+      'connections.leetcode': connData,
     }, { merge: true });
 
     res.json({ success: true, username: sanitizedUsername });
   } catch (error) {
+    console.error('[LeetCode Connect] Error:', error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -184,15 +190,19 @@ router.post('/sync', async (req, res) => {
       return res.status(400).json({ error: 'Missing user ID' });
     }
 
-    // Get user's LeetCode connection
+    // Get user's LeetCode connection from Firestore
     const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.data() || {};
     
-    if (!userData?.connections?.leetcode?.connected) {
+    const leetcodeConn = userData?.connections?.leetcode || userData?.['connections.leetcode'];
+    console.log('[LeetCode Sync] Checking connection for uid:', uid, 'found:', !!leetcodeConn?.connected);
+
+    if (!leetcodeConn || !leetcodeConn.connected || !leetcodeConn.username) {
+      console.warn('[LeetCode Sync] User is not connected. User doc connections:', JSON.stringify(userData.connections ?? {}));
       return res.status(400).json({ error: 'LeetCode not connected' });
     }
 
-    const username = userData.connections.leetcode.username;
+    const username = leetcodeConn.username;
     
     // Fetch comprehensive LeetCode data
     const [profileResult, statsResult, contestResult, submissionsResult, badgesResult] = await Promise.all([
@@ -230,42 +240,47 @@ router.post('/sync', async (req, res) => {
       : 0;
 
     // Update Firestore synced data using dot notation to preserve other connections
+    const cachedObj = {
+      profile: {
+        displayName: profile.realName || username,
+        avatar: profile.userAvatar,
+        bio: profile.aboutMe,
+        country: profile.country,
+        company: profile.company,
+        school: profile.school,
+        websites: profile.websites,
+        ranking: profile.ranking,
+        reputation: profile.reputation,
+      },
+      stats: difficultyStats,
+      acceptanceRate: parseFloat(acceptanceRate),
+      contest: {
+        attendedContestsCount: contest.attendedContestsCount || 0,
+        rating: contest.rating || 0,
+        globalRanking: contest.globalRanking || 0,
+        topPercentage: contest.topPercentage || 0,
+      },
+      recentSubmissions: submissions.map(sub => ({
+        title: sub.title,
+        titleSlug: sub.titleSlug,
+        status: sub.status,
+        language: sub.lang,
+        timestamp: sub.timestamp,
+      })),
+      badges: badges.map(badge => ({
+        id: badge.id,
+        displayName: badge.displayName,
+        icon: badge.icon,
+        creationDate: badge.creationDate,
+      })),
+    };
+
     await db.collection('users').doc(uid).set({
       'connections.leetcode.lastSynced': new Date().toISOString(),
-      'cachedData.leetcode': {
-        profile: {
-          displayName: profile.realName || username,
-          avatar: profile.userAvatar,
-          bio: profile.aboutMe,
-          country: profile.country,
-          company: profile.company,
-          school: profile.school,
-          websites: profile.websites,
-          ranking: profile.ranking,
-          reputation: profile.reputation,
-        },
-        stats: difficultyStats,
-        acceptanceRate: parseFloat(acceptanceRate),
-        contest: {
-          attendedContestsCount: contest.attendedContestsCount || 0,
-          rating: contest.rating || 0,
-          globalRanking: contest.globalRanking || 0,
-          topPercentage: contest.topPercentage || 0,
-        },
-        recentSubmissions: submissions.map(sub => ({
-          title: sub.title,
-          titleSlug: sub.titleSlug,
-          status: sub.status,
-          language: sub.lang,
-          timestamp: sub.timestamp,
-        })),
-        badges: badges.map(badge => ({
-          id: badge.id,
-          displayName: badge.displayName,
-          icon: badge.icon,
-          creationDate: badge.creationDate,
-        })),
+      cachedData: {
+        leetcode: cachedObj,
       },
+      'cachedData.leetcode': cachedObj,
     }, { merge: true });
 
     res.json({ success: true, syncedAt: new Date().toISOString() });
