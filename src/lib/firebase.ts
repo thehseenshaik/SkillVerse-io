@@ -21,11 +21,11 @@ const firebaseConfig = {
     "AIzaSyD3H3mTia8b3naCHfFP_JBUa5Mz-qL60v0",
   authDomain:
     import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
-    "skillverse-13b58.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "skillverse-13b58",
+    "skillverse-io.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "skillverse-io",
   storageBucket:
     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
-    "skillverse-13b58.firebasestorage.app",
+    "skillverse-io.firebasestorage.app",
   messagingSenderId:
     import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "29304538516",
   appId:

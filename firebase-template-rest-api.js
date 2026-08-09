@@ -3,7 +3,7 @@
  * Uses Google Cloud Identity Platform REST API to update email templates
  */
 
-const PROJECT_ID = "skillverse-13b58";
+const PROJECT_ID = "skillverse-io";
 const TEMPLATE_HTML = require("fs").readFileSync(
   "./firebase-email-template.html",
   "utf8",

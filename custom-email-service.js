@@ -13,7 +13,7 @@ try {
   const serviceAccount = require("./service-account.json");
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    projectId: "skillverse-13b58",
+    projectId: "skillverse-io",
   });
 } catch (error) {
   console.log("Service account not found. To use custom email service:");

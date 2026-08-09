@@ -8,7 +8,7 @@ const fs = require("fs");
 const path = require("path");
 
 // Your Firebase project configuration
-const PROJECT_ID = "skillverse-13b58";
+const PROJECT_ID = "skillverse-io";
 
 // Read the email template HTML
 const emailTemplate = fs.readFileSync(
