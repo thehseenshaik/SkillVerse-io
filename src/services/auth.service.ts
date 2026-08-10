@@ -250,6 +250,20 @@ const createInitialUserDocument = async (
   };
 
   await setDoc(userRef, initialDoc, { merge: true });
+
+  // Automatically dispatch SkillVerse Welcome Email to new user
+  if (authUser.email) {
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+    fetch(`${API_BASE}/api/email/welcome`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: authUser.email.trim(),
+        name: authUser.displayName || formData?.firstName || authUser.email.split('@')[0],
+        username: formData?.username || authUser.email.split('@')[0],
+      }),
+    }).catch((err) => console.warn('[email] automatic welcome email trigger failed', err));
+  }
 };
 
 // ============================================================================
