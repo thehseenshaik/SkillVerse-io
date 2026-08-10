@@ -136,6 +136,19 @@ export function ForgotPassword() {
     setIsSubmitting(true);
     try {
       await sendPasswordReset(email);
+      
+      // Dispatch custom branded Resend email
+      const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+      fetch(`${API_BASE}/api/email/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: email.split('@')[0],
+          resetUrl: `${window.location.origin}/forgot-password`,
+        }),
+      }).catch((e) => console.warn('[email] resend forgot-password trigger error', e));
+
       recordAttempt();
       setStep("sent");
       setCooldown(60);
@@ -181,6 +194,16 @@ export function ForgotPassword() {
       await confirmPasswordReset(oobCode, newPassword);
       setStep("success");
       toast.success("Password reset successfully!");
+
+      // Dispatch custom branded password changed confirmation
+      const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+      fetch(`${API_BASE}/api/email/password-changed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+        }),
+      }).catch((e) => console.warn('[email] resend password-changed trigger error', e));
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
