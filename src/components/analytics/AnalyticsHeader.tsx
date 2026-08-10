@@ -73,30 +73,36 @@ export function AnalyticsHeader({
   const activeSyncing = isSyncing || localSyncing;
 
   return (
-    <div className="w-full mb-8">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <span className="text-xs font-bold tracking-widest text-brand uppercase block mb-1">
-            ANALYTICS
-          </span>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-            Developer Analytics
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="space-y-2 max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand backdrop-blur shadow-2xs">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+            </span>
+            DEVELOPER TELEMETRY
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
+            Developer <span className="text-gradient">Analytics</span>.
           </h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            A clear view of your coding progress, activity, and developer growth.
+
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Your live problem solving stats, repository activity, and competitive metrics in one unified dashboard.
           </p>
         </div>
 
-        <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
           <Button
             onClick={handleSyncAll}
             disabled={activeSyncing}
-            className="bg-brand text-brand-foreground hover:opacity-90 font-medium px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-sm"
+            className="bg-brand text-brand-foreground hover:opacity-90 font-semibold px-4 py-2 h-10 rounded-xl transition-all flex items-center gap-2 shadow-sm"
           >
             <RefreshCw className={cn("h-4 w-4", activeSyncing && "animate-spin")} />
-            {activeSyncing ? "Syncing..." : "Sync Data"}
+            {activeSyncing ? "Syncing..." : "Sync Platforms"}
           </Button>
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
             <Clock className="h-3 w-3" /> Last synced {formatRelativeTime(latestTimestamp)}
           </span>
         </div>

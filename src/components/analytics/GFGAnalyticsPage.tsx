@@ -18,13 +18,13 @@ import {
 import { FaCode } from "react-icons/fa";
 import { cn } from "@/lib/utils";
 
-function SafeAvatar({ src, name, className = "h-16 w-16" }: { src?: string | null; name: string; className?: string }) {
+function SafeAvatar({ src, name, className = "h-14 w-14" }: { src?: string | null; name: string; className?: string }) {
   const [error, setError] = useState(false);
   const initial = (name || 'G').charAt(0).toUpperCase();
 
   if (!src || error) {
     return (
-      <div className={cn("rounded-2xl bg-[#2F8D46] flex items-center justify-center font-black text-white shrink-0 shadow-sm", className)}>
+      <div className={cn("rounded-2xl bg-[#2F8D46] flex items-center justify-center font-bold text-white shrink-0 shadow-xs", className)}>
         <span className="text-xl">{initial}</span>
       </div>
     );
@@ -125,7 +125,7 @@ export function GFGAnalyticsPage() {
   const potdStreak = potd?.currentStreak || (codingScore > 0 ? 1 : 0);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto px-4 py-6">
+    <div className="space-y-6 max-w-5xl mx-auto px-6 py-8 animate-fade-up">
       {/* Back Header */}
       <div className="flex items-center justify-between border-b border-border/70 pb-4">
         <Link
@@ -195,12 +195,13 @@ export function GFGAnalyticsPage() {
                 <SafeAvatar
                   src={profile?.avatar}
                   name={gfg.username || profile?.displayName || "GFG"}
+                  fallbackBg="bg-[#2F8D46]"
                 />
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-foreground">{profile?.displayName || gfg.username}</h2>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
-                      ● LIVE SYNCED
+                      CONNECTED
                     </span>
                   </div>
                   <a
