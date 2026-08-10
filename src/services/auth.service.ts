@@ -61,27 +61,27 @@ export class AuthError extends Error {
 
 export const handleAuthError = (error: any): AuthError => {
   const code = error.code || "unknown";
-  const message = getErrorMessage(code);
+  const message = getErrorMessage(code, error?.message);
   return new AuthError(message, code, error);
 };
 
-const getErrorMessage = (code: string): string => {
+const getErrorMessage = (code: string, fallbackMessage?: string): string => {
   const errorMessages: Record<string, string> = {
     "auth/invalid-email": "Invalid email address",
     "auth/user-disabled": "This account has been disabled",
-    "auth/user-not-found": "No account found with this email",
-    "auth/wrong-password": "Incorrect password",
+    "auth/user-not-found": "No account found with this email address",
+    "auth/wrong-password": "Incorrect password. Please try again.",
     "auth/email-already-in-use": "An account with this email already exists",
     "auth/weak-password": "Password is too weak",
-    "auth/invalid-credential": "Invalid credentials",
+    "auth/invalid-credential": "Invalid email or password. Please check your credentials.",
     "auth/popup-closed-by-user": "Sign-in was cancelled",
     "auth/popup-blocked": "Popup was blocked by the browser",
     "auth/account-exists-with-different-credential":
-      "An account already exists with the same email",
+      "An account already exists with the same email address",
     "auth/network-request-failed":
-      "Network error. Please check your connection",
+      "Network error. Please check your internet connection",
     "auth/too-many-requests": "Too many attempts. Please try again later",
-    "auth/unauthorized-domain": "This domain is not authorized",
+    "auth/unauthorized-domain": "This domain is not authorized in Firebase Console",
     "auth/invalid-action-code": "Invalid or expired action code",
     "auth/expired-action-code": "Action code has expired",
     "auth/invalid-verification-code": "Invalid verification code",
@@ -93,7 +93,7 @@ const getErrorMessage = (code: string): string => {
     "auth/operation-not-allowed": "This operation is not allowed",
     "auth/timeout": "The operation has timed out",
   };
-  return errorMessages[code] || "An unexpected error occurred";
+  return errorMessages[code] || fallbackMessage || "An unexpected error occurred";
 };
 
 // ============================================================================
@@ -433,19 +433,33 @@ export const signIn = async (formData: LoginFormData): Promise<AuthUser> => {
   try {
     const { email, password, rememberMe } = formData;
 
-    // Set session persistence before sign in
-    const { setSessionPersistence } = await import("@/lib/firebase");
-    await setSessionPersistence(rememberMe);
+    // Set session persistence before sign in safely
+    try {
+      const { setSessionPersistence } = await import("@/lib/firebase");
+      await setSessionPersistence(rememberMe);
+    } catch {
+      // ignore persistence errors in restricted environments
+    }
 
     const cred = await signInWithEmailAndPassword(fbAuth(), email, password);
     const authUser = mapAuthUser(cred.user);
 
-    // Update last login
-    const userRef = doc(fbDb(), "users", authUser.id);
-    await updateDoc(userRef, {
-      "metadata.lastLoginAt": Date.now(),
-      "metadata.lastActiveAt": Date.now(),
-    });
+    // Create or update user document safely without blocking authentication
+    try {
+      const userRef = doc(fbDb(), "users", authUser.id);
+      const existingDoc = await getDoc(userRef);
+
+      if (!existingDoc.exists()) {
+        await createInitialUserDocument(authUser);
+      } else {
+        await updateDoc(userRef, {
+          "metadata.lastLoginAt": Date.now(),
+          "metadata.lastActiveAt": Date.now(),
+        });
+      }
+    } catch (docErr) {
+      console.warn("[Auth] User doc update warning during signIn:", docErr);
+    }
 
     // Handle remember me
     if (rememberMe) {
@@ -469,19 +483,22 @@ export const signInWithGoogle = async (): Promise<AuthUser> => {
     const cred = await signInWithPopup(fbAuth(), googleProvider);
     const authUser = mapAuthUser(cred.user);
 
-    // Create or update user document
-    const userRef = doc(fbDb(), "users", authUser.id);
-    const existingDoc = await getDoc(userRef);
+    // Create or update user document safely
+    try {
+      const userRef = doc(fbDb(), "users", authUser.id);
+      const existingDoc = await getDoc(userRef);
 
-    if (!existingDoc.exists()) {
-      await createInitialUserDocument(authUser);
-    } else {
-      // Update last login and add provider if not exists
-      await updateDoc(userRef, {
-        "metadata.lastLoginAt": Date.now(),
-        "metadata.lastActiveAt": Date.now(),
-        "authInfo.providers": arrayUnion("google"),
-      });
+      if (!existingDoc.exists()) {
+        await createInitialUserDocument(authUser);
+      } else {
+        await updateDoc(userRef, {
+          "metadata.lastLoginAt": Date.now(),
+          "metadata.lastActiveAt": Date.now(),
+          "authInfo.providers": arrayUnion("google"),
+        });
+      }
+    } catch (docErr) {
+      console.warn("[Auth] User doc update warning during signInWithGoogle:", docErr);
     }
 
     return authUser;
@@ -495,19 +512,22 @@ export const signInWithGithub = async (): Promise<AuthUser> => {
     const cred = await signInWithPopup(fbAuth(), githubProvider);
     const authUser = mapAuthUser(cred.user);
 
-    // Create or update user document
-    const userRef = doc(fbDb(), "users", authUser.id);
-    const existingDoc = await getDoc(userRef);
+    // Create or update user document safely
+    try {
+      const userRef = doc(fbDb(), "users", authUser.id);
+      const existingDoc = await getDoc(userRef);
 
-    if (!existingDoc.exists()) {
-      await createInitialUserDocument(authUser);
-    } else {
-      // Update last login and add provider if not exists
-      await updateDoc(userRef, {
-        "metadata.lastLoginAt": Date.now(),
-        "metadata.lastActiveAt": Date.now(),
-        "authInfo.providers": arrayUnion("github"),
-      });
+      if (!existingDoc.exists()) {
+        await createInitialUserDocument(authUser);
+      } else {
+        await updateDoc(userRef, {
+          "metadata.lastLoginAt": Date.now(),
+          "metadata.lastActiveAt": Date.now(),
+          "authInfo.providers": arrayUnion("github"),
+        });
+      }
+    } catch (docErr) {
+      console.warn("[Auth] User doc update warning during signInWithGithub:", docErr);
     }
 
     return authUser;
