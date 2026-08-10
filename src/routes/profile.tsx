@@ -490,31 +490,38 @@ export function ProfilePage() {
 
   // Skill Chips Array
   const skillChips = useMemo(() => {
-    if (!profile.skills) return [];
-    return profile.skills.split(",").map((s) => s.trim()).filter(Boolean);
-  }, [profile.skills]);
+    if (!profile?.skills) return [];
+    if (Array.isArray(profile.skills)) return profile.skills;
+    if (typeof profile.skills === 'string') {
+      return profile.skills.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [profile?.skills]);
 
-  const firstName = (profile.fullName || user?.name || "Developer").split(" ")[0];
+  const firstName = (typeof profile?.fullName === 'string' && profile.fullName ? profile.fullName : (user?.name || "Developer")).split(" ")[0];
 
   // Smart Incomplete Section Finder (identifies single most important missing item)
   const missingSection = useMemo(() => {
-    if (!profile.education || profile.education.length === 0) {
+    if (!profile?.education || !Array.isArray(profile.education) || profile.education.length === 0) {
       return { label: "Education is incomplete", id: "education" };
     }
-    if (!profile.skills || profile.skills.trim().length === 0) {
+    const hasSkills = Array.isArray(profile?.skills) ? profile.skills.length > 0 : (typeof profile?.skills === 'string' && profile.skills.trim().length > 0);
+    if (!hasSkills) {
       return { label: "Skills are incomplete", id: "skills" };
     }
-    if (!profile.projects || profile.projects.length === 0) {
+    if (!profile?.projects || !Array.isArray(profile.projects) || profile.projects.length === 0) {
       return { label: "Projects are incomplete", id: "projects" };
     }
-    if (!profile.summary || profile.summary.trim().length === 0) {
+    if (!profile?.summary || typeof profile.summary !== 'string' || profile.summary.trim().length === 0) {
       return { label: "Summary is incomplete", id: "basics" };
     }
-    if (!profile.location || profile.location.trim().length === 0) {
+    if (!profile?.location || typeof profile.location !== 'string' || profile.location.trim().length === 0) {
       return { label: "Location is incomplete", id: "basics" };
     }
     return null;
   }, [profile]);
+
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://skillverse-io.web.app';
 
   return (
     <PageShell>
@@ -556,15 +563,17 @@ export function ProfilePage() {
                     Your public portfolio is live at <span className="text-gradient">@{successUsername}</span>
                   </h3>
                   <p className="text-sm text-muted-foreground font-mono">
-                    {window.location.origin}/u/{successUsername}
+                    {appOrigin}/u/{successUsername}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <Button
                     onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/u/${successUsername}`);
-                      toast.success("Portfolio link copied to clipboard!");
+                      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        navigator.clipboard.writeText(`${appOrigin}/u/${successUsername}`);
+                        toast.success("Portfolio link copied to clipboard!");
+                      }
                     }}
                     variant="outline"
                     className="h-11 px-5 rounded-xl border-border/80 font-bold gap-2 hover:border-brand/40"
