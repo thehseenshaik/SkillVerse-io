@@ -82,6 +82,7 @@ const getErrorMessage = (code: string, fallbackMessage?: string): string => {
       "Network error. Please check your internet connection",
     "auth/too-many-requests": "Too many attempts. Please try again later",
     "auth/unauthorized-domain": "This domain is not authorized in Firebase Console",
+    "auth/invalid-continue-uri": "Domain not authorized in Firebase Console. Please add your current domain to Firebase Console -> Authentication -> Settings -> Authorized Domains.",
     "auth/invalid-action-code": "Invalid or expired action code",
     "auth/expired-action-code": "Action code has expired",
     "auth/invalid-verification-code": "Invalid verification code",
