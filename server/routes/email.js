@@ -1,16 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { Resend } = require('resend');
+
+let Resend;
+try {
+  const resendPkg = require('resend');
+  Resend = resendPkg.Resend || resendPkg;
+} catch (e) {
+  console.warn('⚠️ resend package failed to load:', e.message);
+}
 
 // Initialize Resend
 const getResendClient = () => {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn('⚠️ RESEND_API_KEY is not set in environment.');
+  if (!apiKey || !Resend) {
+    if (!Resend) console.warn('⚠️ resend module not available.');
+    if (!apiKey) console.warn('⚠️ RESEND_API_KEY is not set in environment.');
     return null;
   }
   return new Resend(apiKey);
 };
+
 
 /**
  * Generate high-conversion, responsive HTML welcome email

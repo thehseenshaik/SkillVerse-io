@@ -11,6 +11,7 @@ const firebaseAdmin = require('firebase-admin');
 let db;
 
 try {
+  const admin = firebaseAdmin.default || firebaseAdmin;
   if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_PRIVATE_KEY !== '-----BEGIN PRIVATE KEY-----\\nYOUR_PRIVATE_KEY_HERE\\n-----END PRIVATE KEY-----') {
     const serviceAccount = {
       projectId: process.env.FIREBASE_PROJECT_ID || 'skillverse-io',
@@ -18,12 +19,15 @@ try {
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     };
 
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(serviceAccount),
-    });
-
-    db = firebaseAdmin.firestore();
-    console.log('✓ Firebase Admin initialized');
+    if (admin && admin.credential && typeof admin.credential.cert === 'function') {
+      if (!admin.apps || admin.apps.length === 0) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+      }
+      db = admin.firestore();
+      console.log('✓ Firebase Admin initialized');
+    }
   } else {
     console.warn('⚠️ Firebase credentials not fully configured in environment. Using fallback mode.');
   }
