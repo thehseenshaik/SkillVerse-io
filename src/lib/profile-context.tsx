@@ -236,6 +236,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     };
   }, [uid, authHydrated, user]);
 
+  const latestProfileRef = useRef(profile);
+  latestProfileRef.current = profile;
+
   // Debounced write on every profile change (after hydration).
   useEffect(() => {
     if (!hydrated || !uid) return;
@@ -254,7 +257,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const cleanProfile = JSON.parse(JSON.stringify(profile));
+        const cleanProfile = JSON.parse(JSON.stringify(latestProfileRef.current));
         await setDoc(
           doc(fbDb(), "users", uid),
           { ...cleanProfile, updatedAt: serverTimestamp() },
