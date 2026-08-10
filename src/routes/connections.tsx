@@ -9,6 +9,7 @@ import { AuthGate } from '@/components/AuthGate';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/connections')({
   component: () => (
@@ -89,7 +90,6 @@ function ConnectionsPage() {
   const handleGitHubConnect = async () => {
     if (!githubUsername.trim() || !user?.id) return;
 
-    console.log('[GitHub Connect] Attempting to connect with username:', githubUsername);
     setIsValidating(true);
     clearError();
 
@@ -97,10 +97,10 @@ function ConnectionsPage() {
       await validateGitHubUsername(githubUsername);
       await connectGitHub(user.id, githubUsername);
       await refreshConnections();
+      toast.success(`GitHub account @${githubUsername} connected successfully!`);
       setGithubUsername('');
-      console.log('[GitHub Connect] Connection successful, refreshed connections.');
-    } catch (err) {
-      console.error('GitHub connection failed:', err);
+    } catch (err: any) {
+      toast.error(`GitHub connection failed: ${err?.message || 'Invalid username'}`);
     } finally {
       setIsValidating(false);
     }
@@ -116,9 +116,10 @@ function ConnectionsPage() {
       await validateLeetCodeUsername(leetcodeUsername);
       await connectLeetCode(user.id, leetcodeUsername);
       await refreshConnections();
+      toast.success(`LeetCode account @${leetcodeUsername} connected successfully!`);
       setLeetcodeUsername('');
-    } catch (err) {
-      console.error('LeetCode connection failed:', err);
+    } catch (err: any) {
+      toast.error(`LeetCode connection failed: ${err?.message || 'Invalid username'}`);
     } finally {
       setIsValidating(false);
     }
@@ -134,9 +135,10 @@ function ConnectionsPage() {
       await validateGFGUsername(gfgUsername);
       await connectGFG(user.id, gfgUsername);
       await refreshConnections();
+      toast.success(`GeeksforGeeks account @${gfgUsername} connected successfully!`);
       setGfgUsername('');
-    } catch (err) {
-      console.error('GFG connection failed:', err);
+    } catch (err: any) {
+      toast.error(`GFG connection failed: ${err?.message || 'Invalid username'}`);
     } finally {
       setIsValidating(false);
     }
@@ -152,9 +154,10 @@ function ConnectionsPage() {
       await validateCodeforcesUsername(codeforcesUsername);
       await connectCodeforces(user.id, codeforcesUsername);
       await refreshConnections();
+      toast.success(`Codeforces account @${codeforcesUsername} connected successfully!`);
       setCodeforcesUsername('');
-    } catch (err) {
-      console.error('Codeforces connection failed:', err);
+    } catch (err: any) {
+      toast.error(`Codeforces connection failed: ${err?.message || 'Invalid username'}`);
     } finally {
       setIsValidating(false);
     }
@@ -170,9 +173,10 @@ function ConnectionsPage() {
       await validateCodeChefUsername(codechefUsername);
       await connectCodeChef(user.id, codechefUsername);
       await refreshConnections();
+      toast.success(`CodeChef account @${codechefUsername} connected successfully!`);
       setCodechefUsername('');
-    } catch (err) {
-      console.error('CodeChef connection failed:', err);
+    } catch (err: any) {
+      toast.error(`CodeChef connection failed: ${err?.message || 'Invalid username'}`);
     } finally {
       setIsValidating(false);
     }
@@ -188,9 +192,10 @@ function ConnectionsPage() {
       await validateHackerRankUsername(hackerrankUsername);
       await connectHackerRank(user.id, hackerrankUsername);
       await refreshConnections();
+      toast.success(`HackerRank account @${hackerrankUsername} connected successfully!`);
       setHackerrankUsername('');
-    } catch (err) {
-      console.error('HackerRank connection failed:', err);
+    } catch (err: any) {
+      toast.error(`HackerRank connection failed: ${err?.message || 'Invalid username'}`);
     } finally {
       setIsValidating(false);
     }
@@ -199,66 +204,78 @@ function ConnectionsPage() {
   const handleGitHubSync = async () => {
     if (!user?.id) return;
     try {
+      toast.info('Syncing GitHub data...');
       await syncGitHub(user.id);
       await fetchDashboardData(user.id);
       await refreshConnections();
-    } catch (err) {
-      console.error('GitHub sync failed:', err);
+      toast.success('GitHub data synced successfully!');
+    } catch (err: any) {
+      toast.error(`GitHub sync failed: ${err?.message || 'Please try again'}`);
     }
   };
 
   const handleLeetCodeSync = async () => {
     if (!user?.id) return;
     try {
+      toast.info('Syncing LeetCode data...');
       await syncLeetCode(user.id);
       await fetchDashboardData(user.id);
       await refreshConnections();
-    } catch (err) {
-      console.error('LeetCode sync failed:', err);
+      toast.success('LeetCode data synced successfully!');
+    } catch (err: any) {
+      toast.error(`LeetCode sync failed: ${err?.message || 'Please try again'}`);
     }
   };
 
   const handleGFGSync = async () => {
     if (!user?.id) return;
     try {
+      toast.info('Syncing GeeksforGeeks data...');
       await syncGFG(user.id);
       await fetchDashboardData(user.id);
       await refreshConnections();
-    } catch (err) {
-      console.error('GFG sync failed:', err);
+      toast.success('GeeksforGeeks data synced successfully!');
+    } catch (err: any) {
+      toast.error(`GFG sync failed: ${err?.message || 'Please try again'}`);
     }
   };
 
   const handleCodeforcesSync = async () => {
     if (!user?.id) return;
     try {
+      toast.info('Syncing Codeforces data...');
       await syncCodeforces(user.id);
       await fetchDashboardData(user.id);
       await refreshConnections();
-    } catch (err) {
-      console.error('Codeforces sync failed:', err);
+      toast.success('Codeforces data synced successfully!');
+    } catch (err: any) {
+      toast.error(`Codeforces sync failed: ${err?.message || 'Please try again'}`);
     }
   };
 
   const handleCodeChefSync = async () => {
     if (!user?.id) return;
     try {
+      toast.info('Syncing CodeChef data...');
       await syncCodeChef(user.id);
       await fetchDashboardData(user.id);
       await refreshConnections();
-    } catch (err) {
-      console.error('CodeChef sync failed:', err);
+      toast.success('CodeChef data synced successfully!');
+    } catch (err: any) {
+      toast.error(`CodeChef sync failed: ${err?.message || 'Please try again'}`);
     }
   };
 
   const handleHackerRankSync = async () => {
     if (!user?.id) return;
     try {
+      toast.info('Syncing HackerRank data...');
       await syncHackerRank(user.id);
       await fetchDashboardData(user.id);
       await refreshConnections();
-    } catch (err) {
-      console.error('HackerRank sync failed:', err);
+      toast.success('HackerRank data synced successfully!');
+    } catch (err: any) {
+      toast.error(`HackerRank sync failed: ${err?.message || 'Please try again'}`);
     }
   };
 
@@ -492,30 +509,34 @@ function ConnectionsPage() {
               <div className="space-y-3">
                 <div className="p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    {githubData?.profile.avatar && (
+                    {githubData?.profile?.avatar ? (
                       <img
                         src={githubData.profile.avatar}
                         alt="Avatar"
                         className="w-8 h-8 rounded-full"
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
+                        {(github.username || 'G').charAt(0).toUpperCase()}
+                      </div>
                     )}
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{githubData?.profile.displayName}</p>
-                      <p className="text-xs text-muted-foreground">@{github.username}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{githubData?.profile?.displayName || github.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{github.username}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{githubData?.profile.publicRepos}</p>
+                      <p className="text-sm font-bold text-foreground">{githubData?.profile?.publicRepos ?? githubData?.repositories?.length ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Repos</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{githubData?.profile.followers}</p>
+                      <p className="text-sm font-bold text-foreground">{githubData?.profile?.followers ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Followers</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{githubData?.profile.following}</p>
+                      <p className="text-sm font-bold text-foreground">{githubData?.profile?.following ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Following</p>
                     </div>
                   </div>
@@ -608,30 +629,36 @@ function ConnectionsPage() {
               <div className="space-y-3">
                 <div className="p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    {leetcodeData?.profile.avatar && (
+                    {leetcodeData?.profile?.avatar ? (
                       <img
                         src={leetcodeData.profile.avatar}
                         alt="Avatar"
                         className="w-8 h-8 rounded-full"
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
+                        {(leetcode.username || 'L').charAt(0).toUpperCase()}
+                      </div>
                     )}
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{leetcodeData?.profile.displayName}</p>
-                      <p className="text-xs text-muted-foreground">@{leetcode.username}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{leetcodeData?.profile?.displayName || leetcode.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{leetcode.username}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{leetcodeData?.stats.All}</p>
+                      <p className="text-sm font-bold text-foreground">{leetcodeData?.stats?.All ?? leetcodeData?.totalSolved ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Solved</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{leetcodeData?.contest.rating}</p>
+                      <p className="text-sm font-bold text-foreground">{leetcodeData?.contest?.rating ? Math.round(leetcodeData.contest.rating) : 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Rating</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{leetcodeData?.acceptanceRate.toFixed(1)}%</p>
+                      <p className="text-sm font-bold text-foreground">
+                        {leetcodeData?.acceptanceRate != null ? `${leetcodeData.acceptanceRate.toFixed(1)}%` : (leetcodeData?.stats?.acceptanceRate ? `${leetcodeData.stats.acceptanceRate.toFixed(1)}%` : 'N/A')}
+                      </p>
                       <p className="text-xs text-muted-foreground">Acceptance</p>
                     </div>
                   </div>
@@ -724,26 +751,30 @@ function ConnectionsPage() {
               <div className="space-y-3">
                 <div className="p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    {gfgData?.profile.avatar && (
+                    {gfgData?.profile?.avatar ? (
                       <img
                         src={gfgData.profile.avatar}
                         alt="Avatar"
                         className="w-8 h-8 rounded-full"
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
+                        {(gfg.username || 'G').charAt(0).toUpperCase()}
+                      </div>
                     )}
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{gfgData?.profile.displayName}</p>
-                      <p className="text-xs text-muted-foreground">@{gfg.username}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{gfgData?.profile?.displayName || gfg.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{gfg.username}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.codingScore ?? 0}</p>
+                      <p className="text-sm font-bold text-foreground">{gfgData?.profile?.codingScore ?? 0}</p>
                       <p className="text-[10px] text-muted-foreground">Score</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{gfgData?.profile.problemsSolved ?? 0}</p>
+                      <p className="text-sm font-bold text-foreground">{gfgData?.profile?.problemsSolved ?? gfgData?.problems?.total ?? 0}</p>
                       <p className="text-[10px] text-muted-foreground">Problems</p>
                     </div>
                     <div className="text-center">
@@ -846,30 +877,34 @@ function ConnectionsPage() {
               <div className="space-y-3">
                 <div className="p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    {codeforcesData?.profile.avatar && (
+                    {codeforcesData?.profile?.avatar ? (
                       <img
                         src={codeforcesData.profile.avatar}
                         alt="Avatar"
                         className="w-8 h-8 rounded-full"
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
+                        {(codeforces.username || 'C').charAt(0).toUpperCase()}
+                      </div>
                     )}
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{codeforcesData?.profile.displayName}</p>
-                      <p className="text-xs text-muted-foreground">@{codeforces.username}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{codeforcesData?.profile?.displayName || codeforces.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{codeforces.username}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{codeforcesData?.profile.rating}</p>
+                      <p className="text-sm font-bold text-foreground">{codeforcesData?.profile?.rating ?? 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Rating</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{codeforcesData?.profile.maxRating}</p>
+                      <p className="text-sm font-bold text-foreground">{codeforcesData?.profile?.maxRating ?? 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Max</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{codeforcesData?.totalContests}</p>
+                      <p className="text-sm font-bold text-foreground">{codeforcesData?.totalContests ?? 0}</p>
                       <p className="text-xs text-muted-foreground">Contests</p>
                     </div>
                   </div>
@@ -963,30 +998,34 @@ function ConnectionsPage() {
               <div className="space-y-3">
                 <div className="p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    {codechefData?.profile.avatar && (
+                    {codechefData?.profile?.avatar ? (
                       <img
                         src={codechefData.profile.avatar}
                         alt="Avatar"
                         className="w-8 h-8 rounded-full"
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
+                        {(codechef.username || 'C').charAt(0).toUpperCase()}
+                      </div>
                     )}
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{codechefData?.profile.displayName}</p>
-                      <p className="text-xs text-muted-foreground">@{codechef.username}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{codechefData?.profile?.displayName || codechef.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{codechef.username}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border/50">
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{codechefData?.profile.currentRating}</p>
+                      <p className="text-sm font-bold text-foreground">{codechefData?.profile?.currentRating ?? 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Rating</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{codechefData?.profile.highestRating}</p>
+                      <p className="text-sm font-bold text-foreground">{codechefData?.profile?.highestRating ?? 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Max</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-foreground">{codechefData?.profile.globalRank}</p>
+                      <p className="text-sm font-bold text-foreground">{codechefData?.profile?.globalRank ?? 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">Global Rank</p>
                     </div>
                   </div>
@@ -1078,9 +1117,20 @@ function ConnectionsPage() {
               <div className="space-y-3">
                 <div className="p-3 bg-background rounded-lg border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{hackerrankData?.profile.displayName}</p>
-                      <p className="text-xs text-muted-foreground">@{hackerrank.username}</p>
+                    {hackerrankData?.profile?.avatar ? (
+                      <img
+                        src={hackerrankData.profile.avatar}
+                        alt="Avatar"
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
+                        {(hackerrank.username || 'H').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{hackerrankData?.profile?.displayName || hackerrank.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{hackerrank.username}</p>
                     </div>
                   </div>
                 </div>
