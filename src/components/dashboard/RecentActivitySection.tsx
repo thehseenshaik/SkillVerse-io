@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -45,16 +45,18 @@ export function RecentActivitySection() {
     fetchActivities,
   } = useActivityStore();
 
+  const [manualSyncedAt, setManualSyncedAt] = useState<string | null>(null);
+
   useEffect(() => {
     if (user?.id) {
-      void fetchActivities(user.id, 6);
+      void fetchActivities(user.id, 20);
     }
   }, [user?.id, fetchActivities]);
 
   // Re-fetch activities when any platform sync completes
   useEffect(() => {
     if (!storeIsSyncing && user?.id) {
-      void fetchActivities(user.id, 6, true);
+      void fetchActivities(user.id, 20, true);
     }
   }, [storeIsSyncing, user?.id, fetchActivities]);
 
@@ -66,7 +68,7 @@ export function RecentActivitySection() {
     try {
       if (github?.connected) {
         if (Array.isArray(githubData?.recentActivity) && githubData.recentActivity.length > 0) {
-          githubData.recentActivity.slice(0, 5).forEach((act: any, idx: number) => {
+          githubData.recentActivity.slice(0, 10).forEach((act: any, idx: number) => {
             const rawRepo = typeof act.repo === "string" ? act.repo : act.repo?.name || "repository";
             const repoName = rawRepo.replace(/^.*\//, "");
             const date = act.createdAt ? new Date(act.createdAt).toISOString() : new Date().toISOString();
@@ -82,7 +84,7 @@ export function RecentActivitySection() {
             });
           });
         } else if (Array.isArray(githubData?.repositories) && githubData.repositories.length > 0) {
-          githubData.repositories.slice(0, 5).forEach((repo: any, idx: number) => {
+          githubData.repositories.slice(0, 10).forEach((repo: any, idx: number) => {
             list.push({
               id: `local-gh-repo-${idx}-${repo.name}`,
               userId: user?.id || "local",
@@ -103,7 +105,7 @@ export function RecentActivitySection() {
     // 2. LeetCode Recent Submissions
     try {
       if (leetcode?.connected && Array.isArray(leetcodeData?.recentSubmissions)) {
-        leetcodeData.recentSubmissions.slice(0, 5).forEach((sub: any, idx: number) => {
+        leetcodeData.recentSubmissions.slice(0, 10).forEach((sub: any, idx: number) => {
           if (!sub) return;
           const isAccepted = sub.status === "Accepted" || sub.status === "A";
           const ts = typeof sub.timestamp === "number"
@@ -136,7 +138,7 @@ export function RecentActivitySection() {
             platform: "gfg",
             activityType: "problem_solved",
             title: `GeeksforGeeks Problem Solver`,
-            description: `${solvedCount} problems solved • Coding Score: ${gfgData.profile?.codingScore || gfgData.profile?.score || 0}`,
+            description: `${solvedCount} problems solved • Coding Score: ${gfgData.profile?.codingScore || (gfgData.profile as any)?.score || 0}`,
             url: `https://www.geeksforgeeks.org/user/${gfg.username}/`,
             timestamp: new Date().toISOString(),
           });
@@ -205,12 +207,35 @@ export function RecentActivitySection() {
 
   const displayConnectedCount = Math.max(connectedPlatformsCount, connectedCountInStore);
 
+  // Compute accurate sync timestamp from backend or local platform store
+  const effectiveLastSyncedAt = useMemo(() => {
+    if (manualSyncedAt) return manualSyncedAt;
+    if (summary.lastSyncedAt) return summary.lastSyncedAt;
+
+    const times = [
+      github?.lastSynced,
+      leetcode?.lastSynced,
+      gfg?.lastSynced,
+      codeforces?.lastSynced,
+      codechef?.lastSynced,
+      hackerrank?.lastSynced,
+    ].filter(Boolean) as string[];
+
+    if (times.length > 0) {
+      times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+      return times[0];
+    }
+
+    return null;
+  }, [manualSyncedAt, summary.lastSyncedAt, github, leetcode, gfg, codeforces, codechef, hackerrank]);
+
   const handleSyncAllNow = async () => {
     if (!user?.id) return;
     try {
       toast.info("Syncing connected platform activities...");
       await usePlatformStore.getState().fetchDashboardData(user.id);
-      await fetchActivities(user.id, 6, true);
+      await fetchActivities(user.id, 20, true);
+      setManualSyncedAt(new Date().toISOString());
       toast.success("Activity feed refreshed!");
     } catch (err: any) {
       toast.error(`Sync failed: ${err?.message || "Please try again"}`);
@@ -296,12 +321,26 @@ export function RecentActivitySection() {
         </div>
 
         <div className="flex items-center gap-2">
-          {summary.lastSyncedAt && (
-            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+          {effectiveLastSyncedAt && (
+            <span
+              title={`Last synced at ${new Date(effectiveLastSyncedAt).toLocaleString()}`}
+              className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 bg-secondary/40 px-2.5 py-1 rounded-xl border border-border/40"
+            >
               <Clock className="h-3 w-3 text-muted-foreground/70" />
-              Synced {formatRelativeTime(summary.lastSyncedAt)}
+              <span>Synced {formatRelativeTime(effectiveLastSyncedAt)}</span>
             </span>
           )}
+
+          <Button
+            onClick={handleSyncAllNow}
+            disabled={isSyncing}
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-xl text-xs font-bold gap-1.5 border-border hover:bg-secondary text-foreground"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5 text-brand", isSyncing && "animate-spin")} />
+            <span>{isSyncing ? "Syncing..." : "Sync Activity"}</span>
+          </Button>
 
           <Link to="/activity">
             <Button
@@ -346,7 +385,7 @@ export function RecentActivitySection() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => user?.id && fetchActivities(user.id, 6, true)}
+              onClick={() => user?.id && fetchActivities(user.id, 20, true)}
               className="h-7 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
             >
               Retry
@@ -417,9 +456,9 @@ export function RecentActivitySection() {
           </div>
         )}
 
-        {/* 4. Real Data-Driven Activity Feed Timeline */}
+        {/* 4. Real Data-Driven Activity Feed Timeline with Custom Scrollbar */}
         {displayActivities.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-2 scrollbar-slim scroll-smooth">
             {displayActivities.map((act) => (
               <div
                 key={act.id}
