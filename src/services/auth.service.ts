@@ -412,8 +412,12 @@ export const signUp = async (formData: SignUpFormData): Promise<AuthUser> => {
       await setDoc(userRef, initialDoc);
     }
 
-    // Send verification email
-    await sendEmailVerification(cred.user);
+    // Send verification email safely without blocking account creation
+    try {
+      await sendEmailVerification(cred.user);
+    } catch {
+      // ignore
+    }
 
     return authUser;
   } catch (error) {
@@ -586,12 +590,16 @@ export const sendVerificationEmail = async (): Promise<void> => {
       throw new AuthError("No user signed in", "no-user");
     }
 
-    const actionCodeSettings = {
-      url: `${window.location.origin}/verify-email`,
-      handleCodeInApp: true,
-    };
-
-    await sendEmailVerification(user, actionCodeSettings);
+    try {
+      const actionCodeSettings = {
+        url: `${window.location.origin}/verify-email`,
+        handleCodeInApp: true,
+      };
+      await sendEmailVerification(user, actionCodeSettings);
+    } catch {
+      // Fallback dispatch without custom continue URL if domain check fails
+      await sendEmailVerification(user);
+    }
   } catch (error) {
     throw handleAuthError(error);
   }
@@ -622,12 +630,15 @@ export const verifyEmail = async (actionCode: string): Promise<void> => {
 
 export const sendPasswordReset = async (email: string): Promise<void> => {
   try {
-    const actionCodeSettings = {
-      url: `${window.location.origin}/forgot-password`,
-      handleCodeInApp: true,
-    };
-
-    await sendPasswordResetEmail(fbAuth(), email, actionCodeSettings);
+    try {
+      const actionCodeSettings = {
+        url: `${window.location.origin}/forgot-password`,
+        handleCodeInApp: true,
+      };
+      await sendPasswordResetEmail(fbAuth(), email, actionCodeSettings);
+    } catch {
+      await sendPasswordResetEmail(fbAuth(), email);
+    }
   } catch (error) {
     throw handleAuthError(error);
   }
