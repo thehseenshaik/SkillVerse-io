@@ -24,7 +24,8 @@ import {
   CheckCircle2,
   ArrowRight,
   AlertTriangle,
-  Link as LinkIcon
+  Link as LinkIcon,
+  AtSign
 } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 import { SiLeetcode, SiCodeforces, SiCodechef, SiHackerrank } from "react-icons/si";
@@ -75,6 +76,14 @@ export const Route = createFileRoute("/profile")({
 });
 
 const basicsSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3, "At least 3 characters")
+    .max(30, "Max 30 characters")
+    .regex(/^[a-z0-9_-]+$/, "Only lowercase letters, numbers, - and _")
+    .optional()
+    .or(z.literal("")),
   fullName: z
     .string()
     .trim()
@@ -108,6 +117,9 @@ export function ProfilePage() {
   } = useProfile();
 
   const { refreshConnections } = useIdentityHub();
+
+  const [activeUsername, setActiveUsername] = useState<string>("");
+  const [successUsername, setSuccessUsername] = useState<string | null>(null);
 
   const {
     github,
@@ -145,6 +157,7 @@ export function ProfilePage() {
 
   // Form Edit Draft State
   const [draft, setDraft] = useState({
+    username: "",
     fullName: "",
     headline: "",
     email: "",
@@ -181,16 +194,24 @@ export function ProfilePage() {
   const [isConnectingPlatform, setIsConnectingPlatform] = useState(false);
   const [syncingPlatformKey, setSyncingPlatformKey] = useState<PlatformKey | null>(null);
 
-  // Load User Data into Profile state
+  // Load User Data and Username into Profile state
   useEffect(() => {
     if (user?.id) {
       fetchDashboardData(user.id);
+      usernameService.getUsernameByUserId(user.id).then((handle) => {
+        if (handle) {
+          setActiveUsername(handle);
+        } else if (user.email) {
+          setActiveUsername(user.email.split("@")[0].toLowerCase());
+        }
+      });
     }
-  }, [user?.id, fetchDashboardData]);
+  }, [user?.id, fetchDashboardData, user?.email]);
 
   // Sync Draft state when entering Edit Mode
   const enterEditMode = () => {
     setDraft({
+      username: profile.username || activeUsername || "",
       fullName: profile.fullName || user?.name || "",
       headline: profile.headline || "",
       email: profile.email || user?.email || "",
@@ -228,7 +249,19 @@ export function ProfilePage() {
 
     setIsSaving(true);
     try {
+      let savedHandle = activeUsername;
+      if (draft.username && user?.id) {
+        const cleanHandle = draft.username.trim().toLowerCase().replace(/^@/, '');
+        if (cleanHandle && cleanHandle !== activeUsername) {
+          await usernameService.claimUsername(user.id, cleanHandle);
+          setActiveUsername(cleanHandle);
+          savedHandle = cleanHandle;
+          setSuccessUsername(cleanHandle);
+        }
+      }
+
       await update({
+        username: savedHandle,
         fullName: draft.fullName,
         headline: draft.headline,
         email: draft.email,
@@ -240,7 +273,12 @@ export function ProfilePage() {
         gender: draft.gender,
       });
 
-      toast.success("Profile saved successfully");
+      if (savedHandle && (!activeUsername || savedHandle !== activeUsername)) {
+        setSuccessUsername(savedHandle);
+        toast.success(`🎉 Username @${savedHandle} set successfully!`);
+      } else {
+        toast.success("Profile saved successfully");
+      }
       setIsEditing(false);
     } catch (err: any) {
       toast.error(err?.message || "Failed to save profile changes.");
@@ -505,6 +543,57 @@ export function ProfilePage() {
             </p>
           </div>
 
+          {/* CELEBRATORY USERNAME SET SUCCESS BANNER */}
+          {successUsername && (
+            <div className="relative overflow-hidden rounded-3xl border-2 border-emerald-500/50 bg-gradient-to-r from-emerald-500/10 via-card to-brand/10 p-6 sm:p-7 shadow-lg animate-fade-in">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Username Set Successfully!
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-foreground">
+                    Your public portfolio is live at <span className="text-gradient">@{successUsername}</span>
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {window.location.origin}/u/{successUsername}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/u/${successUsername}`);
+                      toast.success("Portfolio link copied to clipboard!");
+                    }}
+                    variant="outline"
+                    className="h-11 px-5 rounded-xl border-border/80 font-bold gap-2 hover:border-brand/40"
+                  >
+                    <LinkIcon className="h-4 w-4 text-brand" />
+                    Copy Portfolio Link
+                  </Button>
+                  <Button
+                    asChild
+                    className="h-11 px-5 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 shadow-xs shadow-brand/20"
+                  >
+                    <a href={`/u/${successUsername}`} target="_blank" rel="noopener noreferrer">
+                      View Live Portfolio <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSuccessUsername(null)}
+                    className="h-11 px-3 text-muted-foreground hover:text-foreground"
+                    title="Dismiss"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 1. MAIN PROFILE CARD (VISUAL CENTERPIECE) */}
           <div className="glass group relative overflow-hidden rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-elegant transition-all hover:shadow-glow">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent" />
@@ -535,9 +624,23 @@ export function ProfilePage() {
                 {/* Identity Information */}
                 <div className="space-y-3 min-w-0">
                   <div>
-                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-                      {profile.fullName || user?.name || "Shaik Thehseen"}
-                    </h2>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                      <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                        {profile.fullName || user?.name || "Shaik Thehseen"}
+                      </h2>
+                      {(activeUsername || profile.username) && (
+                        <a
+                          href={`/u/${activeUsername || profile.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand/10 hover:bg-brand/15 text-brand border border-brand/20 font-mono text-xs font-bold transition-colors"
+                          title="Open public portfolio"
+                        >
+                          @{activeUsername || profile.username}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                     <p className="text-sm font-semibold text-brand mt-0.5">
                       {profile.headline || "Java Full Stack Developer"}
                     </p>
@@ -707,6 +810,31 @@ export function ProfilePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-foreground flex items-center gap-1.5">
+                      <AtSign className="h-3.5 w-3.5 text-brand" />
+                      Public Developer Handle / Username
+                    </Label>
+                    <span className="text-[10.5px] font-mono text-muted-foreground">
+                      https://skillverse-io.web.app/u/<strong>{draft.username || "username"}</strong>
+                    </span>
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 font-mono font-bold text-muted-foreground select-none">
+                      @
+                    </span>
+                    <Input
+                      value={draft.username}
+                      onChange={(e) => setDraft({ ...draft, username: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "") })}
+                      placeholder="your-unique-handle"
+                      maxLength={30}
+                      className="pl-8 bg-background text-xs font-mono font-bold"
+                    />
+                  </div>
+                  {errors.username && <p className="text-[11px] text-destructive">{errors.username}</p>}
+                </div>
+
                 <div className="space-y-1.5">
                   <Label className="font-semibold text-foreground">Full Name *</Label>
                   <Input
