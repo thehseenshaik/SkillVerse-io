@@ -65,7 +65,19 @@ function PublicProfilePage() {
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
-        setProfile(userDoc.data());
+        const data = userDoc.data();
+        const merged = {
+          ...data,
+          ...(data.basicInfo || {}),
+          ...(data.profile || {}),
+          displayName: data.profile?.displayName || data.basicInfo?.displayName || data.displayName || data.fullName || username,
+          headline: data.profile?.headline || data.basicInfo?.headline || data.headline || "Software Engineer",
+          location: data.profile?.location || data.basicInfo?.location || data.location || "",
+          about: data.profile?.summary || data.summary || data.about || "",
+          skills: Array.isArray(data.skills) ? data.skills : (typeof data.skills === 'string' ? data.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : (data.profile?.skills ? (Array.isArray(data.profile.skills) ? data.profile.skills : data.profile.skills.split(',').map((s: string) => s.trim()).filter(Boolean)) : [])),
+          avatarUrl: data.avatarUrl || data.photoURL || data.basicInfo?.avatarUrl || data.profile?.avatarUrl,
+        };
+        setProfile(merged);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -74,9 +86,16 @@ function PublicProfilePage() {
     }
   };
 
+  const handleShare = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Profile link copied to clipboard!");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
       </div>
     );
@@ -84,11 +103,18 @@ function PublicProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Profile Not Found</h1>
-          <p className="text-muted-foreground">This profile may be private or doesn't exist.</p>
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="text-center max-w-md space-y-4">
+          <div className="h-16 w-16 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto">
+            <AlertCircle className="h-8 w-8" />
+          </div>
+          <h1 className="text-2xl font-bold">Profile Not Found</h1>
+          <p className="text-muted-foreground text-sm">
+            The developer handle <strong>@{username}</strong> doesn't exist or is set to private.
+          </p>
+          <Button asChild className="rounded-xl bg-brand text-white font-bold">
+            <a href="/">Explore SkillVerse</a>
+          </Button>
         </div>
       </div>
     );
@@ -102,39 +128,71 @@ function PublicProfilePage() {
   const showCodingStats = privacy.showCodingStats !== false;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-brand/10 to-brand/5 border-b">
-        <div className="mx-auto max-w-6xl px-4 py-12">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Profile Image */}
-            <div className="flex-shrink-0">
-              <div className="h-32 w-32 rounded-full bg-gradient-to-br from-brand to-brand/60 flex items-center justify-center text-4xl font-bold text-white">
-                {profile.displayName?.charAt(0).toUpperCase() || profile.username?.charAt(0).toUpperCase()}
-              </div>
+      <div className="relative overflow-hidden border-b border-border/60 bg-hero py-12 md:py-16">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,oklch(0.65_0.22_35/0.14),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,oklch(0.72_0.22_38/0.18),transparent)] pointer-events-none" />
+        
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
+          <div className="flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-left">
+            {/* Profile Avatar */}
+            <div className="flex-shrink-0 relative">
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.displayName}
+                  className="h-28 w-28 sm:h-32 sm:w-32 rounded-3xl object-cover border-2 border-border/80 shadow-lg"
+                />
+              ) : (
+                <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-3xl bg-gradient-to-br from-brand to-brand/70 flex items-center justify-center text-4xl font-extrabold text-white shadow-lg">
+                  {profile.displayName?.charAt(0).toUpperCase() || username.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white font-mono text-[10px] font-bold shadow-xs">
+                PRO
+              </span>
             </div>
 
             {/* Profile Info */}
-            <div className="flex-1">
-              <div className="flex items-start justify-between">
+            <div className="flex-1 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-4xl font-bold">{profile.displayName || profile.username}</h1>
-                  <p className="mt-2 text-xl text-muted-foreground">{profile.headline || "Professional"}</p>
-                  {showLocation && profile.location&& (
-                    <p className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
+                  <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-brand uppercase tracking-wider mb-1">
+                    <span>@{username}</span>
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                    {profile.displayName}
+                  </h1>
+                  <p className="text-base sm:text-lg text-muted-foreground font-medium mt-1">
+                    {profile.headline}
+                  </p>
+                  {showLocation && profile.location && (
+                    <p className="mt-2 text-xs sm:text-sm text-muted-foreground flex items-center justify-center md:justify-start gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-brand" />
                       {profile.location}
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Share
+
+                <div className="flex items-center justify-center gap-2.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShare}
+                    className="h-10 px-4 rounded-xl border-border/80 font-bold gap-2 hover:border-brand/40"
+                  >
+                    <Share2 className="h-4 w-4 text-brand" />
+                    Share Profile
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" />
-                    Resume
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-10 px-4 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 shadow-xs shadow-brand/20"
+                  >
+                    <a href="/resume">
+                      <Download className="h-4 w-4" />
+                      ATS Resume
+                    </a>
                   </Button>
                 </div>
               </div>

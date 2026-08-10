@@ -1,31 +1,29 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import {
-  User,
-  Check,
-  X,
-  Loader2,
-  RefreshCw,
-  AlertCircle,
-} from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/SiteChrome";
 import { AuthGate } from "@/components/AuthGate";
-import { useAuth } from "@/lib/auth-context";
-import { usernameService } from "@/lib/services/username-service";
+import { UsernameManagerCard } from "@/components/profile/UsernameManagerCard";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  AtSign,
+  ShieldCheck,
+  Globe,
+  Share2,
+  Sparkles,
+  ExternalLink,
+  Lock,
+  Zap,
+  ArrowRight,
+} from "lucide-react";
 
 export const Route = createFileRoute("/username-settings")({
   head: () => ({
     meta: [
-      { title: "Username Settings — SkillVerse" },
+      { title: "Developer Handle & Public URL — SkillVerse" },
       {
         name: "description",
-        content: "Set your unique username for your public profile.",
+        content: "Claim and manage your unique SkillVerse developer handle and public portfolio URL.",
       },
     ],
   }),
@@ -37,247 +35,123 @@ export const Route = createFileRoute("/username-settings")({
 });
 
 function UsernameSettingsPage() {
-  const { user } = useAuth();
-  const [username, setUsername] = useState<string>("");
-  const [currentUsername, setCurrentUsername] = useState<string>("");
-  const [availability, setAvailability] = useState<"available" | "taken" | "checking" | "idle">("idle");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [validation, setValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
-
-  useEffect(() => {
-    loadCurrentUsername();
-  }, [user?.id]);
-
-  const loadCurrentUsername = async () => {
-    if (!user?.id) return;
-    try {
-      const current = await usernameService.getUsernameByUserId(user.id);
-      if (current) {
-        setCurrentUsername(current);
-        setUsername(current);
-      }
-    } catch (error) {
-      console.error("Error loading current username:", error);
-    }
-  };
-
-  const validateUsername = (value: string) => {
-    const result = usernameService.validateUsername(value);
-    setValidation(result);
-    return result.valid;
-  };
-
-  const checkAvailability = async (value: string) => {
-    if (!value || !validateUsername(value)) {
-      setAvailability("idle");
-      return;
-    }
-
-    setAvailability("checking");
-    try {
-      const result = await usernameService.checkAvailability(value);
-      setAvailability(result.available ? "available" : "taken");
-      
-      if (!result.available) {
-        // Generate suggestions
-        const suggested = await usernameService.suggestUsernames(value);
-        setSuggestions(suggested);
-      } else {
-        setSuggestions([]);
-      }
-    } catch (error) {
-      console.error("Error checking availability:", error);
-      setAvailability("idle");
-    }
-  };
-
-  const handleUsernameChange = (value: string) => {
-    setUsername(value);
-    setAvailability("idle");
-    setSuggestions([]);
-    if (value) {
-      validateUsername(value);
-    }
-  };
-
-  const handleClaimUsername = async () => {
-    if (!user?.id || !username) return;
-
-    const valid = validateUsername(username);
-    if (!valid) {
-      toast.error(validation.message);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (currentUsername) {
-        await usernameService.updateUsername(user.id, currentUsername, username);
-        toast.success("Username updated successfully");
-      } else {
-        await usernameService.claimUsername(user.id, username);
-        toast.success("Username claimed successfully");
-      }
-      setCurrentUsername(username);
-      setAvailability("idle");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to claim username");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setUsername(suggestion);
-    checkAvailability(suggestion);
-  };
-
   return (
     <PageShell>
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Username Settings</h1>
-          <p className="mt-2 text-muted-foreground">
-            Choose a unique username for your public profile
-          </p>
-        </div>
-
-        {/* Current Username */}
-        {currentUsername && (
-          <Card className="mb-6 p-6 bg-secondary/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Current Username</p>
-                <p className="mt-1 text-2xl font-bold">{currentUsername}</p>
+      {/* Hero Section matching Dashboard & Analytics */}
+      <section className="relative overflow-hidden border-b border-border/60 bg-hero py-10 md:py-14">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,oklch(0.65_0.22_35/0.14),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,oklch(0.72_0.22_38/0.18),transparent)] pointer-events-none" />
+        
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold tracking-wider uppercase">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand"></span>
+                </span>
+                VANITY HANDLE ENGINE
               </div>
-              <Badge variant="secondary">Active</Badge>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
+                Developer Handle & <span className="text-gradient">Public URL</span>
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                Configure your permanent public identifier on SkillVerse. Your handle powers your live public portfolio, recruiter snapshots, and ATS resume links.
+              </p>
             </div>
-          </Card>
-        )}
 
-        {/* Username Input */}
-        <Card className="mb-6 p-6">
-          <Label htmlFor="username">Username</Label>
-          <div className="mt-2 flex gap-3">
-            <div className="relative flex-1">
-              <Input
-                id="username"
-                placeholder="your-username"
-                value={username}
-                onChange={(e) => handleUsernameChange(e.target.value)}
-                className="pr-10"
-              />
-              {availability === "checking" && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-              {availability === "available" && (
-                <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
-              )}
-              {availability === "taken" && (
-                <X className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-600" />
-              )}
-            </div>
-            <Button
-              onClick={() => checkAvailability(username)}
-              variant="outline"
-              disabled={!username || !validation.valid}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Check
-            </Button>
-          </div>
-
-          {/* Validation Message */}
-          {username && !validation.valid && (
-            <p className="mt-2 text-sm text-red-600 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              {validation.message}
-            </p>
-          )}
-
-          {/* Availability Message */}
-          {availability === "available" && (
-            <p className="mt-2 text-sm text-emerald-600 flex items-center gap-2">
-              <Check className="h-4 w-4" />
-              Username is available
-            </p>
-          )}
-          {availability === "taken" && (
-            <p className="mt-2 text-sm text-red-600 flex items-center gap-2">
-              <X className="h-4 w-4" />
-              Username is already taken
-            </p>
-          )}
-
-          {/* Suggestions */}
-          {suggestions.length > 0 && (
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground mb-2">Available suggestions:</p>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((suggestion) => (
-                  <Button
-                    key={suggestion}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                  >
-                    {suggestion}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Claim Button */}
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={handleClaimUsername}
-              disabled={loading || availability !== "available" || !validation.valid}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <User className="mr-2 h-4 w-4" />
-                  {currentUsername ? "Update Username" : "Claim Username"}
-                </>
-              )}
-            </Button>
-          </div>
-        </Card>
-
-        {/* Public Profile URL */}
-        {currentUsername && (
-          <Card className="p-6 bg-gradient-to-br from-brand/10 to-brand/5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Your Public Profile</p>
-                <p className="mt-1 text-lg font-semibold">skillverse.io/u/{currentUsername}</p>
-              </div>
-              <Button variant="outline" size="sm">
-                Visit Profile
+            <div className="flex items-center gap-3">
+              <Button
+                asChild
+                variant="outline"
+                className="h-11 px-5 rounded-xl border-border/80 font-bold gap-2"
+              >
+                <Link to="/profile">
+                  View Profile Settings
+                </Link>
+              </Button>
+              <Button
+                asChild
+                className="h-11 px-5 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 shadow-xs shadow-brand/20"
+              >
+                <Link to="/dashboard">
+                  Dashboard <ArrowRight className="h-4 w-4" />
+                </Link>
               </Button>
             </div>
-          </Card>
-        )}
+          </div>
+        </div>
+      </section>
 
-        {/* Username Rules */}
-        <Card className="mt-6 p-6">
-          <h3 className="font-semibold mb-3">Username Rules</h3>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Must be 3-30 characters long</li>
-            <li>• Can only contain letters, numbers, underscores, and hyphens</li>
-            <li>• Must start with a letter</li>
-            <li>• Cannot be a reserved word</li>
-            <li>• Cannot be changed frequently (rate limited)</li>
-          </ul>
+      {/* Main Content Area */}
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
+        {/* Core Username Manager Card */}
+        <UsernameManagerCard />
+
+        {/* Feature Grid: What Your Handle Unlocks */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <Card className="p-6 rounded-3xl border border-border/70 bg-card shadow-xs relative overflow-hidden space-y-3">
+            <div className="h-11 w-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center font-bold">
+              <Globe className="h-5 w-5" />
+            </div>
+            <h4 className="text-lg font-bold tracking-tight text-foreground">
+              Public Developer Portfolio
+            </h4>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Anyone with your link can view your verified GitHub stats, LeetCode ratings, GFG rank, and project showcase in real time.
+            </p>
+          </Card>
+
+          <Card className="p-6 rounded-3xl border border-border/70 bg-card shadow-xs relative overflow-hidden space-y-3">
+            <div className="h-11 w-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center font-bold">
+              <Zap className="h-5 w-5" />
+            </div>
+            <h4 className="text-lg font-bold tracking-tight text-foreground">
+              1-Click Recruiter Mode
+            </h4>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Recruiters can download your ATS-ready resume PDF, inspect your verified problem-solving telemetry, and contact you directly.
+            </p>
+          </Card>
+
+          <Card className="p-6 rounded-3xl border border-border/70 bg-card shadow-xs relative overflow-hidden space-y-3">
+            <div className="h-11 w-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center font-bold">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <h4 className="text-lg font-bold tracking-tight text-foreground">
+              Permanent Identity Lock
+            </h4>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Once claimed, your handle is atomically reserved in our global registry and cannot be claimed by any other user.
+            </p>
+          </Card>
+        </div>
+
+        {/* Handle Guidelines */}
+        <Card className="p-6 sm:p-7 rounded-3xl border border-border/70 bg-card shadow-xs space-y-4">
+          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <ShieldCheck className="h-4 w-4 text-brand" />
+            Handle & Vanity URL Guidelines
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm text-muted-foreground">
+            <div className="flex items-start gap-2.5">
+              <span className="text-brand font-bold">●</span>
+              <span>Length must be between <strong>3 and 30 characters</strong>.</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-brand font-bold">●</span>
+              <span>Only alphanumeric characters, hyphens (<code>-</code>), and underscores (<code>_</code>) are allowed.</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-brand font-bold">●</span>
+              <span>System names (e.g., <code>admin</code>, <code>api</code>, <code>dashboard</code>) are reserved.</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-brand font-bold">●</span>
+              <span>Your public profile respects your privacy settings configured in your Profile Settings.</span>
+            </div>
+          </div>
         </Card>
-      </div>
+      </main>
     </PageShell>
   );
 }

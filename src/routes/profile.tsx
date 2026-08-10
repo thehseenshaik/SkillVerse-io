@@ -37,6 +37,7 @@ import {
   type ProjectItem,
 } from "@/lib/profile-context";
 import { EducationSection } from "@/components/profile/EducationSection";
+import { UsernameManagerCard } from "@/components/profile/UsernameManagerCard";
 import { useIdentityHub } from "@/lib/identity-hub-context";
 import { usePlatformStore } from "@/lib/platform-store";
 import { Card } from "@/components/ui/card";
@@ -688,6 +689,9 @@ export function ProfilePage() {
               </span>
             </div>
           </div>
+
+          {/* 2. DEVELOPER USERNAME & PUBLIC PORTFOLIO CARD */}
+          <UsernameManagerCard onUsernameUpdated={(newHandle) => setProfile(prev => ({ ...prev, username: newHandle }))} />
 
           {/* EDIT MODE SECTION */}
           {isEditing && (

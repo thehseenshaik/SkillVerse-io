@@ -152,30 +152,37 @@ export class UsernameService {
    * Claim username for user
    */
   async claimUsername(userId: string, username: string): Promise<boolean> {
-    const validation = this.validateUsername(username);
+    const cleanHandle = username.trim().toLowerCase().replace(/^@/, '');
+    const validation = this.validateUsername(cleanHandle);
     if (!validation.valid) {
       throw new Error(validation.message);
     }
 
     try {
-      const usernameRef = doc(db, "usernames", username.toLowerCase());
+      const usernameRef = doc(db, "usernames", cleanHandle);
       const usernameDoc = await getDoc(usernameRef);
 
       if (usernameDoc.exists()) {
-        throw new Error("Username is already taken");
+        const existingData = usernameDoc.data();
+        if (existingData.userId && existingData.userId !== userId) {
+          throw new Error("Username is already taken by another developer");
+        }
       }
 
-      // Claim the username
+      // Claim the username in registry
       await setDoc(usernameRef, {
         userId,
-        username: username.toLowerCase(),
-        createdAt: new Date(),
-      });
+        username: cleanHandle,
+        updatedAt: new Date(),
+        createdAt: usernameDoc.exists() ? usernameDoc.data().createdAt || new Date() : new Date(),
+      }, { merge: true });
 
-      // Update user profile with username
+      // Update user document with username in all standard fields
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
-        username: username.toLowerCase(),
+        username: cleanHandle,
+        "basicInfo.username": cleanHandle,
+        "profile.username": cleanHandle,
         usernameClaimedAt: new Date(),
       });
 
@@ -196,7 +203,12 @@ export class UsernameService {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        return userData.username || null;
+        return (
+          userData.username ||
+          userData.basicInfo?.username ||
+          userData.profile?.username ||
+          (userData.email ? userData.email.split('@')[0] : null)
+        );
       }
 
       return null;
@@ -210,13 +222,28 @@ export class UsernameService {
    * Get user ID by username
    */
   async getUserIdByUsername(username: string): Promise<string | null> {
+    const cleanHandle = username.trim().toLowerCase().replace(/^@/, '');
     try {
-      const usernameRef = doc(db, "usernames", username.toLowerCase());
+      // 1. Try usernames registry index
+      const usernameRef = doc(db, "usernames", cleanHandle);
       const usernameDoc = await getDoc(usernameRef);
 
-      if (usernameDoc.exists()) {
-        const usernameData = usernameDoc.data();
-        return usernameData.userId || null;
+      if (usernameDoc.exists() && usernameDoc.data().userId) {
+        return usernameDoc.data().userId;
+      }
+
+      // 2. Fallback: Search in users collection
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", cleanHandle));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        return querySnap.docs[0].id;
+      }
+
+      const q2 = query(usersRef, where("basicInfo.username", "==", cleanHandle));
+      const querySnap2 = await getDocs(q2);
+      if (!querySnap2.empty) {
+        return querySnap2.docs[0].id;
       }
 
       return null;
