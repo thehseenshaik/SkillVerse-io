@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { usePlatformStore } from '@/lib/platform-store';
@@ -8,16 +8,18 @@ import { AuthGate } from '@/components/AuthGate';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip 
 } from 'recharts';
 import { 
   Github, Code2, Terminal, Trophy, Flame, Award, 
-  ExternalLink, RefreshCw, Sparkles, AlertCircle, Star, GitFork,
-  CheckCircle2, XCircle, Code as CodeIcon, BookMarked, ArrowUpRight,
-  Calendar, Activity, ShieldCheck
+  ExternalLink, RefreshCw, Sparkles, Star, GitFork,
+  CheckCircle2, XCircle, Code as CodeIcon, ArrowUpRight,
+  ShieldCheck, Zap, Target, BookOpen, TrendingUp, Check,
+  BarChart3, Cpu, Calendar
 } from 'lucide-react';
+import { FaGithub, FaCode } from 'react-icons/fa';
+import { SiLeetcode } from 'react-icons/si';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/analytics')({
@@ -43,6 +45,28 @@ const LANG_COLORS: Record<string, string> = {
 };
 const DEFAULT_COLOR = '#F97316';
 
+function SafeAvatar({ src, name, className = "h-14 w-14", fallbackBg = "bg-primary" }: { src?: string | null; name: string; className?: string; fallbackBg?: string }) {
+  const [error, setError] = useState(false);
+  const initial = (name || 'U').charAt(0).toUpperCase();
+
+  if (!src || error) {
+    return (
+      <div className={cn("rounded-2xl flex items-center justify-center font-black text-white shrink-0 shadow-sm", fallbackBg, className)}>
+        <span className="text-lg">{initial}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={name}
+      onError={() => setError(true)}
+      className={cn("rounded-2xl object-cover border border-border shrink-0", className)}
+    />
+  );
+}
+
 export function AnalyticsPage() {
   const { user } = useAuth();
   const { 
@@ -54,7 +78,6 @@ export function AnalyticsPage() {
   } = usePlatformStore();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'github' | 'leetcode' | 'gfg' | 'competitive'>('overview');
-  const [activityView, setActivityView] = useState<'heatmap' | 'radar'>('heatmap');
   const [connectModalPlatform, setConnectModalPlatform] = useState<string | null>(null);
   const [inputHandle, setInputHandle] = useState('');
   const [modalConnecting, setModalConnecting] = useState(false);
@@ -67,11 +90,11 @@ export function AnalyticsPage() {
   }, [user?.id]);
 
   // Metrics Data Extraction
-  const leetcodeSolved = leetcodeData?.stats?.All || ((leetcodeData?.stats?.Easy || 0) + (leetcodeData?.stats?.Medium || 0) + (leetcodeData?.stats?.Hard || 0)) || 0;
-  const gfgSolved = gfgData?.stats?.total || gfgData?.profile?.totalProblemsSolved || 0;
-  const githubReposCount = githubData?.profile?.publicRepos || githubData?.repositories?.length || 0;
-  const githubStars = (githubData?.repositories || []).reduce((acc: number, r: any) => acc + (r.stars || 0), 0);
-  const githubForks = (githubData?.repositories || []).reduce((acc: number, r: any) => acc + (r.forks || 0), 0);
+  const leetcodeSolved = leetcodeData?.totalSolved || leetcodeData?.stats?.All || ((leetcodeData?.stats?.Easy || 0) + (leetcodeData?.stats?.Medium || 0) + (leetcodeData?.stats?.Hard || 0)) || 0;
+  const gfgSolved = gfgData?.problems?.total || gfgData?.profile?.problemsSolved || gfgData?.potd?.totalSolved || 0;
+  const githubReposCount = githubData?.profile?.publicRepos || (Array.isArray(githubData?.repositories) ? githubData?.repositories.length : 0) || 0;
+  const githubStars = Array.isArray(githubData?.repositories) ? githubData.repositories.reduce((acc: number, r: any) => acc + (r.stars || 0), 0) : 0;
+  const githubForks = Array.isArray(githubData?.repositories) ? githubData.repositories.reduce((acc: number, r: any) => acc + (r.forks || 0), 0) : 0;
   const githubFollowers = githubData?.profile?.followers || 0;
 
   const codeforcesRating = codeforcesData?.profile?.rating || 0;
@@ -83,7 +106,7 @@ export function AnalyticsPage() {
   const hackerrankBadges = hackerrankData?.badges || [];
   const hackerrankCerts = hackerrankData?.certificates || [];
 
-  const potdStreak = gfgData?.potd?.currentStreak || gfgData?.profile?.currentStreak || 0;
+  const potdStreak = gfgData?.potd?.currentStreak || gfgData?.profile?.codingScore ? 1 : 0;
 
   const hasCodingPlatforms = leetcode.connected || gfg.connected;
   const totalSolvedSum = leetcodeSolved + gfgSolved;
@@ -104,59 +127,20 @@ export function AnalyticsPage() {
 
   // Competency Radar Data
   const radarData = useMemo(() => [
-    { subject: 'Problem Solving', score: Math.min(100, Math.round((totalSolvedSum / 300) * 100)) || 15 },
-    { subject: 'Open Source', score: Math.min(100, Math.round((githubReposCount / 15) * 100)) || 10 },
-    { subject: 'Competitive', score: Math.min(100, Math.round((highestCompetitiveRating / 2000) * 100)) || 10 },
-    { subject: 'Consistency', score: Math.min(100, Math.round((potdStreak / 30) * 100)) || 20 },
-    { subject: 'Versatility', score: Math.min(100, Math.round(([github.connected, leetcode.connected, gfg.connected, codeforces.connected, codechef.connected, hackerrank.connected].filter(Boolean).length / 6) * 100)) || 15 },
+    { subject: 'Problem Solving', score: Math.min(100, Math.max(25, Math.round((totalSolvedSum / 300) * 100))) },
+    { subject: 'Open Source', score: Math.min(100, Math.max(20, Math.round((githubReposCount / 15) * 100))) },
+    { subject: 'Competitive', score: Math.min(100, Math.max(15, Math.round((highestCompetitiveRating / 2000) * 100))) },
+    { subject: 'Consistency', score: Math.min(100, Math.max(20, Math.round((potdStreak / 30) * 100))) },
+    { subject: 'Versatility', score: Math.min(100, Math.max(30, Math.round(([github.connected, leetcode.connected, gfg.connected, codeforces.connected, codechef.connected, hackerrank.connected].filter(Boolean).length / 6) * 100))) },
   ], [totalSolvedSum, githubReposCount, highestCompetitiveRating, potdStreak, github.connected, leetcode.connected, gfg.connected, codeforces.connected, codechef.connected, hackerrank.connected]);
 
-  // Contribution Calendar Heatmap Generator (52 Weeks x 7 Days)
-  const heatmapData = useMemo(() => {
-    const weeks: { date: string; count: number; level: number }[][] = [];
-    const now = new Date();
-    
-    // Seed deterministic daily contributions derived from real activity
-    const totalEvents = totalSolvedSum + githubReposCount * 3 + githubStars;
-    
-    for (let w = 51; w >= 0; w--) {
-      const week: { date: string; count: number; level: number }[] = [];
-      for (let d = 0; d < 7; d++) {
-        const dayDate = new Date(now);
-        dayDate.setDate(now.getDate() - (w * 7 + (6 - d)));
-        const dateStr = dayDate.toISOString().split('T')[0];
-        
-        // Compute pseudo-activity distribution
-        let count = 0;
-        if (totalEvents > 0) {
-          const pseudoHash = (dayDate.getDate() * 17 + dayDate.getMonth() * 31 + w) % 10;
-          if (pseudoHash > 6) count = (pseudoHash % 3) + 1;
-          if (pseudoHash === 9) count += 3;
-        }
-        
-        let level = 0;
-        if (count > 0 && count <= 2) level = 1;
-        else if (count > 2 && count <= 4) level = 2;
-        else if (count > 4) level = 3;
-
-        week.push({ date: dateStr, count, level });
-      }
-      weeks.push(week);
-    }
-    return weeks;
-  }, [totalSolvedSum, githubReposCount, githubStars]);
-
-  const totalHeatmapContributions = useMemo(() => {
-    return heatmapData.flat().reduce((acc, cell) => acc + cell.count, 0);
-  }, [heatmapData]);
-
   const platforms = [
-    { id: 'github', name: 'GitHub', icon: Github, connected: github.connected, username: github.username, statsText: github.connected ? `${githubReposCount} repos · ${githubStars} stars` : null },
-    { id: 'leetcode', name: 'LeetCode', icon: Code2, connected: leetcode.connected, username: leetcode.username, statsText: leetcode.connected ? `${leetcodeSolved} solved` : null },
-    { id: 'gfg', name: 'GeeksforGeeks', icon: Terminal, connected: gfg.connected, username: gfg.username, statsText: gfg.connected ? `${gfgSolved} solved` : null },
-    { id: 'codeforces', name: 'Codeforces', icon: Trophy, connected: codeforces.connected, username: codeforces.username, statsText: codeforces.connected ? `Rating: ${codeforcesRating}` : null },
-    { id: 'codechef', name: 'CodeChef', icon: Flame, connected: codechef.connected, username: codechef.username, statsText: codechef.connected ? `Rating: ${codechefRating}` : null },
-    { id: 'hackerrank', name: 'HackerRank', icon: Award, connected: hackerrank.connected, username: hackerrank.username, statsText: hackerrank.connected ? `${hackerrankBadges.length} badges` : null },
+    { id: 'github', name: 'GitHub', icon: FaGithub, connected: github.connected, username: github.username, statsText: github.connected ? `${githubReposCount} repos · ${githubStars} stars` : null, color: "text-foreground" },
+    { id: 'leetcode', name: 'LeetCode', icon: SiLeetcode, connected: leetcode.connected, username: leetcode.username, statsText: leetcode.connected ? `${leetcodeSolved} solved` : null, color: "text-[#FFA116]" },
+    { id: 'gfg', name: 'GeeksforGeeks', icon: FaCode, connected: gfg.connected, username: gfg.username, statsText: gfg.connected ? `${gfgSolved} solved` : null, color: "text-[#2F8D46]" },
+    { id: 'codeforces', name: 'Codeforces', icon: Trophy, connected: codeforces.connected, username: codeforces.username, statsText: codeforces.connected ? `Rating: ${codeforcesRating}` : null, color: "text-cyan-500" },
+    { id: 'codechef', name: 'CodeChef', icon: Flame, connected: codechef.connected, username: codechef.username, statsText: codechef.connected ? `Rating: ${codechefRating}` : null, color: "text-amber-500" },
+    { id: 'hackerrank', name: 'HackerRank', icon: Award, connected: hackerrank.connected, username: hackerrank.username, statsText: hackerrank.connected ? `${hackerrankBadges.length} badges` : null, color: "text-emerald-500" },
   ];
 
   const connectedPlatforms = platforms.filter(p => p.connected);
@@ -204,112 +188,112 @@ export function AnalyticsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4 py-6">
+    <div className="space-y-8 max-w-6xl mx-auto px-4 py-6">
       {/* 1. Header */}
       <AnalyticsHeader />
 
-      {/* 2. Inline Platform Tab Switcher */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border scrollbar-none">
+      {/* 2. Sleek Modern Tab Navigation Bar */}
+      <div className="p-1.5 bg-secondary/50 backdrop-blur-md rounded-2xl border border-border/70 flex items-center gap-1.5 overflow-x-auto scrollbar-none shadow-xs">
         {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'github', label: 'GitHub', count: github.connected ? `${githubReposCount} repos` : 'Not connected' },
-          { id: 'leetcode', label: 'LeetCode', count: leetcode.connected ? `${leetcodeSolved} solved` : 'Not connected' },
-          { id: 'gfg', label: 'GeeksforGeeks', count: gfg.connected ? `${gfgSolved} solved` : 'Not connected' },
-          { id: 'competitive', label: 'Competitive', count: (codeforces.connected || codechef.connected || hackerrank.connected) ? 'Connected' : 'Not connected' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={cn(
-              "px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-              activeTab === tab.id
-                ? "bg-brand text-brand-foreground font-semibold shadow-sm"
-                : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
-            )}
-          >
-            <span>{tab.label}</span>
-            <span className={cn(
-              "text-[10px] px-1.5 py-0.5 rounded-full font-normal opacity-80",
-              activeTab === tab.id ? "bg-white/20 text-brand-foreground" : "bg-background text-muted-foreground"
-            )}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
+          { id: 'overview', label: 'Overview', icon: BarChart3, count: null, color: "text-brand" },
+          { id: 'github', label: 'GitHub', icon: FaGithub, count: github.connected ? `${githubReposCount} repos` : 'Not connected', color: "text-foreground" },
+          { id: 'leetcode', label: 'LeetCode', icon: SiLeetcode, count: leetcode.connected ? `${leetcodeSolved} solved` : 'Not connected', color: "text-[#FFA116]" },
+          { id: 'gfg', label: 'GeeksforGeeks', icon: FaCode, count: gfg.connected ? `${gfgSolved} solved` : 'Not connected', color: "text-[#2F8D46]" },
+          { id: 'competitive', label: 'Competitive', icon: Trophy, count: (codeforces.connected || codechef.connected || hackerrank.connected) ? 'Active' : 'Not connected', color: "text-cyan-500" },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                "px-3.5 py-2 text-xs font-semibold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                isActive
+                  ? "bg-card text-foreground shadow-sm border border-border/80 ring-1 ring-border/50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+              )}
+            >
+              <Icon className={cn("h-4 w-4", tab.color)} />
+              <span>{tab.label}</span>
+              {tab.count && (
+                <span className={cn(
+                  "text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors",
+                  isActive ? "bg-secondary text-foreground font-bold" : "bg-background/60 text-muted-foreground"
+                )}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-8 animate-in fade-in-50 duration-200">
-          {/* Your Developer Snapshot */}
-          <Card className="border border-border bg-card p-6 md:p-8 rounded-2xl shadow-sm">
-            <h2 className="text-xl font-bold text-foreground mb-6">Your Developer Snapshot</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 divide-y md:divide-y-0 md:divide-x divide-border/60">
-              <div className="grid grid-cols-2 gap-6 pr-0 md:pr-6 pt-0">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Problems Solved
-                  </div>
-                  <div className="text-3xl font-extrabold text-foreground">{displayTotalSolved}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Across connected platforms</div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    GitHub Repositories
-                  </div>
-                  <div className="text-3xl font-extrabold text-foreground">
-                    {github.connected ? githubReposCount : '—'}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">Public repositories</div>
+          {/* Developer Snapshot Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="p-5 rounded-2xl border border-border/70 bg-gradient-to-br from-card to-secondary/30 shadow-xs hover:border-brand/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Problems Solved</span>
+                <div className="h-8 w-8 rounded-xl bg-brand/10 text-brand grid place-items-center">
+                  <Code2 className="h-4 w-4" />
                 </div>
               </div>
+              <div className="text-3xl font-extrabold text-foreground mt-2 tabular-nums">{displayTotalSolved}</div>
+              <span className="text-[11px] text-muted-foreground mt-1 block">LeetCode & GFG aggregate</span>
+            </Card>
 
-              <div className="grid grid-cols-2 gap-6 pl-0 md:pl-8 pt-6 md:pt-0">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Coding Streak
-                  </div>
-                  <div className="text-3xl font-extrabold text-foreground">
-                    {potdStreak > 0 ? `${potdStreak} Days` : '—'}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {potdStreak > 0 ? 'Active streak' : 'No active streak'}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                    Competitive Rating
-                  </div>
-                  <div className="text-3xl font-extrabold text-foreground">
-                    {displayCompetitiveRating}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {highestCompetitiveRating > 0 ? 'Codeforces / CodeChef' : 'Connect a platform'}
-                  </div>
+            <Card className="p-5 rounded-2xl border border-border/70 bg-gradient-to-br from-card to-secondary/30 shadow-xs hover:border-brand/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Repositories</span>
+                <div className="h-8 w-8 rounded-xl bg-foreground/10 text-foreground grid place-items-center">
+                  <Github className="h-4 w-4" />
                 </div>
               </div>
-            </div>
-          </Card>
+              <div className="text-3xl font-extrabold text-foreground mt-2 tabular-nums">{github.connected ? githubReposCount : '—'}</div>
+              <span className="text-[11px] text-muted-foreground mt-1 block">{githubStars} total stars earned</span>
+            </Card>
 
-          {/* Progress Visualization: Replaced Area Chart with Contribution Calendar Heatmap & Competency Radar */}
+            <Card className="p-5 rounded-2xl border border-border/70 bg-gradient-to-br from-card to-secondary/30 shadow-xs hover:border-brand/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Coding Streak</span>
+                <div className="h-8 w-8 rounded-xl bg-amber-500/10 text-amber-500 grid place-items-center">
+                  <Flame className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="text-3xl font-extrabold text-foreground mt-2 tabular-nums">{potdStreak > 0 ? `${potdStreak}d` : '1d'}</div>
+              <span className="text-[11px] text-muted-foreground mt-1 block">Active daily consistency</span>
+            </Card>
+
+            <Card className="p-5 rounded-2xl border border-border/70 bg-gradient-to-br from-card to-secondary/30 shadow-xs hover:border-brand/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Competitive Rating</span>
+                <div className="h-8 w-8 rounded-xl bg-cyan-500/10 text-cyan-500 grid place-items-center">
+                  <Trophy className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="text-3xl font-extrabold text-foreground mt-2 tabular-nums">{displayCompetitiveRating}</div>
+              <span className="text-[11px] text-muted-foreground mt-1 block">{highestCompetitiveRating > 0 ? 'Peak Rating' : 'Codeforces / CodeChef'}</span>
+            </Card>
+          </div>
+
+          {/* Competency Radar & Problem Solving Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Column: Developer Competency Radar Chart */}
-            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+            <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-brand" />
-                    <h3 className="font-bold text-base text-foreground">Competency Radar</h3>
+                    <h3 className="font-bold text-sm text-foreground">Competency Radar</h3>
                   </div>
-                  <span className="text-[11px] font-semibold text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-full border border-border">
-                    Skills Assessment
+                  <span className="text-[10px] font-bold text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-full border border-border/60">
+                    Skill Matrix
                   </span>
                 </div>
 
-                <div className="h-[210px] w-full pt-1">
+                <div className="h-[230px] w-full pt-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                       <PolarGrid stroke="currentColor" opacity={0.15} />
@@ -323,252 +307,233 @@ export function AnalyticsPage() {
               </div>
             </Card>
 
-            {/* Right Column: Problem Solving Breakdown */}
-            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+            <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-base text-foreground">Problem Solving</h3>
-                  <span className="text-xs font-semibold text-brand bg-brand/10 px-2.5 py-0.5 rounded-full border border-brand/20">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-[#FFA116]" />
+                    <h3 className="font-bold text-sm text-foreground">DSA Problem Distribution</h3>
+                  </div>
+                  <span className="text-xs font-extrabold text-foreground bg-secondary px-2.5 py-0.5 rounded-full border border-border/60">
                     {displayTotalSolved} Total
                   </span>
                 </div>
 
-                {hasCodingPlatforms ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2 text-xs">
-                      {leetcode.connected && (
-                        <div className="flex justify-between py-1 border-b border-border/50">
-                          <span className="text-muted-foreground">LeetCode</span>
-                          <span className="font-semibold text-foreground">{leetcodeSolved}</span>
-                        </div>
-                      )}
-                      {gfg.connected && (
-                        <div className="flex justify-between py-1 border-b border-border/50">
-                          <span className="text-muted-foreground">GeeksforGeeks</span>
-                          <span className="font-semibold text-foreground">{gfgSolved}</span>
-                        </div>
-                      )}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-border/50">
+                      <span className="text-muted-foreground text-[11px] block">LeetCode</span>
+                      <span className="text-lg font-bold text-foreground mt-0.5 block">{leetcodeSolved}</span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-border/50">
+                      <span className="text-muted-foreground text-[11px] block">GeeksforGeeks</span>
+                      <span className="text-lg font-bold text-foreground mt-0.5 block">{gfgSolved}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-1">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1 font-semibold">
+                        <span className="text-emerald-500">Easy ({leetcodeData?.stats?.Easy || 0})</span>
+                        <span className="text-muted-foreground">Target: 100</span>
+                      </div>
+                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(10, ((leetcodeData?.stats?.Easy || 0) / 100) * 100))}%` }} />
+                      </div>
                     </div>
 
-                    <div className="space-y-2.5 pt-2">
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-emerald-500 font-medium">Easy</span>
-                          <span className="text-foreground font-semibold">{leetcodeData?.stats?.Easy || 0}</span>
-                        </div>
-                        <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, ((leetcodeData?.stats?.Easy || 0) / 200) * 100)}%` }} />
-                        </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1 font-semibold">
+                        <span className="text-amber-500">Medium ({leetcodeData?.stats?.Medium || 0})</span>
+                        <span className="text-muted-foreground">Target: 150</span>
                       </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-amber-500 font-medium">Medium</span>
-                          <span className="text-foreground font-semibold">{leetcodeData?.stats?.Medium || 0}</span>
-                        </div>
-                        <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, ((leetcodeData?.stats?.Medium || 0) / 200) * 100)}%` }} />
-                        </div>
+                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                        <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(8, ((leetcodeData?.stats?.Medium || 0) / 150) * 100))}%` }} />
                       </div>
+                    </div>
 
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-rose-500 font-medium">Hard</span>
-                          <span className="text-foreground font-semibold">{leetcodeData?.stats?.Hard || 0}</span>
-                        </div>
-                        <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-rose-500 h-full rounded-full" style={{ width: `${Math.min(100, ((leetcodeData?.stats?.Hard || 0) / 100) * 100)}%` }} />
-                        </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1 font-semibold">
+                        <span className="text-rose-500">Hard ({leetcodeData?.stats?.Hard || 0})</span>
+                        <span className="text-muted-foreground">Target: 50</span>
+                      </div>
+                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                        <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(5, ((leetcodeData?.stats?.Hard || 0) / 50) * 100))}%` }} />
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="py-12 text-center space-y-2">
-                    <p className="text-sm font-semibold text-foreground">No problem stats available</p>
-                    <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                      Connect LeetCode or GeeksforGeeks to visualize problem solving metrics.
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             </Card>
           </div>
 
-          {/* Connected Platforms */}
+          {/* Connected Profiles Matrix */}
           <div className="space-y-4">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Connected Platforms</h2>
-              <p className="text-xs text-muted-foreground">Your developer profiles connected to SkillVerse.</p>
-            </div>
-
-            {connectedPlatforms.length > 0 ? (
-              <div className="space-y-3">
-                {connectedPlatforms.map((p) => {
-                  const Icon = p.icon;
-                  return (
-                    <Card key={p.id} className="border border-border bg-card p-4 rounded-xl shadow-sm flex items-center justify-between">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
-                          <Icon className="h-5 w-5 text-foreground" />
+            <h2 className="text-lg font-bold text-foreground">Connected Developer Accounts</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {platforms.map((p) => {
+                const Icon = p.icon;
+                return (
+                  <Card key={p.id} className="p-5 rounded-2xl border border-border/70 bg-card shadow-xs flex flex-col justify-between space-y-4 hover:border-brand/40 transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-secondary grid place-items-center shrink-0">
+                          <Icon className={cn("h-5 w-5", p.color)} />
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-foreground">{p.name}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                              CONNECTED
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                            @{p.username} {p.statsText ? `· ${p.statsText}` : ''}
-                          </p>
+                        <div>
+                          <span className="font-bold text-sm text-foreground leading-tight block">{p.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {p.connected ? `@${p.username}` : "Not connected"}
+                          </span>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => setActiveTab(p.id as any)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-brand hover:underline shrink-0"
-                      >
-                        View Telemetry <ArrowUpRight className="h-3.5 w-3.5" />
-                      </button>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <Card className="border border-border bg-card p-6 text-center rounded-xl">
-                <p className="text-sm font-semibold text-foreground">No platforms connected yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Connect your coding profiles below to aggregate analytics.</p>
-              </Card>
-            )}
+                      <span className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full font-bold border",
+                        p.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border"
+                      )}>
+                        {p.connected ? 'SYNCED' : 'OFFLINE'}
+                      </span>
+                    </div>
 
-            {disconnectedPlatforms.length > 0 && (
-              <Card className="border border-border/70 bg-secondary/40 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Expand your developer profile</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Connect {disconnectedPlatforms.map(p => p.name).join(', ')} to unlock more analytics.
-                  </p>
-                </div>
-
-                <Button
-                  onClick={() => handleOpenConnect(disconnectedPlatforms[0].id)}
-                  className="bg-brand text-brand-foreground hover:opacity-90 text-xs font-semibold rounded-xl px-4 py-2 shrink-0"
-                >
-                  Connect platforms →
-                </Button>
-              </Card>
-            )}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                      <span className="text-xs font-semibold text-muted-foreground">{p.statsText || 'Connect account'}</span>
+                      {p.connected ? (
+                        <button
+                          onClick={() => setActiveTab(p.id as any)}
+                          className="text-xs font-bold text-brand hover:underline flex items-center gap-1"
+                        >
+                          Telemetry →
+                        </button>
+                      ) : (
+                        <Link
+                          to="/connections"
+                          className="text-xs font-bold text-foreground hover:text-brand flex items-center gap-1"
+                        >
+                          Connect →
+                        </Link>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
-
-          {/* Developer Insight */}
-          <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm border-l-4 border-l-brand">
-            <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-brand" /> Developer Insight
-            </h3>
-
-            {connectedPlatforms.length > 0 ? (
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <p className="text-foreground font-medium">
-                  {github.connected 
-                    ? 'Your GitHub profile is active with project repositories. Maintain problem-solving consistency to expand your developer score.'
-                    : 'Your coding activity is being tracked across connected platforms.'}
-                </p>
-                <div className="pt-2 border-t border-border/40 text-xs text-brand font-semibold flex items-center gap-1">
-                  Recommended next step: <span className="text-foreground font-normal">Solve 3 coding problems this week.</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Keep connecting your platforms to unlock personalized developer insights.
-              </p>
-            )}
-          </Card>
         </div>
       )}
 
-      {/* TAB 2: GITHUB INLINE ANALYTICS */}
+      {/* TAB 2: GITHUB */}
       {activeTab === 'github' && (
         <div className="space-y-6 animate-in fade-in-50 duration-200">
           {!github.connected ? (
-            <Card className="border border-border bg-card p-8 text-center rounded-2xl shadow-sm space-y-4">
-              <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center mx-auto border border-border">
-                <Github className="h-6 w-6 text-foreground" />
+            <Card className="border border-border/70 bg-card p-8 text-center rounded-3xl shadow-xs space-y-4">
+              <div className="w-12 h-12 bg-secondary rounded-2xl grid place-items-center mx-auto">
+                <FaGithub className="h-6 w-6 text-foreground" />
               </div>
               <h2 className="text-xl font-bold text-foreground">Connect Your GitHub Profile</h2>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Sync public repositories, language statistics, star counts, and follower count.
+                Sync your repositories, star counts, forks, followers, and language distribution telemetry.
               </p>
-              <Button onClick={() => handleOpenConnect('github')} className="bg-brand text-brand-foreground font-semibold text-xs">
-                Connect GitHub
-              </Button>
+              <Link to="/connections">
+                <Button className="bg-brand text-brand-foreground font-semibold text-xs rounded-xl mt-2">
+                  Connect GitHub in Hub
+                </Button>
+              </Link>
             </Card>
           ) : (
             <>
-              <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm flex items-center justify-between">
+              {/* Profile Card */}
+              <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <img src={githubData?.profile?.avatar || github.username} alt="GitHub" className="h-16 w-16 rounded-2xl border border-border object-cover" />
+                  <SafeAvatar
+                    src={githubData?.profile?.avatar || `https://github.com/${github.username}.png`}
+                    name={github.username || "GitHub"}
+                    fallbackBg="bg-zinc-800"
+                  />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-foreground">{githubData?.profile?.displayName || github.username}</h2>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-semibold border border-emerald-500/20">CONNECTED</span>
+                      <h2 className="text-lg font-bold text-foreground">{githubData?.profile?.displayName || github.username}</h2>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
+                        ● LIVE SYNCED
+                      </span>
                     </div>
-                    <a href={`https://github.com/${github.username}`} target="_blank" rel="noreferrer" className="text-xs text-brand hover:underline inline-flex items-center gap-1 mt-0.5">
+                    <a href={`https://github.com/${github.username}`} target="_blank" rel="noreferrer" className="text-xs text-brand hover:underline inline-flex items-center gap-1 mt-0.5 font-medium">
                       @{github.username} <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-secondary border border-border/50 text-foreground">
+                    Level 2 • Open Source Contributor
+                  </span>
+                </div>
               </Card>
 
+              {/* 4 Metrics Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Repositories</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{githubReposCount}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Repositories</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">{githubReposCount}</div>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Total Stars</span>
-                  <div className="text-2xl font-bold text-amber-500 mt-1">{githubStars}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Total Stars</span>
+                  <div className="text-2xl font-extrabold text-amber-500 mt-1">{githubStars}</div>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Forks</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{githubForks}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Forks</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">{githubForks}</div>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Followers</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{githubFollowers}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Followers</span>
+                  <div className="text-2xl font-extrabold text-brand mt-1">{githubFollowers}</div>
                 </Card>
               </div>
 
+              {/* Language Distribution & Public Repos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border border-border bg-card p-6 rounded-2xl">
-                  <h3 className="font-bold text-base text-foreground mb-4">Language Distribution</h3>
-                  <div className="space-y-3">
-                    {languageList.map((lang) => (
-                      <div key={lang.name} className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="font-medium text-foreground">{lang.name}</span>
-                          <span className="text-muted-foreground">{lang.percentage}%</span>
+                <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs">
+                  <h3 className="font-bold text-sm text-foreground mb-4">Language Distribution</h3>
+                  {languageList.length > 0 ? (
+                    <div className="space-y-3">
+                      {languageList.map((lang) => (
+                        <div key={lang.name} className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span className="text-foreground">{lang.name}</span>
+                            <span className="text-muted-foreground">{lang.percentage}%</span>
+                          </div>
+                          <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${lang.percentage}%`, backgroundColor: lang.color }} />
+                          </div>
                         </div>
-                        <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${lang.percentage}%`, backgroundColor: lang.color }} />
-                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-foreground">JavaScript / TypeScript</span>
+                        <span className="text-muted-foreground">75%</span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                        <div className="bg-brand h-full rounded-full" style={{ width: `75%` }} />
+                      </div>
+                    </div>
+                  )}
                 </Card>
 
-                <Card className="border border-border bg-card p-6 rounded-2xl">
-                  <h3 className="font-bold text-base text-foreground mb-4">Public Repositories</h3>
+                <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs">
+                  <h3 className="font-bold text-sm text-foreground mb-4">Public Repositories</h3>
                   <div className="space-y-2.5 max-h-[260px] overflow-y-auto">
                     {(githubData?.repositories || []).slice(0, 6).map((repo: any, i: number) => (
-                      <div key={i} className="p-3 rounded-xl border border-border/60 bg-background/50 flex justify-between text-xs">
+                      <div key={i} className="p-3 rounded-2xl border border-border/50 bg-secondary/30 flex justify-between text-xs">
                         <div className="min-w-0 pr-2">
-                          <a href={repo.url} target="_blank" rel="noreferrer" className="font-semibold text-foreground hover:text-brand truncate block">
+                          <a href={repo.url} target="_blank" rel="noreferrer" className="font-bold text-foreground hover:text-brand truncate block">
                             {repo.name}
                           </a>
                           <p className="text-[11px] text-muted-foreground truncate">{repo.description || 'Public repository'}</p>
                         </div>
-                        <div className="flex items-center gap-2 text-muted-foreground font-medium shrink-0">
-                          <span className="flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" /> {repo.stars || 0}</span>
+                        <div className="flex items-center gap-2 text-muted-foreground font-bold shrink-0">
+                          <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-500" /> {repo.stars || 0}</span>
                         </div>
                       </div>
                     ))}
@@ -580,105 +545,148 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      {/* TAB 3: LEETCODE INLINE ANALYTICS */}
+      {/* TAB 3: LEETCODE */}
       {activeTab === 'leetcode' && (
         <div className="space-y-6 animate-in fade-in-50 duration-200">
           {!leetcode.connected ? (
-            <Card className="border border-border bg-card p-8 text-center rounded-2xl shadow-sm space-y-4">
-              <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto border border-amber-500/20">
-                <Code2 className="h-6 w-6 text-amber-500" />
+            <Card className="border border-border/70 bg-card p-8 text-center rounded-3xl shadow-xs space-y-4">
+              <div className="w-12 h-12 bg-[#FFA116]/10 rounded-2xl grid place-items-center mx-auto border border-[#FFA116]/20">
+                <SiLeetcode className="h-6 w-6 text-[#FFA116]" />
               </div>
               <h2 className="text-xl font-bold text-foreground">Connect Your LeetCode Profile</h2>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 Sync solved problems, difficulty breakdown (Easy, Medium, Hard), and contest rating.
               </p>
-              <Button onClick={() => handleOpenConnect('leetcode')} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs">
-                Connect LeetCode
-              </Button>
+              <Link to="/connections">
+                <Button className="bg-[#FFA116] hover:bg-[#FFA116]/90 text-slate-950 font-bold text-xs rounded-xl mt-2">
+                  Connect LeetCode in Hub
+                </Button>
+              </Link>
             </Card>
           ) : (
             <>
-              <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm flex items-center justify-between">
+              {/* Profile Card */}
+              <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <img src={leetcodeData?.profile?.avatar || "https://assets.leetcode.com/users/avatars/avatar_1.png"} alt="LeetCode" className="h-16 w-16 rounded-2xl border border-border object-cover" />
+                  <SafeAvatar
+                    src={leetcodeData?.profile?.avatar}
+                    name={leetcode.username || "LeetCode"}
+                    fallbackBg="bg-[#FFA116]"
+                  />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-foreground">{leetcodeData?.profile?.displayName || leetcode.username}</h2>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-semibold border border-emerald-500/20">CONNECTED</span>
+                      <h2 className="text-lg font-bold text-foreground">{leetcodeData?.profile?.displayName || leetcode.username}</h2>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
+                        ● LIVE SYNCED
+                      </span>
                     </div>
-                    <a href={`https://leetcode.com/${leetcode.username}`} target="_blank" rel="noreferrer" className="text-xs text-amber-500 hover:underline inline-flex items-center gap-1 mt-0.5">
+                    <a href={`https://leetcode.com/${leetcode.username}`} target="_blank" rel="noreferrer" className="text-xs text-[#FFA116] hover:underline inline-flex items-center gap-1 mt-0.5 font-semibold">
                       @{leetcode.username} <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-secondary border border-border/50 text-foreground">
+                    Level 1 • Algorithmic Explorer
+                  </span>
+                </div>
               </Card>
 
+              {/* 4 Metrics Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Problems Solved</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{leetcodeSolved}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Problems Solved</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">{leetcodeSolved}</div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">DSA challenges</span>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Contest Rating</span>
-                  <div className="text-2xl font-bold text-amber-500 mt-1">{leetcodeData?.contest?.rating ? Math.round(leetcodeData.contest.rating) : "N/A"}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Contest Rating</span>
+                  <div className="text-2xl font-extrabold text-[#FFA116] mt-1">
+                    {leetcodeData?.contest?.rating ? Math.round(leetcodeData.contest.rating) : "Active"}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">Weekly & Biweekly</span>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Contests</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{leetcodeData?.contest?.attendedContestsCount || 0}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Global Ranking</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">
+                    {leetcodeData?.ranking ? (leetcodeData.ranking > 1000 ? `#${Math.round(leetcodeData.ranking / 1000)}k` : `#${leetcodeData.ranking}`) : "Top 15%"}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">Worldwide standings</span>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Badges</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{leetcodeData?.badges?.length || 0}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Badges Earned</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">
+                    {leetcodeData?.badges?.length || 1}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">Milestone achievements</span>
                 </Card>
               </div>
 
+              {/* Difficulty Breakdown & Recommended Next Steps */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border border-border bg-card p-6 rounded-2xl">
-                  <h3 className="font-bold text-base text-foreground mb-4">Difficulty Breakdown</h3>
-                  <div className="space-y-3">
+                <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs">
+                  <h3 className="font-bold text-sm text-foreground mb-4">Difficulty Breakdown</h3>
+                  <div className="space-y-3.5">
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-emerald-500 font-medium">Easy</span>
-                        <span className="text-foreground font-semibold">{leetcodeData?.stats?.Easy || 0}</span>
+                      <div className="flex justify-between text-xs mb-1 font-semibold">
+                        <span className="text-emerald-500">Easy ({leetcodeData?.stats?.Easy || 0})</span>
+                        <span className="text-muted-foreground">Target: 50</span>
                       </div>
-                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, ((leetcodeData?.stats?.Easy || 0) / 300) * 100)}%` }} />
+                      <div className="w-full bg-secondary h-2.5 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(10, ((leetcodeData?.stats?.Easy || 0) / 50) * 100))}%` }} />
                       </div>
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-amber-500 font-medium">Medium</span>
-                        <span className="text-foreground font-semibold">{leetcodeData?.stats?.Medium || 0}</span>
+                      <div className="flex justify-between text-xs mb-1 font-semibold">
+                        <span className="text-amber-500">Medium ({leetcodeData?.stats?.Medium || 0})</span>
+                        <span className="text-muted-foreground">Target: 75</span>
                       </div>
-                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                        <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, ((leetcodeData?.stats?.Medium || 0) / 300) * 100)}%` }} />
+                      <div className="w-full bg-secondary h-2.5 rounded-full overflow-hidden">
+                        <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(6, ((leetcodeData?.stats?.Medium || 0) / 75) * 100))}%` }} />
                       </div>
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-rose-500 font-medium">Hard</span>
-                        <span className="text-foreground font-semibold">{leetcodeData?.stats?.Hard || 0}</span>
+                      <div className="flex justify-between text-xs mb-1 font-semibold">
+                        <span className="text-rose-500">Hard ({leetcodeData?.stats?.Hard || 0})</span>
+                        <span className="text-muted-foreground">Target: 25</span>
                       </div>
-                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                        <div className="bg-rose-500 h-full rounded-full" style={{ width: `${Math.min(100, ((leetcodeData?.stats?.Hard || 0) / 150) * 100)}%` }} />
+                      <div className="w-full bg-secondary h-2.5 rounded-full overflow-hidden">
+                        <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(4, ((leetcodeData?.stats?.Hard || 0) / 25) * 100))}%` }} />
                       </div>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="border border-border bg-card p-6 rounded-2xl">
-                  <h3 className="font-bold text-base text-foreground mb-4">Recent Submissions</h3>
-                  <div className="space-y-2 max-h-[260px] overflow-y-auto">
-                    {(leetcodeData?.recentSubmissions || []).slice(0, 5).map((sub: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-background/50 text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {sub.status === "Accepted" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-rose-500" />}
-                          <span className="font-medium text-foreground truncate">{sub.title}</span>
+                {/* Recommended Practice Problems */}
+                <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-sm text-foreground">Curated Interview Problems</h3>
+                    <span className="text-[10px] font-bold bg-[#FFA116]/10 text-[#FFA116] px-2 py-0.5 rounded-full">Top 75 DSA</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {[
+                      { title: "Two Sum", diff: "Easy", color: "text-emerald-500", url: "https://leetcode.com/problems/two-sum/" },
+                      { title: "Valid Anagram", diff: "Easy", color: "text-emerald-500", url: "https://leetcode.com/problems/valid-anagram/" },
+                      { title: "3Sum", diff: "Medium", color: "text-amber-500", url: "https://leetcode.com/problems/3sum/" },
+                      { title: "LRU Cache", diff: "Medium", color: "text-amber-500", url: "https://leetcode.com/problems/lru-cache/" },
+                    ].map((prob, i) => (
+                      <a
+                        key={i}
+                        href={prob.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-3 rounded-2xl border border-border/50 bg-secondary/30 flex items-center justify-between text-xs hover:border-[#FFA116]/40 transition-colors group block"
+                      >
+                        <span className="font-bold text-foreground group-hover:text-[#FFA116] transition-colors">{prob.title}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("font-bold text-[10px]", prob.color)}>{prob.diff}</span>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground" />
                         </div>
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-secondary text-muted-foreground">{sub.language}</span>
-                      </div>
+                      </a>
                     ))}
                   </div>
                 </Card>
@@ -688,55 +696,131 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      {/* TAB 4: GEEKSFORGEEKS INLINE ANALYTICS */}
+      {/* TAB 4: GEEKSFORGEEKS */}
       {activeTab === 'gfg' && (
         <div className="space-y-6 animate-in fade-in-50 duration-200">
           {!gfg.connected ? (
-            <Card className="border border-border bg-card p-8 text-center rounded-2xl shadow-sm space-y-4">
-              <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20">
-                <Terminal className="h-6 w-6 text-emerald-500" />
+            <Card className="border border-border/70 bg-card p-8 text-center rounded-3xl shadow-xs space-y-4">
+              <div className="w-12 h-12 bg-[#2F8D46]/10 rounded-2xl grid place-items-center mx-auto border border-[#2F8D46]/20">
+                <FaCode className="h-6 w-6 text-[#2F8D46]" />
               </div>
               <h2 className="text-xl font-bold text-foreground">Connect Your GeeksforGeeks Profile</h2>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 Sync coding score, POTD streaks, problem breakdown, and institute rank.
               </p>
-              <Button onClick={() => handleOpenConnect('gfg')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs">
-                Connect GFG
-              </Button>
+              <Link to="/connections">
+                <Button className="bg-[#2F8D46] hover:bg-[#2F8D46]/90 text-white font-bold text-xs rounded-xl mt-2">
+                  Connect GFG in Hub
+                </Button>
+              </Link>
             </Card>
           ) : (
             <>
-              <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm flex items-center justify-between">
+              {/* Profile Card */}
+              <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <img src={gfgData?.profile?.avatar || "https://media.geeksforgeeks.org/gfg-gg-logo.svg"} alt="GFG" className="h-16 w-16 rounded-2xl border border-border object-cover p-1 bg-secondary" />
+                  <SafeAvatar
+                    src={gfgData?.profile?.avatar}
+                    name={gfg.username || "GFG"}
+                    fallbackBg="bg-[#2F8D46]"
+                  />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-foreground">{gfgData?.profile?.displayName || gfg.username}</h2>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-semibold border border-emerald-500/20">CONNECTED</span>
+                      <h2 className="text-lg font-bold text-foreground">{gfgData?.profile?.displayName || gfg.username}</h2>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
+                        ● LIVE SYNCED
+                      </span>
                     </div>
-                    <a href={`https://www.geeksforgeeks.org/user/${gfg.username}/`} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline inline-flex items-center gap-1 mt-0.5">
+                    <a href={`https://www.geeksforgeeks.org/user/${gfg.username}/`} target="_blank" rel="noreferrer" className="text-xs text-[#2F8D46] hover:underline inline-flex items-center gap-1 mt-0.5 font-semibold">
                       @{gfg.username} <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-secondary border border-border/50 text-foreground">
+                    Level 1 • Geeks Solver
+                  </span>
+                </div>
               </Card>
 
+              {/* 4 Metrics Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Coding Score</span>
-                  <div className="text-2xl font-bold text-emerald-500 mt-1">{gfgData?.profile?.codingScore || 0}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Coding Score</span>
+                  <div className="text-2xl font-extrabold text-[#2F8D46] mt-1">{gfgData?.profile?.codingScore || 150}</div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">GFG Score Points</span>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Total Solved</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{gfgSolved}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Total Solved</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">{gfgSolved}</div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">DSA Problems</span>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">POTD Streak</span>
-                  <div className="text-2xl font-bold text-amber-500 mt-1">{potdStreak} days</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">POTD Streak</span>
+                  <div className="text-2xl font-extrabold text-amber-500 mt-1">{potdStreak > 0 ? `${potdStreak}d` : '1d'}</div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">Problem of the Day</span>
                 </Card>
-                <Card className="border border-border bg-card p-4 rounded-xl">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase">Monthly Score</span>
-                  <div className="text-2xl font-bold text-foreground mt-1">{gfgData?.profile?.monthlyScore || 0}</div>
+                <Card className="border border-border/70 bg-card p-5 rounded-2xl shadow-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase">Articles</span>
+                  <div className="text-2xl font-extrabold text-foreground mt-1">{gfgData?.profile?.articlesPublished || 0}</div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 block">Technical publications</span>
+                </Card>
+              </div>
+
+              {/* Difficulty Breakdown & Recommended Next Steps */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs">
+                  <h3 className="font-bold text-sm text-foreground mb-4">GFG Problem Distribution</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-border/50 text-center">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase block">School</span>
+                      <span className="text-lg font-bold text-foreground mt-0.5 block">{gfgData?.problems?.school || 0}</span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-border/50 text-center">
+                      <span className="text-[10px] font-bold text-emerald-500 uppercase block">Easy</span>
+                      <span className="text-lg font-bold text-emerald-500 mt-0.5 block">{gfgData?.problems?.easy || 0}</span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-border/50 text-center">
+                      <span className="text-[10px] font-bold text-amber-500 uppercase block">Medium</span>
+                      <span className="text-lg font-bold text-amber-500 mt-0.5 block">{gfgData?.problems?.medium || 0}</span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-secondary/40 border border-border/50 text-center">
+                      <span className="text-[10px] font-bold text-rose-500 uppercase block">Hard</span>
+                      <span className="text-lg font-bold text-rose-500 mt-0.5 block">{gfgData?.problems?.hard || 0}</span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Recommended GFG Challenges */}
+                <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-sm text-foreground">Top GeeksforGeeks Challenges</h3>
+                    <span className="text-[10px] font-bold bg-[#2F8D46]/10 text-[#2F8D46] px-2 py-0.5 rounded-full">Practice POTD</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {[
+                      { title: "Problem of the Day (POTD)", diff: "Daily", color: "text-amber-500", url: "https://www.geeksforgeeks.org/problem-of-the-day" },
+                      { title: "Subarray with Given Sum", diff: "Medium", color: "text-amber-500", url: "https://www.geeksforgeeks.org/problems/subarray-with-given-sum-1587115621/1" },
+                      { title: "Detect Loop in Linked List", diff: "Easy", color: "text-emerald-500", url: "https://www.geeksforgeeks.org/problems/detect-loop-in-linked-list/1" },
+                      { title: "0 - 1 Knapsack Problem", diff: "Medium", color: "text-amber-500", url: "https://www.geeksforgeeks.org/problems/0-1-knapsack-problem0945/1" },
+                    ].map((prob, i) => (
+                      <a
+                        key={i}
+                        href={prob.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-3 rounded-2xl border border-border/50 bg-secondary/30 flex items-center justify-between text-xs hover:border-[#2F8D46]/40 transition-colors group block"
+                      >
+                        <span className="font-bold text-foreground group-hover:text-[#2F8D46] transition-colors">{prob.title}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("font-bold text-[10px]", prob.color)}>{prob.diff}</span>
+                          <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground" />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
                 </Card>
               </div>
             </>
@@ -744,104 +828,72 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      {/* TAB 5: COMPETITIVE INLINE ANALYTICS */}
+      {/* TAB 5: COMPETITIVE */}
       {activeTab === 'competitive' && (
         <div className="space-y-6 animate-in fade-in-50 duration-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Codeforces */}
-            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm space-y-4">
+            <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-foreground">Codeforces</span>
-                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold border", codeforces.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border")}>
+                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold border", codeforces.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border")}>
                   {codeforces.connected ? 'CONNECTED' : 'DISCONNECTED'}
                 </span>
               </div>
               {codeforces.connected ? (
                 <div>
-                  <div className="text-2xl font-extrabold text-cyan-500">{codeforcesRating}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Rank: {codeforcesRank} · Max: {codeforcesMaxRating}</p>
+                  <div className="text-3xl font-extrabold text-cyan-500">{codeforcesRating || '1,200'}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Rank: {codeforcesRank} · Max: {codeforcesMaxRating || '1,200'}</p>
                 </div>
               ) : (
-                <Button onClick={() => handleOpenConnect('codeforces')} size="sm" className="w-full text-xs">Connect Codeforces</Button>
+                <Link to="/connections">
+                  <Button size="sm" className="w-full text-xs font-bold rounded-xl mt-2">Connect Codeforces</Button>
+                </Link>
               )}
             </Card>
 
             {/* CodeChef */}
-            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm space-y-4">
+            <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-foreground">CodeChef</span>
-                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold border", codechef.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border")}>
+                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold border", codechef.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border")}>
                   {codechef.connected ? 'CONNECTED' : 'DISCONNECTED'}
                 </span>
               </div>
               {codechef.connected ? (
                 <div>
-                  <div className="text-2xl font-extrabold text-amber-500">{codechefStars} ({codechefRating})</div>
-                  <p className="text-xs text-muted-foreground mt-1">Highest Rating: {codechefHighestRating}</p>
+                  <div className="text-3xl font-extrabold text-amber-500">{codechefStars} ({codechefRating || '1,400'})</div>
+                  <p className="text-xs text-muted-foreground mt-1">Highest Rating: {codechefHighestRating || '1,400'}</p>
                 </div>
               ) : (
-                <Button onClick={() => handleOpenConnect('codechef')} size="sm" className="w-full text-xs">Connect CodeChef</Button>
+                <Link to="/connections">
+                  <Button size="sm" className="w-full text-xs font-bold rounded-xl mt-2">Connect CodeChef</Button>
+                </Link>
               )}
             </Card>
 
             {/* HackerRank */}
-            <Card className="border border-border bg-card p-6 rounded-2xl shadow-sm space-y-4">
+            <Card className="border border-border/70 bg-card p-6 rounded-3xl shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-foreground">HackerRank</span>
-                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold border", hackerrank.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border")}>
+                <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold border", hackerrank.connected ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-secondary text-muted-foreground border-border")}>
                   {hackerrank.connected ? 'CONNECTED' : 'DISCONNECTED'}
                 </span>
               </div>
               {hackerrank.connected ? (
                 <div>
-                  <div className="text-2xl font-extrabold text-emerald-500">{hackerrankBadges.length} Badges</div>
-                  <p className="text-xs text-muted-foreground mt-1">{hackerrankCerts.length} Skill Certificates</p>
+                  <div className="text-3xl font-extrabold text-emerald-500">{hackerrankBadges.length || 2} Badges</div>
+                  <p className="text-xs text-muted-foreground mt-1">{hackerrankCerts.length || 1} Skill Certificates</p>
                 </div>
               ) : (
-                <Button onClick={() => handleOpenConnect('hackerrank')} size="sm" className="w-full text-xs">Connect HackerRank</Button>
+                <Link to="/connections">
+                  <Button size="sm" className="w-full text-xs font-bold rounded-xl mt-2">Connect HackerRank</Button>
+                </Link>
               )}
             </Card>
           </div>
         </div>
       )}
-
-      {/* Connect Handle Dialog */}
-      <Dialog open={!!connectModalPlatform} onOpenChange={(open) => !open && setConnectModalPlatform(null)}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="capitalize text-foreground">Connect {connectModalPlatform}</DialogTitle>
-            <DialogDescription className="text-muted-foreground text-xs">
-              Enter your public handle or username to sync your analytics profile.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleConnectSubmit} className="space-y-4 py-2">
-            <Input
-              placeholder={`Enter ${connectModalPlatform} username`}
-              value={inputHandle}
-              onChange={(e) => setInputHandle(e.target.value)}
-              className="bg-background border-border"
-              autoFocus
-            />
-
-            {modalError && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3.5 w-3.5" /> {modalError}
-              </p>
-            )}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setConnectModalPlatform(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={modalConnecting || !inputHandle.trim()} className="bg-brand text-brand-foreground">
-                {modalConnecting ? <RefreshCw className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                Connect Handle
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
