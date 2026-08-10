@@ -39,6 +39,7 @@ import {
 } from "@/lib/profile-context";
 import { EducationSection } from "@/components/profile/EducationSection";
 import { UsernameManagerCard } from "@/components/profile/UsernameManagerCard";
+import { usernameService } from "@/lib/services/username-service";
 import { useIdentityHub } from "@/lib/identity-hub-context";
 import { usePlatformStore } from "@/lib/platform-store";
 import { Card } from "@/components/ui/card";
