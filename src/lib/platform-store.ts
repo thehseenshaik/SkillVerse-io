@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // API base URL
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
 
 interface PlatformConnection {
   connected: boolean;
@@ -942,43 +942,50 @@ export const usePlatformStore = create<PlatformStore>()(
           const currentCodechef = get().codechef;
           const currentHackerrank = get().hackerrank;
           
+          const isGithubConn = (conns.github === true) || (data?.github != null) || currentGithub.connected;
+          const isLeetcodeConn = (conns.leetcode === true) || (data?.leetcode != null) || currentLeetcode.connected;
+          const isGfgConn = (conns.gfg === true) || (data?.gfg != null) || currentGfg.connected;
+          const isCodeforcesConn = (conns.codeforces === true) || (data?.codeforces != null) || currentCodeforces.connected;
+          const isCodechefConn = (conns.codechef === true) || (data?.codechef != null) || currentCodechef.connected;
+          const isHackerrankConn = (conns.hackerrank === true) || (data?.hackerrank != null) || currentHackerrank.connected;
+          
           set({
             isLoading: false,
-            githubData: data?.github || null,
-            leetcodeData: data?.leetcode || null,
-            gfgData: data?.gfg || null,
-            codeforcesData: data?.codeforces || null,
-            codechefData: data?.codechef || null,
-            hackerrankData: data?.hackerrank || null,
-            combinedMetrics: data?.combinedMetrics || null,
+            githubData: data?.github || get().githubData,
+            leetcodeData: data?.leetcode || get().leetcodeData,
+            gfgData: data?.gfg || get().gfgData,
+            codeforcesData: data?.codeforces || get().codeforcesData,
+            codechefData: data?.codechef || get().codechefData,
+            hackerrankData: data?.hackerrank || get().hackerrankData,
+            combinedMetrics: data?.combinedMetrics || get().combinedMetrics,
             github: {
               ...currentGithub,
-              connected: conns.github !== undefined ? !!conns.github : currentGithub.connected,
+              connected: isGithubConn,
               lastSynced: data?.github ? data.lastUpdated : currentGithub.lastSynced,
             },
             leetcode: {
               ...currentLeetcode,
-              connected: conns.leetcode !== undefined ? !!conns.leetcode : currentLeetcode.connected,
+              connected: isLeetcodeConn,
               lastSynced: data?.leetcode ? data.lastUpdated : currentLeetcode.lastSynced,
             },
             gfg: {
               ...currentGfg,
-              connected: conns.gfg !== undefined ? !!conns.gfg : currentGfg.connected,
+              connected: isGfgConn,
               lastSynced: data?.gfg ? data.lastUpdated : currentGfg.lastSynced,
             },
             codeforces: {
               ...currentCodeforces,
-              connected: conns.codeforces !== undefined ? !!conns.codeforces : currentCodeforces.connected,
+              connected: isCodeforcesConn,
               lastSynced: data?.codeforces ? data.lastUpdated : currentCodeforces.lastSynced,
             },
             codechef: {
               ...currentCodechef,
-              connected: conns.codechef !== undefined ? !!conns.codechef : currentCodechef.connected,
+              connected: isCodechefConn,
               lastSynced: data?.codechef ? data.lastUpdated : currentCodechef.lastSynced,
             },
             hackerrank: {
               ...currentHackerrank,
-              connected: conns.hackerrank !== undefined ? !!conns.hackerrank : currentHackerrank.connected,
+              connected: isHackerrankConn,
               lastSynced: data?.hackerrank ? data.lastUpdated : currentHackerrank.lastSynced,
             },
           });

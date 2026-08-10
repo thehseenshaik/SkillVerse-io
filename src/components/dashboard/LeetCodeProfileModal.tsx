@@ -96,8 +96,9 @@ export function LeetCodeProfileModal({
     setLoading(true);
     setError(null);
     try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
       // First, trigger a sync to get fresh data
-      const syncResponse = await fetch("http://localhost:3001/api/leetcode/sync", {
+      const syncResponse = await fetch(`${API_BASE}/api/leetcode/sync`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,8 +110,8 @@ export function LeetCodeProfileModal({
         throw new Error("Failed to sync LeetCode data");
       }
 
-      // Then fetch the cached data from Firestore
-      const userResponse = await fetch(`http://localhost:3001/api/user/${uid}`);
+      // Then fetch the cached data from backend
+      const userResponse = await fetch(`${API_BASE}/api/user/${uid}`);
       
       if (!userResponse.ok) {
         throw new Error("Failed to fetch user data");
@@ -118,7 +119,7 @@ export function LeetCodeProfileModal({
       
       const userData = await userResponse.json();
       
-      const cachedData = userData.cachedData?.leetcode;
+      const cachedData = userData?.cachedData?.leetcode;
       
       if (cachedData) {
         setProfile(cachedData.profile);

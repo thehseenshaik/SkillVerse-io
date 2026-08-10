@@ -88,7 +88,8 @@ class PlatformDataService {
    * Sync platform data through the server
    */
   async syncPlatform(platform: string, uid: string): Promise<void> {
-    const response = await fetch(`http://localhost:3001/api/${platform}/sync`, {
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+    const response = await fetch(`${API_BASE}/api/${platform}/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -108,21 +109,23 @@ class PlatformDataService {
    * Get cached platform data from Firestore
    */
   async getCachedPlatformData(platform: string, uid: string): Promise<any> {
-    const response = await fetch(`http://localhost:3001/api/user/${uid}`);
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+    const response = await fetch(`${API_BASE}/api/user/${uid}`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch user data');
     }
 
     const userData = await response.json();
-    return userData.cachedData?.[platform] || null;
+    return userData?.cachedData?.[platform] || null;
   }
 
   /**
    * Connect platform
    */
   async connectPlatform(platform: string, uid: string, username: string): Promise<void> {
-    const response = await fetch(`http://localhost:3001/api/${platform}/connect`, {
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+    const response = await fetch(`${API_BASE}/api/${platform}/connect`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,7 +146,8 @@ class PlatformDataService {
    * Disconnect platform
    */
   async disconnectPlatform(platform: string, uid: string): Promise<void> {
-    const response = await fetch(`http://localhost:3001/api/${platform}/disconnect`, {
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+    const response = await fetch(`${API_BASE}/api/${platform}/disconnect`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -163,7 +167,8 @@ class PlatformDataService {
    * Validate platform username
    */
   async validateUsername(platform: string, username: string): Promise<{ valid: boolean; username: string; displayName: string; avatar?: string }> {
-    const response = await fetch(`http://localhost:3001/api/${platform}/validate`, {
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+    const response = await fetch(`${API_BASE}/api/${platform}/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

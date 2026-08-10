@@ -98,16 +98,18 @@ export function IdentityHubProvider({ children }: { children: ReactNode }) {
     aiDataLayer.setProfile(defaultProfile);
   }, []);
 
-  // Load connections from Firestore on mount
+const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+
+  // Load connections from backend on mount
   const loadConnections = useCallback(async () => {
     if (!user?.id) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/user/${user.id}`);
+      const response = await fetch(`${API_BASE}/api/user/${user.id}`);
       if (!response.ok) return;
 
       const userData = await response.json();
-      const connectionsData = userData.connections || {};
+      const connectionsData = userData?.connections || {};
 
       const ALL_PLATFORMS: Platform[] = [
         "github",
@@ -118,22 +120,22 @@ export function IdentityHubProvider({ children }: { children: ReactNode }) {
         "hackerrank",
       ];
 
-      const platformConnections: PlatformConnection[] = ALL_PLATFORMS.map(
-        (platform) => {
+      setConnections((prev) => {
+        return ALL_PLATFORMS.map((platform) => {
           const data = connectionsData[platform] || {};
+          const prevConn = prev.find((p) => p.platform === platform);
+          const isConn = data.connected === true || (data.status === "connected") || (prevConn?.status === "connected");
           return {
             platform,
-            status: data.connected ? "connected" : "disconnected",
-            username: data.username || "",
-            lastSynced: data.lastSynced ? new Date(data.lastSynced) : undefined,
-            syncStatus: data.connected ? "synced" : undefined,
+            status: isConn ? "connected" : "disconnected",
+            username: data.username || prevConn?.username || "",
+            lastSynced: data.lastSynced ? new Date(data.lastSynced) : prevConn?.lastSynced,
+            syncStatus: isConn ? "synced" : undefined,
           };
-        },
-      );
-
-      setConnections(platformConnections);
+        });
+      });
     } catch (error) {
-      console.error("Failed to load connections:", error);
+      console.warn("Failed to load connections:", error);
     }
   }, [user?.id]);
 
@@ -236,7 +238,7 @@ export function IdentityHubProvider({ children }: { children: ReactNode }) {
         setSyncProgress((prev) => ({ ...prev, [platform]: 50 }));
 
         // Call backend sync endpoint
-        const response = await fetch(`http://localhost:3001/api/${platform}/sync`, {
+        const response = await fetch(`${API_BASE}/api/${platform}/sync`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -251,7 +253,7 @@ export function IdentityHubProvider({ children }: { children: ReactNode }) {
         setSyncProgress((prev) => ({ ...prev, [platform]: 100 }));
 
         // Reload connections after sync
-        const userResponse = await fetch(`http://localhost:3001/api/user/${user.id}`);
+        const userResponse = await fetch(`${API_BASE}/api/user/${user.id}`);
         if (userResponse.ok) {
           const userData = await userResponse.json();
           const connectionsData = userData.connections || {};
