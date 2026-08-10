@@ -619,45 +619,123 @@ function PracticeHubPage() {
               </p>
             </div>
 
-            {/* 2. SEGMENTED PRACTICE NAVIGATION */}
-            <div className="flex items-center gap-2 mt-8 overflow-x-auto pb-1" role="tablist">
-              {[
-                { id: "dsa", label: "DSA Problems", count: `${solvedCount} / ${CURATED_DSA_PROBLEMS.length}` },
-                { id: "interview", label: "AI Mock Interview" },
-                { id: "aptitude", label: "Aptitude", count: `${aptitudeCounts.total} Qs` },
-                { id: "companies", label: "Company Questions", count: "6" },
-              ].map((tab) => {
-                const isActive = activeTab === tab.id;
+            {/* 2. 4 HERO SECTIONS CARDS GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+              {/* Card 1: DSA Problems */}
+              <div
+                onClick={() => setActiveTab("dsa")}
+                className={cn(
+                  "group relative p-5 rounded-2xl border transition-all cursor-pointer overflow-hidden shadow-xs backdrop-blur-md",
+                  activeTab === "dsa"
+                    ? "bg-card border-brand shadow-md ring-1 ring-brand/30 scale-[1.01]"
+                    : "bg-card/70 border-border/70 hover:border-brand/50 hover:bg-card hover:shadow-sm"
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl grid place-items-center transition-colors",
+                    activeTab === "dsa" ? "bg-brand text-brand-foreground" : "bg-brand/10 text-brand group-hover:bg-brand group-hover:text-brand-foreground"
+                  )}>
+                    <Code2 className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-mono font-extrabold px-2.5 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
+                    {solvedCount} / {CURATED_DSA_PROBLEMS.length}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-brand transition-colors flex items-center gap-1.5">
+                  DSA Problems <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-brand" />
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  Curated LeetCode & interview problem sets with company tags.
+                </p>
+              </div>
 
-                return (
-                  <button
-                    key={tab.id}
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setActiveTab(tab.id as PracticeTab)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer border",
-                      isActive
-                        ? "bg-brand/10 text-brand border-brand/30 font-bold shadow-2xs"
-                        : "bg-transparent text-muted-foreground border-transparent hover:bg-secondary/60 hover:text-foreground"
-                    )}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-mono px-1.5 py-0.2 rounded",
-                          isActive
-                            ? "bg-brand/20 text-brand font-bold"
-                            : "bg-secondary text-muted-foreground font-normal"
-                        )}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+              {/* Card 2: AI Mock Interview */}
+              <div
+                onClick={() => setActiveTab("interview")}
+                className={cn(
+                  "group relative p-5 rounded-2xl border transition-all cursor-pointer overflow-hidden shadow-xs backdrop-blur-md",
+                  activeTab === "interview"
+                    ? "bg-card border-indigo-500 shadow-md ring-1 ring-indigo-500/30 scale-[1.01]"
+                    : "bg-card/70 border-border/70 hover:border-indigo-500/50 hover:bg-card hover:shadow-sm"
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl grid place-items-center transition-colors",
+                    activeTab === "interview" ? "bg-indigo-500 text-white" : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white"
+                  )}>
+                    <Brain className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                    Live AI
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-indigo-500 transition-colors flex items-center gap-1.5">
+                  AI Mock Interview <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-indigo-500" />
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  Interactive voice & text interviews with instant score & feedback.
+                </p>
+              </div>
+
+              {/* Card 3: Aptitude */}
+              <div
+                onClick={() => setActiveTab("aptitude")}
+                className={cn(
+                  "group relative p-5 rounded-2xl border transition-all cursor-pointer overflow-hidden shadow-xs backdrop-blur-md",
+                  activeTab === "aptitude"
+                    ? "bg-card border-emerald-500 shadow-md ring-1 ring-emerald-500/30 scale-[1.01]"
+                    : "bg-card/70 border-border/70 hover:border-emerald-500/50 hover:bg-card hover:shadow-sm"
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl grid place-items-center transition-colors",
+                    activeTab === "aptitude" ? "bg-emerald-500 text-white" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white"
+                  )}>
+                    <Timer className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-mono font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    56 Qs
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                  Aptitude <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-emerald-500" />
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  Speed drills for Quant, Logical Reasoning & Verbal ability.
+                </p>
+              </div>
+
+              {/* Card 4: Company Questions */}
+              <div
+                onClick={() => setActiveTab("companies")}
+                className={cn(
+                  "group relative p-5 rounded-2xl border transition-all cursor-pointer overflow-hidden shadow-xs backdrop-blur-md",
+                  activeTab === "companies"
+                    ? "bg-card border-amber-500 shadow-md ring-1 ring-amber-500/30 scale-[1.01]"
+                    : "bg-card/70 border-border/70 hover:border-amber-500/50 hover:bg-card hover:shadow-sm"
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl grid place-items-center transition-colors",
+                    activeTab === "companies" ? "bg-amber-500 text-white" : "bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white"
+                  )}>
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-mono font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    6 Tracks
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-foreground group-hover:text-amber-500 transition-colors flex items-center gap-1.5">
+                  Company Questions <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-amber-500" />
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  Targeted question sets for Google, Amazon, Meta, TCS & Infosys.
+                </p>
+              </div>
             </div>
           </div>
         </section>
