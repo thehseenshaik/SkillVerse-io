@@ -990,23 +990,23 @@ function DashboardPage() {
                   <div className="h-px bg-border/50" />
 
                   {/* Metrics */}
-                  {leetcode?.connected && leetcodeData ? (
+                  {leetcode?.connected ? (
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {leetcodeData.totalSolved || 0}
+                          {leetcodeData?.totalSolved ?? leetcodeData?.stats?.All ?? 0}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Solved</span>
                       </div>
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {leetcodeData.ranking ? `#${Math.round(leetcodeData.ranking / 1000)}k` : "Top"}
+                          {leetcodeData?.ranking ? (leetcodeData.ranking > 1000 ? `#${Math.round(leetcodeData.ranking / 1000)}k` : `#${leetcodeData.ranking}`) : "Active"}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Global Rank</span>
                       </div>
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {leetcodeData.contest?.rating ? Math.round(leetcodeData.contest.rating) : "1,520"}
+                          {leetcodeData?.contest?.rating ? Math.round(leetcodeData.contest.rating) : (leetcodeData?.profile?.reputation ? `#${leetcodeData.profile.reputation}` : "Synced")}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Rating</span>
                       </div>
@@ -1072,23 +1072,23 @@ function DashboardPage() {
                   <div className="h-px bg-border/50" />
 
                   {/* Metrics */}
-                  {gfg?.connected && gfgData ? (
+                  {gfg?.connected ? (
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {gfgData.problems?.total || gfgData.potd?.totalSolved || 0}
+                          {gfgData?.problems?.total ?? gfgData?.profile?.problemsSolved ?? gfgData?.potd?.totalSolved ?? 0}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Solved</span>
                       </div>
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {gfgData.profile?.score || 450}
+                          {gfgData?.profile?.codingScore ?? gfgData?.profile?.score ?? 0}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Score</span>
                       </div>
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {gfgData.potd?.currentStreak || 0}d
+                          {gfgData?.potd?.currentStreak ?? 0}d
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Streak</span>
                       </div>

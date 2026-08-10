@@ -436,10 +436,11 @@ export const usePlatformStore = create<PlatformStore>()(
       connectLeetCode: async (uid: string, username: string) => {
         set({ isLoading: true, error: null });
         try {
+          const sanitizedUsername = username.trim();
           const response = await fetch(`${API_BASE}/api/leetcode/connect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid, username }),
+            body: JSON.stringify({ uid, username: sanitizedUsername }),
           });
           
           if (!response.ok) {
@@ -447,43 +448,76 @@ export const usePlatformStore = create<PlatformStore>()(
             throw new Error(error.error || 'Connection failed');
           }
           
-          const data = await response.json();
+          const result = await response.json();
+          const connData = result.data || {};
+          const profile = connData.profile || {};
+          
+          const initialLeetCodeData: LeetCodeData = {
+            profile: {
+              displayName: profile.displayName || sanitizedUsername,
+              avatar: profile.avatar || '',
+              bio: profile.bio || '',
+              country: profile.country || '',
+              company: profile.company || '',
+              school: profile.school || '',
+              websites: profile.websites || [],
+              ranking: profile.ranking || 0,
+              reputation: profile.reputation || 0,
+            },
+            stats: { Easy: 0, Medium: 0, Hard: 0, All: 0 },
+            acceptanceRate: 0,
+            ranking: profile.ranking || 0,
+            totalSolved: 0,
+            contest: { rating: 0, globalRanking: 0, totalParticipants: 0, topPercentage: 0, badge: null },
+            submissions: [],
+            badges: [],
+          };
+
           set({
             isLoading: false,
             leetcode: {
               connected: true,
-              username: data.username,
+              username: result.username || sanitizedUsername,
               lastSynced: new Date().toISOString(),
               connectedAt: new Date().toISOString(),
             },
+            leetcodeData: get().leetcodeData || initialLeetCodeData,
           });
-          await get().syncLeetCode(uid);
+          await get().syncLeetCode(uid, sanitizedUsername);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
         }
       },
       
-      syncLeetCode: async (uid: string) => {
-        if (get().isSyncing) return;
+      syncLeetCode: async (uid: string, username?: string) => {
+        const targetUsername = username || get().leetcode.username;
         set({ isSyncing: true, error: null });
         try {
           const response = await fetch(`${API_BASE}/api/leetcode/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid }),
+            body: JSON.stringify({ uid, username: targetUsername }),
           });
           
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Sync failed');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+              set({
+                leetcodeData: result.data,
+                leetcode: {
+                  ...get().leetcode,
+                  connected: true,
+                  username: result.username || targetUsername || get().leetcode.username,
+                  lastSynced: new Date().toISOString(),
+                }
+              });
+            }
           }
-          
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
         } catch (error) {
-          set({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
-          throw error;
+          set({ isSyncing: false });
         }
       },
       
@@ -538,10 +572,11 @@ export const usePlatformStore = create<PlatformStore>()(
       connectGFG: async (uid: string, username: string) => {
         set({ isLoading: true, error: null });
         try {
+          const sanitizedUsername = username.trim();
           const response = await fetch(`${API_BASE}/api/gfg/connect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid, username }),
+            body: JSON.stringify({ uid, username: sanitizedUsername }),
           });
           
           if (!response.ok) {
@@ -549,42 +584,77 @@ export const usePlatformStore = create<PlatformStore>()(
             throw new Error(error.error || 'Connection failed');
           }
           
-          const data = await response.json();
+          const result = await response.json();
+          const connData = result.data || {};
+          const profile = connData.profile || {};
+          const potd = connData.potd || {};
+          
+          const initialGfgData: GFGData = {
+            profile: {
+              displayName: profile.displayName || sanitizedUsername,
+              avatar: profile.avatar || null,
+              instituteName: profile.instituteName || null,
+              instituteRank: profile.instituteRank || null,
+              codingScore: profile.codingScore || 0,
+              monthlyScore: profile.monthlyScore || 0,
+              problemsSolved: profile.problemsSolved || 0,
+              articlesPublished: profile.articlesPublished || 0,
+            },
+            potd: {
+              currentStreak: potd.currentStreak || 0,
+              longestStreak: potd.longestStreak || 0,
+              globalLongestStreak: potd.globalLongestStreak || 0,
+              totalSolved: potd.totalSolved || 0,
+              todaySolved: potd.todaySolved || false,
+            },
+            problems: connData.problems || { school: 0, basic: 0, easy: 0, medium: 0, hard: 0, total: 0 },
+          };
+
           set({
             isLoading: false,
             gfg: {
               connected: true,
-              username: data.username,
+              username: result.username || sanitizedUsername,
               lastSynced: new Date().toISOString(),
               connectedAt: new Date().toISOString(),
             },
+            gfgData: get().gfgData || initialGfgData,
           });
-          await get().syncGFG(uid);
+          await get().syncGFG(uid, sanitizedUsername);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
         }
       },
       
-      syncGFG: async (uid: string) => {
+      syncGFG: async (uid: string, username?: string) => {
+        const targetUsername = username || get().gfg.username;
         set({ isSyncing: true, error: null });
         try {
           const response = await fetch(`${API_BASE}/api/gfg/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid }),
+            body: JSON.stringify({ uid, username: targetUsername }),
           });
           
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Sync failed');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+              set({
+                gfgData: result.data,
+                gfg: {
+                  ...get().gfg,
+                  connected: true,
+                  username: result.username || targetUsername || get().gfg.username,
+                  lastSynced: new Date().toISOString(),
+                }
+              });
+            }
           }
-          
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
         } catch (error) {
-          set({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
-          throw error;
+          set({ isSyncing: false });
         }
       },
       
@@ -639,10 +709,11 @@ export const usePlatformStore = create<PlatformStore>()(
       connectCodeforces: async (uid: string, username: string) => {
         set({ isLoading: true, error: null });
         try {
+          const sanitizedUsername = username.trim();
           const response = await fetch(`${API_BASE}/api/codeforces/connect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid, username }),
+            body: JSON.stringify({ uid, username: sanitizedUsername }),
           });
           
           if (!response.ok) {
@@ -650,42 +721,71 @@ export const usePlatformStore = create<PlatformStore>()(
             throw new Error(error.error || 'Connection failed');
           }
           
-          const data = await response.json();
+          const result = await response.json();
+          const connData = result.data || {};
+          const profile = connData.profile || {};
+          
+          const initialCodeforcesData: CodeforcesData = {
+            profile: {
+              displayName: profile.displayName || sanitizedUsername,
+              avatar: profile.avatar || null,
+              rating: profile.rating || 0,
+              maxRating: profile.maxRating || 0,
+              rank: profile.rank || 'unranked',
+              maxRank: profile.maxRank || 'unranked',
+              contribution: profile.contribution || 0,
+              friendOfCount: profile.friendOfCount || 0,
+            },
+            ratingHistory: [],
+            recentSubmissions: [],
+            totalContests: 0,
+          };
+
           set({
             isLoading: false,
             codeforces: {
               connected: true,
-              username: data.username,
+              username: result.username || sanitizedUsername,
               lastSynced: new Date().toISOString(),
               connectedAt: new Date().toISOString(),
             },
+            codeforcesData: get().codeforcesData || initialCodeforcesData,
           });
-          await get().syncCodeforces(uid);
+          await get().syncCodeforces(uid, sanitizedUsername);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
         }
       },
       
-      syncCodeforces: async (uid: string) => {
+      syncCodeforces: async (uid: string, username?: string) => {
+        const targetUsername = username || get().codeforces.username;
         set({ isSyncing: true, error: null });
         try {
           const response = await fetch(`${API_BASE}/api/codeforces/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid }),
+            body: JSON.stringify({ uid, username: targetUsername }),
           });
           
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Sync failed');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+              set({
+                codeforcesData: result.data,
+                codeforces: {
+                  ...get().codeforces,
+                  connected: true,
+                  username: result.username || targetUsername || get().codeforces.username,
+                  lastSynced: new Date().toISOString(),
+                }
+              });
+            }
           }
-          
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
         } catch (error) {
-          set({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
-          throw error;
+          set({ isSyncing: false });
         }
       },
       
@@ -740,10 +840,11 @@ export const usePlatformStore = create<PlatformStore>()(
       connectCodeChef: async (uid: string, username: string) => {
         set({ isLoading: true, error: null });
         try {
+          const sanitizedUsername = username.trim();
           const response = await fetch(`${API_BASE}/api/codechef/connect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid, username }),
+            body: JSON.stringify({ uid, username: sanitizedUsername }),
           });
           
           if (!response.ok) {
@@ -751,42 +852,69 @@ export const usePlatformStore = create<PlatformStore>()(
             throw new Error(error.error || 'Connection failed');
           }
           
-          const data = await response.json();
+          const result = await response.json();
+          const connData = result.data || {};
+          const profile = connData.profile || {};
+          
+          const initialCodeChefData: CodeChefData = {
+            profile: {
+              displayName: profile.displayName || sanitizedUsername,
+              avatar: profile.avatar || null,
+              currentRating: profile.currentRating || 0,
+              highestRating: profile.highestRating || 0,
+              stars: profile.stars || '1★',
+              globalRank: profile.globalRank || 0,
+              countryRank: profile.countryRank || 0,
+            },
+            ratingHistory: [],
+            problemStats: { fullySolved: 0, partiallySolved: 0 },
+          };
+
           set({
             isLoading: false,
             codechef: {
               connected: true,
-              username: data.username,
+              username: result.username || sanitizedUsername,
               lastSynced: new Date().toISOString(),
               connectedAt: new Date().toISOString(),
             },
+            codechefData: get().codechefData || initialCodeChefData,
           });
-          await get().syncCodeChef(uid);
+          await get().syncCodeChef(uid, sanitizedUsername);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
         }
       },
       
-      syncCodeChef: async (uid: string) => {
+      syncCodeChef: async (uid: string, username?: string) => {
+        const targetUsername = username || get().codechef.username;
         set({ isSyncing: true, error: null });
         try {
           const response = await fetch(`${API_BASE}/api/codechef/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid }),
+            body: JSON.stringify({ uid, username: targetUsername }),
           });
           
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Sync failed');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+              set({
+                codechefData: result.data,
+                codechef: {
+                  ...get().codechef,
+                  connected: true,
+                  username: result.username || targetUsername || get().codechef.username,
+                  lastSynced: new Date().toISOString(),
+                }
+              });
+            }
           }
-          
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
         } catch (error) {
-          set({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
-          throw error;
+          set({ isSyncing: false });
         }
       },
       
@@ -841,10 +969,11 @@ export const usePlatformStore = create<PlatformStore>()(
       connectHackerRank: async (uid: string, username: string) => {
         set({ isLoading: true, error: null });
         try {
+          const sanitizedUsername = username.trim();
           const response = await fetch(`${API_BASE}/api/hackerrank/connect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid, username }),
+            body: JSON.stringify({ uid, username: sanitizedUsername }),
           });
           
           if (!response.ok) {
@@ -852,42 +981,67 @@ export const usePlatformStore = create<PlatformStore>()(
             throw new Error(error.error || 'Connection failed');
           }
           
-          const data = await response.json();
+          const result = await response.json();
+          const connData = result.data || {};
+          const profile = connData.profile || {};
+          
+          const initialHackerRankData: HackerRankData = {
+            profile: {
+              displayName: profile.displayName || sanitizedUsername,
+              avatar: profile.avatar || null,
+              country: profile.country || '',
+              school: profile.school || '',
+              badgeCount: profile.badgeCount || 0,
+            },
+            badges: [],
+            certificates: [],
+          };
+
           set({
             isLoading: false,
             hackerrank: {
               connected: true,
-              username: data.username,
+              username: result.username || sanitizedUsername,
               lastSynced: new Date().toISOString(),
               connectedAt: new Date().toISOString(),
             },
+            hackerrankData: get().hackerrankData || initialHackerRankData,
           });
-          await get().syncHackerRank(uid);
+          await get().syncHackerRank(uid, sanitizedUsername);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
           throw error;
         }
       },
       
-      syncHackerRank: async (uid: string) => {
+      syncHackerRank: async (uid: string, username?: string) => {
+        const targetUsername = username || get().hackerrank.username;
         set({ isSyncing: true, error: null });
         try {
           const response = await fetch(`${API_BASE}/api/hackerrank/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid }),
+            body: JSON.stringify({ uid, username: targetUsername }),
           });
           
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Sync failed');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.data) {
+              set({
+                hackerrankData: result.data,
+                hackerrank: {
+                  ...get().hackerrank,
+                  connected: true,
+                  username: result.username || targetUsername || get().hackerrank.username,
+                  lastSynced: new Date().toISOString(),
+                }
+              });
+            }
           }
-          
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
         } catch (error) {
-          set({ isSyncing: false, error: error instanceof Error ? error.message : 'Sync failed' });
-          throw error;
+          set({ isSyncing: false });
         }
       },
       
