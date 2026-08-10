@@ -212,7 +212,7 @@ function DashboardPage() {
   }, [user?.id]);
 
   const solvedPracticeCount = solvedPracticeIds.length;
-  const leetcodeSolved = leetcodeData?.totalSolved || 0;
+  const leetcodeSolved = (leetcodeData as any)?.totalSolved || leetcodeData?.stats?.All || 0;
   const gfgSolved = gfgData?.problems?.total || gfgData?.potd?.totalSolved || 0;
   const totalDsaSolved = solvedPracticeCount + leetcodeSolved + gfgSolved;
 
@@ -233,7 +233,7 @@ function DashboardPage() {
       score += Math.min(30, solvedPracticeCount * 10);
     }
     if (leetcode?.connected && leetcodeData) {
-      const solved = leetcodeData.totalSolved || 0;
+      const solved = (leetcodeData as any)?.totalSolved || leetcodeData.stats?.All || 0;
       score += Math.min(40, Math.floor(solved * 0.8));
       if (leetcodeData.contest?.rating) {
         score += Math.min(25, Math.floor((leetcodeData.contest.rating - 1400) / 30));
@@ -389,7 +389,7 @@ function DashboardPage() {
     const isNowCompleted = nextStatus === "completed";
 
     setManualOverrides((prev) => {
-      const next = { ...prev, [id]: nextStatus };
+      const next: Record<string, "completed" | "in_progress" | "upcoming"> = { ...prev, [id]: nextStatus };
       try {
         localStorage.setItem("skillverse_manual_task_overrides", JSON.stringify(next));
       } catch {
@@ -1000,13 +1000,13 @@ function DashboardPage() {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {leetcodeData?.totalSolved ?? leetcodeData?.stats?.All ?? 0}
+                          {(leetcodeData as any)?.totalSolved ?? leetcodeData?.stats?.All ?? 0}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Solved</span>
                       </div>
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {leetcodeData?.ranking ? (leetcodeData.ranking > 1000 ? `#${Math.round(leetcodeData.ranking / 1000)}k` : `#${leetcodeData.ranking}`) : "Active"}
+                          {(leetcodeData as any)?.ranking || leetcodeData?.profile?.ranking ? ((leetcodeData?.profile?.ranking || (leetcodeData as any)?.ranking) > 1000 ? `#${Math.round(((leetcodeData?.profile?.ranking || (leetcodeData as any)?.ranking)) / 1000)}k` : `#${leetcodeData?.profile?.ranking || (leetcodeData as any)?.ranking}`) : "Active"}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Global Rank</span>
                       </div>
@@ -1088,7 +1088,7 @@ function DashboardPage() {
                       </div>
                       <div>
                         <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {gfgData?.profile?.codingScore ?? gfgData?.profile?.score ?? 0}
+                          {gfgData?.profile?.codingScore ?? (gfgData?.profile as any)?.score ?? 0}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-semibold">Score</span>
                       </div>

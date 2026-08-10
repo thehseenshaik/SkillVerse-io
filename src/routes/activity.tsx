@@ -62,7 +62,15 @@ const TYPE_TABS = [
 
 function ActivityHistoryPage() {
   const { user } = useAuth();
-  const { isSyncing: storeIsSyncing } = usePlatformStore();
+  const {
+    isSyncing: storeIsSyncing,
+    github,
+    githubData,
+    leetcode,
+    leetcodeData,
+    gfg,
+    gfgData,
+  } = usePlatformStore();
   const {
     activities,
     summary,
@@ -96,9 +104,125 @@ function ActivityHistoryPage() {
     }
   };
 
+  // Synthesize client-side activity fallback from usePlatformStore & localStorage
+  const localActivities = useMemo<ActivityItem[]>(() => {
+    const list: ActivityItem[] = [];
+
+    // 1. GitHub Activity / Repositories
+    try {
+      if (github?.connected) {
+        if (Array.isArray(githubData?.recentActivity) && githubData.recentActivity.length > 0) {
+          githubData.recentActivity.forEach((act: any, idx: number) => {
+            const rawRepo = typeof act.repo === "string" ? act.repo : act.repo?.name || "repository";
+            const repoName = rawRepo.replace(/^.*\//, "");
+            const date = act.createdAt ? new Date(act.createdAt).toISOString() : new Date().toISOString();
+            list.push({
+              id: `local-gh-${idx}-${rawRepo}`,
+              userId: user?.id || "local",
+              platform: "github",
+              activityType: "push",
+              title: `Pushed commits to ${repoName}`,
+              description: `GitHub Code Contribution on ${rawRepo}`,
+              url: `https://github.com/${rawRepo}`,
+              timestamp: date,
+            });
+          });
+        } else if (Array.isArray(githubData?.repositories) && githubData.repositories.length > 0) {
+          githubData.repositories.forEach((repo: any, idx: number) => {
+            list.push({
+              id: `local-gh-repo-${idx}-${repo.name}`,
+              userId: user?.id || "local",
+              platform: "github",
+              activityType: "repo_create",
+              title: `Repository: ${repo.name}`,
+              description: repo.description || `${repo.language || "Code"} repo • ${repo.stars || 0} stars`,
+              url: repo.url || `https://github.com/${github.username}/${repo.name}`,
+              timestamp: repo.updatedAt || repo.createdAt || new Date().toISOString(),
+            });
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. LeetCode Submissions
+    try {
+      if (leetcode?.connected && Array.isArray(leetcodeData?.recentSubmissions)) {
+        leetcodeData.recentSubmissions.forEach((sub: any, idx: number) => {
+          if (!sub) return;
+          const isAccepted = sub.status === "Accepted" || sub.status === "A";
+          const ts = typeof sub.timestamp === "number"
+            ? (sub.timestamp < 1e12 ? sub.timestamp * 1000 : sub.timestamp)
+            : Date.now();
+          list.push({
+            id: `local-lc-${idx}-${sub.titleSlug || sub.title || idx}`,
+            userId: user?.id || "local",
+            platform: "leetcode",
+            activityType: "submission",
+            title: isAccepted ? `Solved "${sub.title || "DSA Problem"}"` : `Attempted "${sub.title || "DSA Problem"}"`,
+            description: `LeetCode Submission (${sub.language || "DSA"}) • Status: ${sub.status || "Completed"}`,
+            url: sub.titleSlug ? `https://leetcode.com/problems/${sub.titleSlug}/` : `https://leetcode.com/${leetcode.username}/`,
+            timestamp: new Date(ts).toISOString(),
+          });
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    // 3. GeeksforGeeks Activity
+    try {
+      if (gfg?.connected && gfgData) {
+        const solvedCount = gfgData.problems?.total ?? gfgData.profile?.problemsSolved ?? gfgData.potd?.totalSolved ?? 0;
+        if (solvedCount > 0) {
+          list.push({
+            id: `local-gfg-summary`,
+            userId: user?.id || "local",
+            platform: "gfg",
+            activityType: "problem_solved",
+            title: `GeeksforGeeks Problem Solver`,
+            description: `${solvedCount} problems solved • Coding Score: ${gfgData.profile?.codingScore || (gfgData.profile as any)?.score || 0}`,
+            url: `https://www.geeksforgeeks.org/user/${gfg.username}/`,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 4. Local DSA Practice
+    try {
+      const savedPractice = localStorage.getItem("skillverse_solved_practice_problems");
+      if (savedPractice) {
+        const ids = JSON.parse(savedPractice);
+        if (Array.isArray(ids) && ids.length > 0) {
+          list.push({
+            id: `local-skillverse-dsa`,
+            userId: user?.id || "local",
+            platform: "leetcode",
+            activityType: "problem_solved",
+            title: `Completed ${ids.length} SkillVerse Practice Problem${ids.length > 1 ? "s" : ""}`,
+            description: "Solved in SkillVerse DSA Arena",
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Sort descending
+    list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return list;
+  }, [user?.id, github, githubData, leetcode, leetcodeData, gfg, gfgData]);
+
+  const sourceActivities = activities.length > 0 ? activities : localActivities;
+
   // Filter activities locally by platform, type, and search query
   const filteredActivities = useMemo(() => {
-    return activities.filter((act) => {
+    return sourceActivities.filter((act) => {
       // Platform filter
       if (
         activePlatformFilter !== "all" &&
@@ -134,7 +258,7 @@ function ActivityHistoryPage() {
 
       return true;
     });
-  }, [activities, activePlatformFilter, activeTypeFilter, searchQuery]);
+  }, [sourceActivities, activePlatformFilter, activeTypeFilter, searchQuery]);
 
   const formatFullDate = (timestampString: string) => {
     if (!timestampString) return "";
