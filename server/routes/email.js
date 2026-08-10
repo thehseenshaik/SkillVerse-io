@@ -20,201 +20,560 @@ const getResendClient = () => {
   return new Resend(apiKey);
 };
 
-
 /**
- * Generate high-conversion, responsive HTML welcome email
+ * Generate user's exact designed HTML welcome email
  */
 function generateWelcomeEmailHtml({ name, username, email }) {
-  const displayName = name || username || 'Developer';
-  const profileUrl = username 
-    ? `https://skillverse-io.web.app/u/${username}`
-    : `https://skillverse-io.web.app/dashboard`;
-  const dashboardUrl = `https://skillverse-io.web.app/dashboard`;
-  const resumeUrl = `https://skillverse-io.web.app/resume`;
-  const connectionsUrl = `https://skillverse-io.web.app/connections`;
+  const displayName = name || (username ? `@${username}` : 'Developer');
+  const message = `Welcome to the community, ${displayName}! Your career command center is ready. Connect your coding profiles, calculate your live career score, and start building your developer identity.`;
+  const actionUrl = `https://skillverse-io.web.app/dashboard`;
+  const secondaryUrl = `https://skillverse-io.web.app/connections`;
+  const websiteUrl = `https://skillverse-io.web.app`;
+  const privacyUrl = `https://skillverse-io.web.app/privacy`;
+  const termsUrl = `https://skillverse-io.web.app`;
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to SkillVerse</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #0f172a;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: #e2e8f0;
-    }
-    .wrapper {
-      width: 100%;
-      table-layout: fixed;
-      background-color: #0f172a;
-      padding: 40px 0;
-    }
-    .main {
-      background-color: #1e293b;
-      margin: 0 auto;
-      width: 100%;
-      max-width: 600px;
-      border-radius: 24px;
-      border: 1px solid #334155;
-      overflow: hidden;
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
-    }
-    .header {
-      background: linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%);
-      padding: 36px 30px;
-      text-align: center;
-    }
-    .header h1 {
-      color: #ffffff;
-      font-size: 26px;
-      font-weight: 800;
-      margin: 0;
-      letter-spacing: -0.5px;
-    }
-    .header p {
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      margin: 6px 0 0 0;
-    }
-    .content {
-      padding: 36px 32px;
-    }
-    .greeting {
-      font-size: 20px;
-      font-weight: 700;
-      color: #f8fafc;
-      margin: 0 0 16px 0;
-    }
-    .intro {
-      font-size: 15px;
-      line-height: 1.6;
-      color: #94a3b8;
-      margin: 0 0 28px 0;
-    }
-    .card {
-      background-color: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 24px;
-    }
-    .step-item {
-      display: flex;
-      margin-bottom: 14px;
-    }
-    .step-item:last-child {
-      margin-bottom: 0;
-    }
-    .step-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #f1f5f9;
-      margin-bottom: 2px;
-    }
-    .step-desc {
-      font-size: 12px;
-      color: #64748b;
-    }
-    .cta-button {
-      display: inline-block;
-      width: 100%;
-      box-sizing: border-box;
-      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-      color: #ffffff !important;
-      text-decoration: none;
-      text-align: center;
-      font-weight: 700;
-      font-size: 15px;
-      padding: 16px 24px;
-      border-radius: 14px;
-      box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4);
-      margin: 10px 0 24px 0;
-    }
-    .footer {
-      border-top: 1px solid #334155;
-      padding: 24px 32px;
-      text-align: center;
-      font-size: 12px;
-      color: #64748b;
-    }
-    .footer a {
-      color: #f97316;
-      text-decoration: none;
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <table class="main" width="100%" cellpadding="0" cellspacing="0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+
+    <title>Welcome to SkillVerse</title>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f6f5f3;
+        color: #141211;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Arial,
+          Helvetica,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      table {
+        border-collapse: collapse;
+        border-spacing: 0;
+      }
+
+      a {
+        text-decoration: none;
+      }
+
+      .outer {
+        width: 100%;
+        background: #f6f5f3;
+        padding: 42px 16px;
+      }
+
+      .email {
+        width: 100%;
+        max-width: 650px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e6e2df;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 18px 50px rgba(30, 25, 22, 0.08);
+      }
+
+      /* =========================
+         HEADER
+      ========================= */
+
+      .header {
+        padding: 23px 34px;
+        background: #ffffff;
+        border-bottom: 1px solid #eeeae7;
+      }
+
+      .logo-icon {
+        display: inline-block;
+        width: 31px;
+        height: 31px;
+        line-height: 31px;
+        text-align: center;
+        border-radius: 9px;
+        background: #fff0ec;
+        color: #f2634f;
+        font-size: 18px;
+        font-weight: 800;
+        vertical-align: middle;
+      }
+
+      .logo-text {
+        display: inline-block;
+        margin-left: 9px;
+        color: #111111;
+        font-size: 20px;
+        line-height: 31px;
+        font-weight: 800;
+        letter-spacing: -0.6px;
+        vertical-align: middle;
+      }
+
+      .header-label {
+        float: right;
+        margin-top: 7px;
+        color: #8c8682;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1.1px;
+        text-transform: uppercase;
+      }
+
+      /* =========================
+         HERO
+      ========================= */
+
+      .hero {
+        padding: 48px 42px 44px;
+        background:
+          radial-gradient(
+            circle at 100% 0%,
+            rgba(242, 99, 79, 0.15),
+            transparent 36%
+          ),
+          linear-gradient(
+            180deg,
+            #fff9f7 0%,
+            #ffffff 78%
+          );
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 7px 12px;
+        border: 1px solid #f2d0c9;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.82);
+        color: #ef604c;
+        font-size: 10px;
+        line-height: 14px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 6px;
+        border-radius: 50%;
+        background: #f2634f;
+        vertical-align: middle;
+      }
+
+      .title {
+        margin: 21px 0 0;
+        color: #111111;
+        font-size: 38px;
+        line-height: 45px;
+        letter-spacing: -1.7px;
+        font-weight: 800;
+      }
+
+      .accent {
+        color: #f2634f;
+      }
+
+      .description {
+        max-width: 540px;
+        margin: 16px 0 0;
+        color: #706a66;
+        font-size: 16px;
+        line-height: 26px;
+      }
+
+      /* =========================
+         WELCOME CARD
+      ========================= */
+
+      .welcome-card {
+        margin-top: 32px;
+        padding: 23px;
+        border: 1px solid #f0d8d2;
+        border-radius: 17px;
+        background: #fff8f6;
+      }
+
+      .welcome-icon {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        line-height: 40px;
+        text-align: center;
+        border-radius: 12px;
+        background: #f2634f;
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .welcome-heading {
+        margin: 16px 0 6px;
+        color: #151311;
+        font-size: 17px;
+        line-height: 23px;
+        font-weight: 800;
+      }
+
+      .welcome-text {
+        margin: 0;
+        color: #77716d;
+        font-size: 13px;
+        line-height: 21px;
+      }
+
+      /* =========================
+         GET STARTED
+      ========================= */
+
+      .steps {
+        padding: 34px;
+        background: #ffffff;
+      }
+
+      .section-label {
+        margin-bottom: 17px;
+        color: #77716d;
+        font-size: 10px;
+        line-height: 15px;
+        font-weight: 800;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+      }
+
+      .step {
+        padding: 16px 17px;
+        border: 1px solid #e9e5e2;
+        border-radius: 14px;
+        background: #ffffff;
+      }
+
+      .step-number {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        text-align: center;
+        border-radius: 50%;
+        background: #fff0ec;
+        color: #f2634f;
+        font-size: 12px;
+        font-weight: 800;
+        vertical-align: middle;
+      }
+
+      .step-title {
+        display: inline-block;
+        margin-left: 9px;
+        color: #171513;
+        font-size: 13px;
+        line-height: 18px;
+        font-weight: 750;
+        vertical-align: middle;
+      }
+
+      .step-description {
+        margin: 9px 0 0 37px;
+        color: #85807c;
+        font-size: 11px;
+        line-height: 18px;
+      }
+
+      .gap {
+        height: 9px;
+        line-height: 9px;
+        font-size: 1px;
+      }
+
+      /* =========================
+         CTA
+      ========================= */
+
+      .cta-section {
+        padding: 2px 34px 38px;
+        text-align: left;
+      }
+
+      .cta {
+        display: inline-block;
+        padding: 14px 23px;
+        border-radius: 11px;
+        background: #f2634f;
+        color: #ffffff !important;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 750;
+      }
+
+      .arrow {
+        padding-left: 8px;
+        font-size: 16px;
+      }
+
+      .secondary {
+        display: inline-block;
+        margin-left: 17px;
+        color: #292522 !important;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      /* =========================
+         FOOTER
+      ========================= */
+
+      .footer {
+        padding: 27px 34px 30px;
+        background: #faf9f8;
+        border-top: 1px solid #eeeae7;
+      }
+
+      .footer-brand {
+        color: #111111;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .footer-description {
+        margin: 7px 0 0;
+        color: #8b8581;
+        font-size: 12px;
+        line-height: 19px;
+      }
+
+      .footer-links {
+        margin-top: 16px;
+        color: #77716d;
+        font-size: 11px;
+        line-height: 18px;
+      }
+
+      .footer-links a {
+        color: #77716d;
+      }
+
+      .copyright {
+        margin-top: 13px;
+        color: #aaa49f;
+        font-size: 11px;
+        line-height: 17px;
+      }
+
+      /* =========================
+         MOBILE
+      ========================= */
+
+      @media only screen and (max-width: 600px) {
+
+        .outer {
+          padding: 18px 9px;
+        }
+
+        .header {
+          padding: 20px;
+        }
+
+        .header-label {
+          display: none;
+        }
+
+        .hero {
+          padding: 35px 22px;
+        }
+
+        .title {
+          font-size: 29px;
+          line-height: 36px;
+        }
+
+        .description {
+          font-size: 15px;
+          line-height: 24px;
+        }
+
+        .steps {
+          padding: 26px 20px;
+        }
+
+        .cta-section {
+          padding: 0 20px 30px;
+        }
+
+        .cta {
+          display: block;
+          text-align: center;
+        }
+
+        .secondary {
+          display: block;
+          margin: 14px 0 0;
+          text-align: center;
+        }
+
+        .footer {
+          padding: 24px 20px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <table role="presentation" width="100%">
       <tr>
-        <td class="header">
-          <h1>SkillVerse</h1>
-          <p>Career Operating System</p>
-        </td>
-      </tr>
-      <tr>
-        <td class="content">
-          <h2 class="greeting">Welcome aboard, ${displayName}! 🚀</h2>
-          <p class="intro">
-            Your all-in-one developer command center is ready. SkillVerse connects your coding profiles, tracks your telemetry, tests your skills, and builds ATS-optimized resumes.
-          </p>
+        <td class="outer">
+          <table role="presentation" class="email" align="center" width="100%">
+            <!-- =========================
+             HEADER
+        ========================== -->
 
-          <div class="card">
-            <div style="font-size: 11px; font-weight: 800; color: #f97316; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
-              ⚡ Quick Start Checklist
-            </div>
-            
-            <div style="padding-bottom: 10px; border-bottom: 1px solid #1e293b; margin-bottom: 10px;">
-              <div class="step-title">1. Connect Your Profiles</div>
-              <div class="step-desc">Sync your LeetCode, GitHub & GeeksforGeeks handles in the Connections Hub.</div>
-            </div>
+            <tr>
+              <td class="header">
+                <span class="logo-icon">✦</span>
 
-            <div style="padding-bottom: 10px; border-bottom: 1px solid #1e293b; margin-bottom: 10px;">
-              <div class="step-title">2. Calculate Your Live Career Score</div>
-              <div class="step-desc">Get a 0-100 real-time rating benchmarked against top tech roles.</div>
-            </div>
+                <span class="logo-text"> SkillVerse </span>
 
-            <div>
-              <div class="step-title">3. Export Your ATS Resume</div>
-              <div class="step-desc">Turn your telemetry & projects into a recruiter-ready ATS PDF in 1 click.</div>
-            </div>
-          </div>
+                <span class="header-label"> Career Intelligence </span>
+              </td>
+            </tr>
 
-          <a href="${dashboardUrl}" class="cta-button">
-            Launch Your Career Command Center →
-          </a>
+            <!-- =========================
+             HERO
+        ========================== -->
 
-          ${username ? `
-          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
-            Your public portfolio is live at: <a href="${profileUrl}" style="color: #f97316; font-weight: 600;">${profileUrl}</a>
-          </p>
-          ` : ''}
-        </td>
-      </tr>
-      <tr>
-        <td class="footer">
-          <p style="margin: 0 0 8px 0;">SkillVerse · Built for Modern Software Engineers</p>
-          <p style="margin: 0;">
-            <a href="${dashboardUrl}">Dashboard</a> · 
-            <a href="${resumeUrl}">Resume Studio</a> · 
-            <a href="${connectionsUrl}">Connections Hub</a>
-          </p>
+            <tr>
+              <td class="hero">
+                <div class="eyebrow">
+                  <span class="dot"></span>
+                  ACCOUNT WELCOME
+                </div>
+
+                <h1 class="title">Welcome to <span class="accent">SkillVerse.</span></h1>
+
+                <p class="description">
+                  Your career identity starts here. Build your professional profile, connect your skills, track your
+                  progress, and turn your work into opportunities.
+                </p>
+
+                <!-- Welcome Card -->
+
+                <div class="welcome-card">
+                  <div class="welcome-icon">✦</div>
+
+                  <div class="welcome-heading">You're officially part of SkillVerse.</div>
+
+                  <p class="welcome-text">${message}</p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- =========================
+             GET STARTED
+        ========================== -->
+
+            <tr>
+              <td class="steps">
+                <div class="section-label">Your next steps</div>
+
+                <!-- Step 1 -->
+
+                <div class="step">
+                  <span class="step-number"> 01 </span>
+
+                  <span class="step-title"> Complete your profile </span>
+
+                  <p class="step-description">
+                    Add your education, skills, projects and career information to create your complete professional
+                    identity.
+                  </p>
+                </div>
+
+                <div class="gap">&nbsp;</div>
+
+                <!-- Step 2 -->
+
+                <div class="step">
+                  <span class="step-number"> 02 </span>
+
+                  <span class="step-title"> Connect your platforms </span>
+
+                  <p class="step-description">
+                    Sync platforms such as GitHub, LeetCode and GeeksforGeeks to bring your real progress into
+                    SkillVerse.
+                  </p>
+                </div>
+
+                <div class="gap">&nbsp;</div>
+
+                <!-- Step 3 -->
+
+                <div class="step">
+                  <span class="step-number"> 03 </span>
+
+                  <span class="step-title"> Build your career profile </span>
+
+                  <p class="step-description">
+                    Generate resumes, monitor your progress, practice for interviews and discover your next career move.
+                  </p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- =========================
+             CTA
+        ========================== -->
+
+            <tr>
+              <td class="cta-section">
+                <a href="${actionUrl}" class="cta" target="_blank">
+                  Get started
+                  <span class="arrow">→</span>
+                </a>
+
+                <a href="${secondaryUrl}" class="secondary" target="_blank"> View SkillVerse </a>
+              </td>
+            </tr>
+
+            <!-- =========================
+             FOOTER
+        ========================== -->
+
+            <tr>
+              <td class="footer">
+                <div class="footer-brand">✦ SkillVerse</div>
+
+                <p class="footer-description">Your career identity, progress and growth — in one place.</p>
+
+                <div class="footer-links">
+                  <a href="${websiteUrl}"> SkillVerse </a>
+
+                  &nbsp;&nbsp;•&nbsp;&nbsp;
+
+                  <a href="${privacyUrl}"> Privacy </a>
+
+                  &nbsp;&nbsp;•&nbsp;&nbsp;
+
+                  <a href="${termsUrl}"> Terms </a>
+                </div>
+
+                <div class="copyright">© 2026 SkillVerse. All rights reserved.</div>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>
-  </div>
-</body>
-</html>
-  `.trim();
+  </body>
+</html>`;
 }
 
 /**
@@ -271,13 +630,14 @@ router.post('/test', async (req, res) => {
   }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'SkillVerse <onboarding@resend.dev>';
+  const htmlContent = generateWelcomeEmailHtml({ name: 'Thehseen Shaik', username: 'thehseen', email });
 
   try {
     const result = await resend.emails.send({
       from: fromEmail,
       to: [email],
-      subject: 'SkillVerse Email Integration Test ✅',
-      html: '<p>This is a confirmation that your <strong>Resend</strong> integration with SkillVerse is working perfectly!</p>',
+      subject: 'Welcome to SkillVerse! ✦',
+      html: htmlContent,
     });
 
     return res.json({ success: true, result });
