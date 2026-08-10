@@ -90,6 +90,67 @@ function StatSpark({ values }: { values: number[] }) {
   );
 }
 
+function playCelebrationSound(isFullClear = false) {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const playTone = (freq: number, start: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.12, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+
+    if (isFullClear) {
+      playTone(523.25, now, 0.2);
+      playTone(659.25, now + 0.1, 0.2);
+      playTone(783.99, now + 0.2, 0.2);
+      playTone(1046.50, now + 0.3, 0.4);
+    } else {
+      playTone(587.33, now, 0.15);
+      playTone(880.00, now + 0.08, 0.25);
+    }
+  } catch {
+    // Audio context not allowed or not supported
+  }
+}
+
+function sendBrowserNotification(title: string, body: string) {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (Notification.permission === "granted") {
+    try {
+      new Notification(title, {
+        body,
+        icon: "/favicon-32x32.svg",
+      });
+    } catch {
+      // ignore
+    }
+  } else if (Notification.permission === "default") {
+    Notification.requestPermission().then((perm) => {
+      if (perm === "granted") {
+        try {
+          new Notification(title, {
+            body,
+            icon: "/favicon-32x32.svg",
+          });
+        } catch {
+          // ignore
+        }
+      }
+    }).catch(() => {});
+  }
+}
+
 function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -319,9 +380,14 @@ function DashboardPage() {
 
   const toggleTaskStatus = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const task = liveTasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const currentStatus = manualOverrides[id] || (task.status === "completed" ? "completed" : "upcoming");
+    const nextStatus = currentStatus === "completed" ? "in_progress" : "completed";
+    const isNowCompleted = nextStatus === "completed";
+
     setManualOverrides((prev) => {
-      const current = prev[id] || (liveTasks.find((t) => t.id === id)?.status === "completed" ? "completed" : "upcoming");
-      const nextStatus = current === "completed" ? "in_progress" : "completed";
       const next = { ...prev, [id]: nextStatus };
       try {
         localStorage.setItem("skillverse_manual_task_overrides", JSON.stringify(next));
@@ -330,7 +396,63 @@ function DashboardPage() {
       }
       return next;
     });
-    toast.success("Task status updated");
+
+    if (isNowCompleted) {
+      const completedCount = liveTasks.filter((t) => (t.id === id ? true : t.status === "completed")).length;
+      const isAllDone = completedCount >= liveTasks.length;
+
+      if (isAllDone) {
+        // Grand celebration for 100% daily goals completed
+        import("canvas-confetti").then((mod) => {
+          const confetti = mod.default || mod;
+          confetti({
+            particleCount: 100,
+            spread: 90,
+            origin: { y: 0.6 },
+            colors: ["#6366f1", "#a855f7", "#ec4899", "#22c55e", "#eab308"],
+          });
+        }).catch(() => {});
+
+        playCelebrationSound(true);
+
+        toast.success("🎉 All Today's Goals Completed!", {
+          description: "Incredible dedication! You've crushed 100% of your daily career focus goals.",
+          duration: 5000,
+        });
+
+        sendBrowserNotification(
+          "SkillVerse: All Goals Crushed! 🏆",
+          "You've completed all 4 daily career focus goals today!"
+        );
+      } else {
+        // Individual goal celebration
+        import("canvas-confetti").then((mod) => {
+          const confetti = mod.default || mod;
+          confetti({
+            particleCount: 35,
+            spread: 50,
+            origin: { y: 0.8 },
+            colors: ["#6366f1", "#22c55e", "#38bdf8"],
+          });
+        }).catch(() => {});
+
+        playCelebrationSound(false);
+
+        toast.success(`🎯 Goal Completed: ${task.title}`, {
+          description: `${completedCount} of ${liveTasks.length} daily goals completed. Keep up the momentum!`,
+          duration: 4000,
+        });
+
+        sendBrowserNotification(
+          "Goal Completed! 🎯",
+          `Finished: ${task.title} (${completedCount}/${liveTasks.length} complete)`
+        );
+      }
+    } else {
+      toast.info(`Task marked as In Progress`, {
+        description: `"${task.title}" is now active.`,
+      });
+    }
   };
 
   // Missing fields for Resume Readiness — reliably mapped to string labels
@@ -559,7 +681,18 @@ function DashboardPage() {
             </div>
 
             {/* Task Card */}
-            <Card className="rounded-3xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs divide-y divide-border/40">
+            <Card className="rounded-3xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs divide-y divide-border/40 space-y-2">
+              {liveTasks.every((t) => t.status === "completed") && (
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="h-4 w-4 shrink-0 text-emerald-500 animate-pulse" />
+                    <span>All today's goals completed! Excellent daily career consistency.</span>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20">
+                    100% Done
+                  </span>
+                </div>
+              )}
               {liveTasks.map((task) => {
                 const isDone = task.status === "completed";
                 const isCurrent = task.status === "in_progress";
