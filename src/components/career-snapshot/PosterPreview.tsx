@@ -215,38 +215,46 @@ export const PosterPreview = forwardRef<HTMLDivElement, PosterPreviewProps>(
                   : "grid-cols-2"
               )}
             >
-              {visibleStats.slice(0, 4).map((stat) => (
-                <div
-                  key={stat.id}
-                  className={cn(
-                    "rounded-2xl p-3 text-center transition-all space-y-0.5",
-                    isDark
-                      ? "bg-[#131B2A]/80 border border-brand/20 shadow-2xs backdrop-blur"
-                      : templateId === "developer"
-                      ? "bg-white border border-[#E2E8F0] shadow-2xs font-mono"
-                      : templateId === "progress"
-                      ? "bg-white/90 border border-[#FDBA74]/50 shadow-2xs"
-                      : "bg-white border border-[#E4E4E7] shadow-2xs"
-                  )}
-                >
-                  <span
+              {visibleStats.slice(0, 4).map((stat) => {
+                let cleanLabel = stat.label;
+                if (cleanLabel.includes("Repositories")) cleanLabel = "GitHub Repos";
+                else if (cleanLabel.includes("Readiness")) cleanLabel = "Profile Ready";
+                else if (cleanLabel.includes("Technologies")) cleanLabel = "Tech Skills";
+                else if (cleanLabel.includes("Problems")) cleanLabel = "Problems Solved";
+
+                return (
+                  <div
+                    key={stat.id}
                     className={cn(
-                      "block text-xl font-black tabular-nums tracking-tight",
-                      isDark ? "text-brand" : "text-[#09090B]"
+                      "rounded-2xl p-3 text-center transition-all space-y-0.5",
+                      isDark
+                        ? "bg-[#131B2A]/80 border border-brand/20 shadow-2xs backdrop-blur"
+                        : templateId === "developer"
+                        ? "bg-white border border-[#E2E8F0] shadow-2xs font-mono"
+                        : templateId === "progress"
+                        ? "bg-white/90 border border-[#FDBA74]/50 shadow-2xs"
+                        : "bg-white border border-[#E4E4E7] shadow-2xs"
                     )}
                   >
-                    {stat.value}
-                  </span>
-                  <span
-                    className={cn(
-                      "block text-[10px] font-bold uppercase tracking-wider truncate",
-                      isDark ? "text-[#94A3B8]" : "text-[#71717A]"
-                    )}
-                  >
-                    {stat.label}
-                  </span>
-                </div>
-              ))}
+                    <span
+                      className={cn(
+                        "block text-xl font-black tabular-nums tracking-tight",
+                        isDark ? "text-brand" : "text-[#09090B]"
+                      )}
+                    >
+                      {stat.value}
+                    </span>
+                    <span
+                      className={cn(
+                        "block text-[9.5px] font-extrabold uppercase tracking-wider leading-tight",
+                        isDark ? "text-[#94A3B8]" : "text-[#71717A]"
+                      )}
+                    >
+                      {cleanLabel}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
