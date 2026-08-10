@@ -223,32 +223,38 @@ export class UsernameService {
    */
   async getUserIdByUsername(username: string): Promise<string | null> {
     const cleanHandle = username.trim().toLowerCase().replace(/^@/, '');
+    if (!cleanHandle) return null;
+
     try {
-      // 1. Try usernames registry index
+      // 1. Try usernames registry index (Publicly readable)
       const usernameRef = doc(db, "usernames", cleanHandle);
       const usernameDoc = await getDoc(usernameRef);
 
-      if (usernameDoc.exists() && usernameDoc.data().userId) {
+      if (usernameDoc.exists() && usernameDoc.data()?.userId) {
         return usernameDoc.data().userId;
       }
 
-      // 2. Fallback: Search in users collection
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", "==", cleanHandle));
-      const querySnap = await getDocs(q);
-      if (!querySnap.empty) {
-        return querySnap.docs[0].id;
+      // 2. Try profiles collection (Publicly readable)
+      const profileRef = doc(db, "profiles", cleanHandle);
+      const profileDoc = await getDoc(profileRef);
+      if (profileDoc.exists() && profileDoc.data()?.userId) {
+        return profileDoc.data().userId;
       }
 
-      const q2 = query(usersRef, where("basicInfo.username", "==", cleanHandle));
-      const querySnap2 = await getDocs(q2);
-      if (!querySnap2.empty) {
-        return querySnap2.docs[0].id;
+      // 3. Fallback: Search users collection (safe try-catch for non-admin permission limits)
+      try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", cleanHandle));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          return querySnap.docs[0].id;
+        }
+      } catch {
+        // Silently catch permission restrictions on /users collection query for non-admins
       }
 
       return null;
     } catch (error) {
-      console.error("Error getting user ID by username:", error);
       return null;
     }
   }
