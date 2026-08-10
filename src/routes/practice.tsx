@@ -1043,121 +1043,123 @@ function PracticeHubPage() {
                 </div>
               </div>
 
-              {/* Problem List (Clean Professional Rows) */}
-              <div className="rounded-2xl border border-border/70 bg-card overflow-hidden shadow-xs divide-y divide-border/50">
-                {filteredProblems.length > 0 ? (
-                  filteredProblems.map((prob) => {
-                    const isSolved = solvedIds.has(prob.id);
+              {/* Problem List (Clean Professional Rows with Dedicated Scroll Bar) */}
+              <div className="rounded-2xl border border-border/70 bg-card overflow-hidden shadow-xs">
+                <div className="max-h-[620px] overflow-y-auto pr-1 scrollbar-slim scroll-smooth divide-y divide-border/50">
+                  {filteredProblems.length > 0 ? (
+                    filteredProblems.map((prob) => {
+                      const isSolved = solvedIds.has(prob.id);
 
-                    return (
-                      <div
-                        key={prob.id}
-                        onClick={() => window.open(prob.url, "_blank")}
-                        className={cn(
-                          "px-4 py-3.5 flex items-center justify-between gap-4 transition-all hover:bg-secondary/30 cursor-pointer group",
-                          isSolved && "bg-emerald-500/[0.03]"
-                        )}
-                      >
-                        {/* Left: Circular Status Control + Title + Tags */}
-                        <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
-                          
-                          {/* Circular Status Toggle Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => toggleSolved(prob.id, e)}
-                            className={cn(
-                              "h-5 w-5 rounded-full border grid place-items-center shrink-0 transition-colors cursor-pointer mt-0.5 sm:mt-0",
-                              isSolved
-                                ? "bg-emerald-500 border-emerald-500 text-white"
-                                : "border-border hover:border-brand text-transparent hover:text-muted-foreground"
-                            )}
-                            title={isSolved ? "Mark as unsolved" : "Mark as solved"}
-                          >
-                            <Check className="h-3 w-3 stroke-[3]" />
-                          </button>
+                      return (
+                        <div
+                          key={prob.id}
+                          onClick={() => window.open(prob.url, "_blank")}
+                          className={cn(
+                            "px-4 py-3.5 flex items-center justify-between gap-4 transition-all hover:bg-secondary/30 cursor-pointer group",
+                            isSolved && "bg-emerald-500/[0.03]"
+                          )}
+                        >
+                          {/* Left: Circular Status Control + Title + Tags */}
+                          <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                            
+                            {/* Circular Status Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => toggleSolved(prob.id, e)}
+                              className={cn(
+                                "h-5 w-5 rounded-full border grid place-items-center shrink-0 transition-colors cursor-pointer mt-0.5 sm:mt-0",
+                                isSolved
+                                  ? "bg-emerald-500 border-emerald-500 text-white"
+                                  : "border-border hover:border-brand text-transparent hover:text-muted-foreground"
+                              )}
+                              title={isSolved ? "Mark as unsolved" : "Mark as solved"}
+                            >
+                              <Check className="h-3 w-3 stroke-[3]" />
+                            </button>
 
-                          {/* Problem Info */}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3
-                                className={cn(
-                                  "text-sm font-semibold transition-colors group-hover:text-brand",
-                                  isSolved ? "text-muted-foreground line-through" : "text-foreground"
-                                )}
-                              >
-                                {prob.title}
-                              </h3>
-                              <ExternalLink className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
+                            {/* Problem Info */}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3
+                                  className={cn(
+                                    "text-sm font-semibold transition-colors group-hover:text-brand",
+                                    isSolved ? "text-muted-foreground line-through" : "text-foreground"
+                                  )}
+                                >
+                                  {prob.title}
+                                </h3>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
 
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground mt-0.5">
-                              <span className="font-medium text-foreground/80">{prob.topic}</span>
-                              <span>·</span>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {prob.companies.slice(0, 4).map((c, i) => (
-                                  <span key={c} className="text-muted-foreground/80">
-                                    {c}{i < Math.min(prob.companies.length, 4) - 1 ? " ·" : ""}
-                                  </span>
-                                ))}
-                                {prob.companies.length > 4 && (
-                                  <span className="text-[10px] text-muted-foreground/60">
-                                    +{prob.companies.length - 4}
-                                  </span>
-                                )}
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground mt-0.5">
+                                <span className="font-medium text-foreground/80">{prob.topic}</span>
+                                <span>·</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {prob.companies.slice(0, 4).map((c, i) => (
+                                    <span key={c} className="text-muted-foreground/80">
+                                      {c}{i < Math.min(prob.companies.length, 4) - 1 ? " ·" : ""}
+                                    </span>
+                                  ))}
+                                  {prob.companies.length > 4 && (
+                                    <span className="text-[10px] text-muted-foreground/60">
+                                      +{prob.companies.length - 4}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Right: Difficulty Badge + Action Button */}
-                        <div className="flex items-center gap-4 shrink-0">
-                          <span
-                            className={cn(
-                              "text-[10px] font-bold px-2 py-0.5 rounded-md",
-                              prob.difficulty === "Easy"
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                : prob.difficulty === "Medium"
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                            )}
-                          >
-                            {prob.difficulty}
-                          </span>
+                          {/* Right: Difficulty Badge + Action Button */}
+                          <div className="flex items-center gap-4 shrink-0">
+                            <span
+                              className={cn(
+                                "text-[10px] font-bold px-2 py-0.5 rounded-md",
+                                prob.difficulty === "Easy"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                  : prob.difficulty === "Medium"
+                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                              )}
+                            >
+                              {prob.difficulty}
+                            </span>
 
-                          <a
-                            href={prob.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className={cn(
-                              "h-7 px-3 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors",
-                              isSolved
-                                ? "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                                : "bg-secondary/80 text-foreground hover:bg-brand hover:text-brand-foreground"
-                            )}
-                          >
-                            {isSolved ? "Solved ✓" : "Solve →"}
-                          </a>
+                            <a
+                              href={prob.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className={cn(
+                                "h-7 px-3 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors",
+                                isSolved
+                                  ? "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                                  : "bg-secondary/80 text-foreground hover:bg-brand hover:text-brand-foreground"
+                              )}
+                            >
+                              {isSolved ? "Solved ✓" : "Solve →"}
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="py-12 px-4 text-center space-y-2">
-                    <p className="text-sm font-semibold text-foreground">No problems found.</p>
-                    <p className="text-xs text-muted-foreground">
-                      Try changing your search terms or clearing active filters.
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={clearAllFilters}
-                      className="mt-2 text-xs h-8 rounded-xl font-semibold"
-                    >
-                      Clear filters
-                    </Button>
-                  </div>
-                )}
+                      );
+                    })
+                  ) : (
+                    <div className="py-12 px-4 text-center space-y-2">
+                      <p className="text-sm font-semibold text-foreground">No problems found.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Try changing your search terms or clearing active filters.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={clearAllFilters}
+                        className="mt-2 text-xs h-8 rounded-xl font-semibold"
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
