@@ -147,6 +147,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // trigger a state refresh with the new name
         setUser(mapUser(cred.user));
       }
+
+      // Trigger Resend Welcome Email non-blockingly
+      const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+      fetch(`${API_BASE}/api/email/welcome`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: name.trim(),
+          username: email.split('@')[0],
+        }),
+      }).catch((err) => console.warn('[email] welcome email trigger failed', err));
     },
     [],
   );

@@ -98,6 +98,7 @@ app.use('/api/connections', require('./routes/connections'));
 app.use('/api/user', require('./routes/user'));
 app.use('/api/aptitude', require('./routes/aptitude'));
 app.use('/api/linkedin', require('./routes/linkedin'));
+app.use('/api/email', require('./routes/email'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
