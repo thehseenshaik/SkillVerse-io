@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as R404RouteImport } from './routes/404'
 import { Route as AchievementsRouteImport } from './routes/achievements'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AiAtsScoreRouteImport } from './routes/ai-ats-score'
 import { Route as AiCareerRouteImport } from './routes/ai-career'
@@ -81,6 +82,11 @@ const R404Route = R404RouteImport.update({
 const AchievementsRoute = AchievementsRouteImport.update({
   id: '/achievements',
   path: '/achievements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -363,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/404': typeof R404Route
   '/achievements': typeof AchievementsRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/ai-ats-score': typeof AiAtsScoreRoute
   '/ai-career': typeof AiCareerRoute
@@ -423,6 +430,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/404': typeof R404Route
   '/achievements': typeof AchievementsRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/ai-ats-score': typeof AiAtsScoreRoute
   '/ai-career': typeof AiCareerRoute
@@ -484,6 +492,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/404': typeof R404Route
   '/achievements': typeof AchievementsRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/ai-ats-score': typeof AiAtsScoreRoute
   '/ai-career': typeof AiCareerRoute
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/'
     | '/404'
     | '/achievements'
+    | '/activity'
     | '/admin'
     | '/ai-ats-score'
     | '/ai-career'
@@ -606,6 +616,7 @@ export interface FileRouteTypes {
     | '/'
     | '/404'
     | '/achievements'
+    | '/activity'
     | '/admin'
     | '/ai-ats-score'
     | '/ai-career'
@@ -666,6 +677,7 @@ export interface FileRouteTypes {
     | '/'
     | '/404'
     | '/achievements'
+    | '/activity'
     | '/admin'
     | '/ai-ats-score'
     | '/ai-career'
@@ -727,6 +739,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   R404Route: typeof R404Route
   AchievementsRoute: typeof AchievementsRoute
+  ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRoute
   AiAtsScoreRoute: typeof AiAtsScoreRoute
   AiCareerRoute: typeof AiCareerRoute
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       path: '/achievements'
       fullPath: '/achievements'
       preLoaderRoute: typeof AchievementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -1226,6 +1246,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   R404Route: R404Route,
   AchievementsRoute: AchievementsRoute,
+  ActivityRoute: ActivityRoute,
   AdminRoute: AdminRoute,
   AiAtsScoreRoute: AiAtsScoreRoute,
   AiCareerRoute: AiCareerRoute,

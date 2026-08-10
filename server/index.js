@@ -97,6 +97,7 @@ app.use('/api/codeforces', require('./routes/codeforces'));
 app.use('/api/codechef', require('./routes/codechef'));
 app.use('/api/hackerrank', require('./routes/hackerrank'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/activity', require('./routes/activity'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/connections', require('./routes/connections'));
 app.use('/api/user', require('./routes/user'));

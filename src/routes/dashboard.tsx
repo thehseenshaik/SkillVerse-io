@@ -33,6 +33,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { aptitudeApi } from "@/lib/aptitude-api";
+import { RecentActivitySection } from "@/components/dashboard/RecentActivitySection";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -661,6 +662,11 @@ function DashboardPage() {
               </Card>
 
             </div>
+          </section>
+
+          {/* 2.5 RECENT ACTIVITY HERO SECTION */}
+          <section className="animate-fade-up">
+            <RecentActivitySection />
           </section>
 
           {/* 3. TODAY'S FOCUS — LIVE REAL-TIME TRACKING */}
