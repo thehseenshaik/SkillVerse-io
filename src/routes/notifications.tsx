@@ -35,7 +35,9 @@ export const Route = createFileRoute("/notifications")({
   }),
   component: () => (
     <AuthGate>
-      <NotificationsPage />
+      <PageShell>
+        <NotificationsPage />
+      </PageShell>
     </AuthGate>
   ),
 });
@@ -118,8 +120,7 @@ function NotificationsPage() {
   );
 
   return (
-    <PageShell>
-      <div className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
         {/* Hero Header */}
         <section className="relative overflow-hidden bg-hero border-b border-border/60">
           <div className="pointer-events-none absolute inset-0 -z-10">
@@ -276,7 +277,6 @@ function NotificationsPage() {
           )}
         </main>
       </div>
-    </PageShell>
   );
 }
 

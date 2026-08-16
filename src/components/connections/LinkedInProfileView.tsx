@@ -90,15 +90,13 @@ export function LinkedInProfileView() {
 
   // Real User Telemetry
   const displayName = userProfile?.fullName || user?.name || profile.name || linkedin.username;
-  const headlineText = userProfile?.headline || profile.headline || "Software Development Engineer • Web & System Design";
-  const locationText = userProfile?.location || profile.location || "Verified Identity";
-  const aboutText = userProfile?.summary || profile.about || "Passionate software developer building verified applications and algorithmic systems.";
+  const headlineText = userProfile?.headline || profile.headline || userProfile?.role || "";
+  const locationText = userProfile?.location || profile.location || "";
+  const aboutText = userProfile?.summary || profile.about || "";
   
   const skillsList = userProfile?.skills
     ? userProfile.skills.split(",").map((s) => s.trim()).filter(Boolean)
-    : skills.length
-    ? skills
-    : ["Software Development", "Problem Solving", "Web Engineering"];
+    : (skills || []);
 
   const realExperiences =
     Array.isArray(userProfile?.experience) && userProfile.experience.length > 0
@@ -108,7 +106,7 @@ export function LinkedInProfileView() {
           duration: `${e.start || ""} ${e.start && e.end ? "-" : ""} ${e.end || ""}`.trim() || "Present",
           description: e.summary,
         }))
-      : experiences;
+      : (experiences || []);
 
   const realEducation =
     Array.isArray(userProfile?.education) && userProfile.education.length > 0
@@ -117,7 +115,7 @@ export function LinkedInProfileView() {
           degree: `${e.degree || ""} ${e.field ? `in ${e.field}` : ""}`.trim(),
           years: `${e.start || ""} ${e.start && e.end ? "-" : ""} ${e.end || ""}`.trim(),
         }))
-      : education;
+      : (education || []);
 
   const profileLink = profile.profileUrl || `https://www.linkedin.com/in/${linkedin.username}`;
 
@@ -182,7 +180,7 @@ export function LinkedInProfileView() {
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5 text-[#0A66C2]" /> {linkedinData.connections || 500}+ connections
+                      <Users className="h-3.5 w-3.5 text-[#0A66C2]" /> {linkedinData.connections ? `${linkedinData.connections}+ connections` : "Profile Connected"}
                     </span>
                     <span className="inline-flex items-center gap-1 text-muted-foreground/80">
                       <Clock className="h-3.5 w-3.5" /> Last synced: {formatLastSynced(linkedin.lastSynced)}
@@ -223,8 +221,8 @@ export function LinkedInProfileView() {
             <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-[#0A66C2]/10 text-[#0A66C2] mb-2">
               <Users className="h-5 w-5" />
             </div>
-            <p className="text-2xl font-extrabold text-foreground">{linkedinData.connections || 500}+</p>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">Connections</p>
+            <p className="text-2xl font-extrabold text-foreground">{linkedinData.connections ? `${linkedinData.connections}+` : "Connected"}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">{linkedinData.connections ? "Connections" : "Profile Status"}</p>
           </div>
 
           <div className="glass rounded-2xl p-5 border border-border/60 text-center">

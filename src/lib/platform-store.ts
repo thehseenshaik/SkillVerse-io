@@ -1139,20 +1139,37 @@ export const usePlatformStore = create<PlatformStore>()(
       },
 
       connectLinkedIn: async (uid: string, inputUrlOrHandle: string) => {
-        let cleanHandle = inputUrlOrHandle.trim();
-        cleanHandle = cleanHandle.replace(/\/+$/, "");
-        const urlMatch =
-          cleanHandle.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([^\/\?#]+)/i) ||
-          cleanHandle.match(/in\/([^\/\?#]+)/i);
+        let input = (inputUrlOrHandle || "").trim().replace(/\/+$/, "");
+        let cleanHandle = "";
+        let profileUrl = "";
 
-        if (urlMatch && urlMatch[1]) {
-          cleanHandle = urlMatch[1].replace(/^@/, "");
-        } else {
-          cleanHandle = cleanHandle
-            .replace(/^https?:\/\//i, "")
-            .replace(/^www\./i, "")
-            .replace(/^linkedin\.com\/in\//i, "")
-            .replace(/^@/, "");
+        try {
+          if (input.startsWith("http://") || input.startsWith("https://") || input.includes("linkedin.com")) {
+            const fullUrl = input.startsWith("http") ? input : `https://${input}`;
+            const urlObj = new URL(fullUrl);
+            const pathParts = urlObj.pathname.split("/").filter(Boolean);
+            
+            const inIdx = pathParts.findIndex(p => p.toLowerCase() === "in" || p.toLowerCase() === "pub");
+            if (inIdx !== -1 && pathParts[inIdx + 1]) {
+              cleanHandle = pathParts[inIdx + 1].split("?")[0].replace(/^@/, "");
+            } else if (pathParts.length > 0) {
+              const nonSystem = pathParts.filter(p => !["public-profile", "settings", "feed", "edit", "detail"].includes(p.toLowerCase()));
+              if (nonSystem.length > 0) {
+                cleanHandle = nonSystem[nonSystem.length - 1].split("?")[0].replace(/^@/, "");
+              }
+            }
+
+            if (!cleanHandle) {
+              cleanHandle = "profile";
+            }
+            profileUrl = fullUrl;
+          } else {
+            cleanHandle = input.replace(/^@/, "").split("/")[0].split("?")[0];
+            profileUrl = `https://www.linkedin.com/in/${cleanHandle}`;
+          }
+        } catch {
+          cleanHandle = input.replace(/^@/, "").split("/")[0].split("?")[0] || "profile";
+          profileUrl = `https://www.linkedin.com/in/${cleanHandle}`;
         }
 
         const conn = {
@@ -1166,30 +1183,17 @@ export const usePlatformStore = create<PlatformStore>()(
           linkedin: conn,
           linkedinData: {
             profile: {
-              name: cleanHandle,
+              name: cleanHandle !== "profile" ? cleanHandle : "LinkedIn Member",
               avatar: null,
-              headline: "Software Development Engineer • Web & System Design",
-              location: "Verified Professional Identity",
-              profileUrl: `https://www.linkedin.com/in/${cleanHandle}`,
-              about: "Passionate developer building high-impact software, algorithmic solutions, and verified engineering projects.",
+              headline: "",
+              location: "",
+              profileUrl,
+              about: "",
             },
-            connections: 500,
-            skills: ["Software Engineering", "Full Stack Development", "Algorithms & DSA", "System Design", "TypeScript / JavaScript", "Python"],
-            experience: [
-              {
-                title: "Software Development Engineer",
-                company: "SkillVerse Developer Network",
-                duration: "2024 - Present",
-                description: "Architecting verified career telemetry hubs, algorithmic practice suites, and social snapshot engines.",
-              },
-            ],
-            education: [
-              {
-                institution: "Engineering & Computer Science",
-                degree: "Bachelor of Technology",
-                years: "2024 - 2028",
-              },
-            ],
+            connections: null,
+            skills: [],
+            experience: [],
+            education: [],
           },
         });
 
@@ -1355,12 +1359,14 @@ export const usePlatformStore = create<PlatformStore>()(
         codeforces: state.codeforces,
         codechef: state.codechef,
         hackerrank: state.hackerrank,
+        linkedin: state.linkedin,
         githubData: state.githubData,
         leetcodeData: state.leetcodeData,
         gfgData: state.gfgData,
         codeforcesData: state.codeforcesData,
         codechefData: state.codechefData,
         hackerrankData: state.hackerrankData,
+        linkedinData: state.linkedinData,
         combinedMetrics: state.combinedMetrics,
       }),
     }

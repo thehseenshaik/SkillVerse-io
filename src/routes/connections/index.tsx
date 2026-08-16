@@ -152,7 +152,11 @@ function CareerIdentityOverviewPage() {
       getAvatar: () => store.linkedinData?.profile?.avatar || null,
       getDisplayName: () => store.linkedinData?.profile?.name || store.linkedin?.username || "LinkedIn User",
       getMetricsText: () =>
-        store.linkedinData ? `${store.linkedinData.connections || 500}+ Connections` : null,
+        store.linkedinData?.connections
+          ? `${store.linkedinData.connections}+ Connections`
+          : store.linkedin?.connected
+          ? "Profile Connected"
+          : null,
       onConnect: async (un: string) => {
         if (!user?.id) return;
         await store.connectLinkedIn(user.id, un);
