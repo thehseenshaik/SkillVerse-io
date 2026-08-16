@@ -159,120 +159,133 @@ export function AccountSettings() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <div className="mb-6">
-        <button
-          onClick={() => navigate({ to: "/dashboard" })}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-        </button>
-      </div>
-
-      <div className="glass rounded-3xl shadow-elegant overflow-hidden">
-        {/* Header */}
-        <div className="border-b border-border/70 p-6">
-          <h1 className="text-2xl font-bold">Account Settings</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your account settings and preferences
-          </p>
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      {/* Hero Header */}
+      <section className="relative overflow-hidden bg-hero border-b border-border/60">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute left-1/2 top-20 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-brand/15 blur-[120px] animate-pulse-glow" />
         </div>
 
-        <div className="flex">
-          {/* Sidebar */}
-          <div className="w-64 border-r border-border/70 p-4">
-            <nav className="space-y-1">
-              <TabButton
-                active={activeTab === "appearance"}
-                onClick={() => setActiveTab("appearance")}
-                icon={<Monitor className="h-4 w-4" />}
-                label="Appearance"
-              />
-              <TabButton
-                active={activeTab === "security"}
-                onClick={() => setActiveTab("security")}
-                icon={<ShieldAlert className="h-4 w-4" />}
-                label="Security"
-              />
-              <TabButton
-                active={activeTab === "notifications"}
-                onClick={() => setActiveTab("notifications")}
-                icon={<Bell className="h-4 w-4" />}
-                label="Notifications"
-              />
-              <TabButton
-                active={activeTab === "privacy"}
-                onClick={() => setActiveTab("privacy")}
-                icon={<Lock className="h-4 w-4" />}
-                label="Privacy"
-              />
-              <TabButton
-                active={activeTab === "connections"}
-                onClick={() => setActiveTab("connections")}
-                icon={<LinkIcon className="h-4 w-4" />}
-                label="Connections"
-              />
-              <TabButton
-                active={activeTab === "danger"}
-                onClick={() => setActiveTab("danger")}
-                icon={<Trash2 className="h-4 w-4" />}
-                label="Danger Zone"
-              />
-            </nav>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 p-6">
-            {activeTab === "appearance" && (
-              <AppearanceTab onThemeChange={handleThemeChange} />
-            )}
-            {activeTab === "security" && (
-              <SecurityTab
-                passwordData={passwordData}
-                setPasswordData={setPasswordData}
-                emailData={emailData}
-                setEmailData={setEmailData}
-                showCurrentPassword={showCurrentPassword}
-                setShowCurrentPassword={setShowCurrentPassword}
-                showNewPassword={showNewPassword}
-                setShowNewPassword={setShowNewPassword}
-                showConfirmPassword={showConfirmPassword}
-                setShowConfirmPassword={setShowConfirmPassword}
-                onPasswordChange={handlePasswordChange}
-                onEmailChange={handleEmailChange}
-                isSubmitting={isSubmitting}
-              />
-            )}
-            {activeTab === "notifications" && <NotificationsTab />}
-            {activeTab === "privacy" && <PrivacyTab />}
-            {activeTab === "connections" && (
-              <ConnectionsTab
-                github={github}
-                leetcode={leetcode}
-                githubData={githubData}
-                leetcodeData={leetcodeData}
-                onSyncGitHub={() => user?.id && syncGitHub(user.id)}
-                onSyncLeetCode={() => user?.id && syncLeetCode(user.id)}
-                onDisconnectGitHub={() => user?.id && disconnectGitHub(user.id)}
-                onDisconnectLeetCode={() => user?.id && disconnectLeetCode(user.id)}
-                isSyncing={isSyncing}
-              />
-            )}
-            {activeTab === "danger" && (
-              <DangerTab
-                deletePassword={deletePassword}
-                setDeletePassword={setDeletePassword}
-                deleteConfirmed={deleteConfirmed}
-                setDeleteConfirmed={setDeleteConfirmed}
-                onDelete={handleDeleteAccount}
-                onLogout={handleLogout}
-                onDownloadData={handleDownloadData}
-                isSubmitting={isSubmitting}
-              />
-            )}
+        <div className="mx-auto max-w-6xl px-6 pt-12 pb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand backdrop-blur shadow-2xs">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+                </span>
+                SETTINGS
+              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
+                Workspace <span className="text-gradient">Settings</span>.
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                Manage your account preferences, theme appearance, platform connections and security.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Main Content Area */}
+      <main className="mx-auto max-w-6xl px-6 pt-8">
+        <div className="glass rounded-3xl shadow-elegant overflow-hidden border border-border/60">
+          <div className="flex flex-col md:flex-row">
+            {/* Sidebar */}
+            <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border/70 p-4 bg-card/40">
+              <nav className="flex md:flex-col gap-1 overflow-x-auto custom-scrollbar pb-2 md:pb-0">
+                <TabButton
+                  active={activeTab === "appearance"}
+                  onClick={() => setActiveTab("appearance")}
+                  icon={<Monitor className="h-4 w-4" />}
+                  label="Appearance"
+                />
+                <TabButton
+                  active={activeTab === "security"}
+                  onClick={() => setActiveTab("security")}
+                  icon={<ShieldAlert className="h-4 w-4" />}
+                  label="Security"
+                />
+                <TabButton
+                  active={activeTab === "notifications"}
+                  onClick={() => setActiveTab("notifications")}
+                  icon={<Bell className="h-4 w-4" />}
+                  label="Notifications"
+                />
+                <TabButton
+                  active={activeTab === "privacy"}
+                  onClick={() => setActiveTab("privacy")}
+                  icon={<Lock className="h-4 w-4" />}
+                  label="Privacy"
+                />
+                <TabButton
+                  active={activeTab === "connections"}
+                  onClick={() => setActiveTab("connections")}
+                  icon={<LinkIcon className="h-4 w-4" />}
+                  label="Connections"
+                />
+                <TabButton
+                  active={activeTab === "danger"}
+                  onClick={() => setActiveTab("danger")}
+                  icon={<Trash2 className="h-4 w-4" />}
+                  label="Danger Zone"
+                />
+              </nav>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-6 md:p-8">
+              {activeTab === "appearance" && (
+                <AppearanceTab onThemeChange={handleThemeChange} />
+              )}
+              {activeTab === "security" && (
+                <SecurityTab
+                  passwordData={passwordData}
+                  setPasswordData={setPasswordData}
+                  emailData={emailData}
+                  setEmailData={setEmailData}
+                  showCurrentPassword={showCurrentPassword}
+                  setShowCurrentPassword={setShowCurrentPassword}
+                  showNewPassword={showNewPassword}
+                  setShowNewPassword={setShowNewPassword}
+                  showConfirmPassword={showConfirmPassword}
+                  setShowConfirmPassword={setShowConfirmPassword}
+                  onPasswordChange={handlePasswordChange}
+                  onEmailChange={handleEmailChange}
+                  isSubmitting={isSubmitting}
+                />
+              )}
+              {activeTab === "notifications" && <NotificationsTab />}
+              {activeTab === "privacy" && <PrivacyTab />}
+              {activeTab === "connections" && (
+                <ConnectionsTab
+                  github={github}
+                  leetcode={leetcode}
+                  githubData={githubData}
+                  leetcodeData={leetcodeData}
+                  onSyncGitHub={() => user?.id && syncGitHub(user.id)}
+                  onSyncLeetCode={() => user?.id && syncLeetCode(user.id)}
+                  onDisconnectGitHub={() => user?.id && disconnectGitHub(user.id)}
+                  onDisconnectLeetCode={() => user?.id && disconnectLeetCode(user.id)}
+                  isSyncing={isSyncing}
+                />
+              )}
+              {activeTab === "danger" && (
+                <DangerTab
+                  deletePassword={deletePassword}
+                  setDeletePassword={setDeletePassword}
+                  deleteConfirmed={deleteConfirmed}
+                  setDeleteConfirmed={setDeleteConfirmed}
+                  onDelete={handleDeleteAccount}
+                  onLogout={handleLogout}
+                  onDownloadData={handleDownloadData}
+                  isSubmitting={isSubmitting}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

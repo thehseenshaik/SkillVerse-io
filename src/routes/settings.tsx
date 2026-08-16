@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageShell } from "@/components/SiteChrome";
+import { AuthGate } from "@/components/AuthGate";
 import { AccountSettings } from "@/components/auth/AccountSettings";
 
 export const Route = createFileRoute("/settings")({
@@ -18,9 +20,11 @@ export const Route = createFileRoute("/settings")({
       },
     ],
   }),
-  component: SettingsPage,
+  component: () => (
+    <PageShell>
+      <AuthGate>
+        <AccountSettings />
+      </AuthGate>
+    </PageShell>
+  ),
 });
-
-function SettingsPage() {
-  return <AccountSettings />;
-}
