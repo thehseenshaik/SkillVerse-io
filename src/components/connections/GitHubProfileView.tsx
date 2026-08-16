@@ -26,6 +26,7 @@ export function GitHubProfileView() {
   const { user } = useAuth();
   const { github, githubData, syncGitHub, isSyncing } = usePlatformStore();
   const [activeTab, setActiveTab] = useState<"overview" | "repos" | "languages" | "activity">("overview");
+  const [avatarError, setAvatarError] = useState(false);
 
   const formatLastSynced = (date: string | null) => {
     if (!date) return "Never";
@@ -88,7 +89,10 @@ export function GitHubProfileView() {
   const repos = githubData.repositories || [];
   const languages = githubData.languages || {};
   const totalStars = repos.reduce((sum, r) => sum + (r.stars || 0), 0);
-  const totalForks = repos.reduce((sum, r) => sum + (r.forks || 0), 0);
+  const topLang = Object.keys(languages)[0] || (repos[0]?.language) || "TypeScript";
+  const cleanBio = profile?.bio
+    ? profile.bio.replace(/^-\s*/, "").replace(/\s*-\s*/g, " • ").trim()
+    : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -110,15 +114,16 @@ export function GitHubProfileView() {
           <div className="glass rounded-3xl p-6 sm:p-8 border border-border/60 shadow-elegant relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-start gap-4">
-                {profile.avatar ? (
+                {!avatarError && profile.avatar ? (
                   <img
                     src={profile.avatar}
                     alt={profile.displayName || github.username || "GitHub Avatar"}
+                    onError={() => setAvatarError(true)}
                     className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-2 border-border shadow-md object-cover"
                   />
                 ) : (
-                  <div className="grid h-20 w-20 sm:h-24 sm:w-24 shrink-0 place-items-center rounded-2xl bg-background border border-border text-2xl font-black text-foreground">
-                    {(github.username || "G").charAt(0).toUpperCase()}
+                  <div className="grid h-20 w-20 sm:h-24 sm:w-24 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand/20 via-brand/10 to-transparent border-2 border-brand/30 text-3xl font-black text-brand shadow-inner">
+                    {(profile.displayName || github.username || "M").charAt(0).toUpperCase()}
                   </div>
                 )}
 
@@ -127,7 +132,7 @@ export function GitHubProfileView() {
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                       {profile.displayName || github.username}
                     </h1>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Connected
                     </span>
@@ -135,9 +140,9 @@ export function GitHubProfileView() {
 
                   <p className="text-sm font-semibold text-brand">@{github.username}</p>
 
-                  {profile.bio && (
+                  {cleanBio && (
                     <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
-                      {profile.bio}
+                      {cleanBio}
                     </p>
                   )}
 
@@ -212,19 +217,19 @@ export function GitHubProfileView() {
           </div>
 
           <div className="glass rounded-2xl p-5 border border-border/60 text-center">
-            <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-500 mb-2">
-              <Users className="h-5 w-5" />
+            <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-500 mb-2">
+              <Code2 className="h-5 w-5" />
             </div>
-            <p className="text-2xl font-extrabold text-foreground">{profile.followers || 0}</p>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">Followers</p>
+            <p className="text-lg font-extrabold text-foreground truncate px-1">{topLang}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">Top Tech Stack</p>
           </div>
 
           <div className="glass rounded-2xl p-5 border border-border/60 text-center">
-            <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-purple-500/10 text-purple-500 mb-2">
-              <GitFork className="h-5 w-5" />
+            <div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-500 mb-2">
+              <CheckCircle className="h-5 w-5" />
             </div>
-            <p className="text-2xl font-extrabold text-foreground">{totalForks}</p>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">Forks Received</p>
+            <p className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">Active</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">Account Status</p>
           </div>
         </div>
 
