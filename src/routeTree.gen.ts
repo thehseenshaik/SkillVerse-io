@@ -68,6 +68,11 @@ import { Route as AnalyticsGfgRouteImport } from './routes/analytics/gfg'
 import { Route as AnalyticsGithubRouteImport } from './routes/analytics/github'
 import { Route as AnalyticsHackerrankRouteImport } from './routes/analytics/hackerrank'
 import { Route as AnalyticsLeetcodeRouteImport } from './routes/analytics/leetcode'
+import { Route as ConnectionsPlatformRouteImport } from './routes/connections/$platform'
+import { Route as ConnectionsGfgRouteImport } from './routes/connections/gfg'
+import { Route as ConnectionsGithubRouteImport } from './routes/connections/github'
+import { Route as ConnectionsLeetcodeRouteImport } from './routes/connections/leetcode'
+import { Route as ConnectionsLinkedinRouteImport } from './routes/connections/linkedin'
 import { Route as UUsernameRouteImport } from './routes/u/$username'
 import { Route as UUsernameRecruiterRouteImport } from './routes/u/$username/recruiter'
 
@@ -366,6 +371,31 @@ const AnalyticsLeetcodeRoute = AnalyticsLeetcodeRouteImport.update({
   path: '/leetcode',
   getParentRoute: () => AnalyticsRoute,
 } as any)
+const ConnectionsPlatformRoute = ConnectionsPlatformRouteImport.update({
+  id: '/$platform',
+  path: '/$platform',
+  getParentRoute: () => ConnectionsRoute,
+} as any)
+const ConnectionsGfgRoute = ConnectionsGfgRouteImport.update({
+  id: '/gfg',
+  path: '/gfg',
+  getParentRoute: () => ConnectionsRoute,
+} as any)
+const ConnectionsGithubRoute = ConnectionsGithubRouteImport.update({
+  id: '/github',
+  path: '/github',
+  getParentRoute: () => ConnectionsRoute,
+} as any)
+const ConnectionsLeetcodeRoute = ConnectionsLeetcodeRouteImport.update({
+  id: '/leetcode',
+  path: '/leetcode',
+  getParentRoute: () => ConnectionsRoute,
+} as any)
+const ConnectionsLinkedinRoute = ConnectionsLinkedinRouteImport.update({
+  id: '/linkedin',
+  path: '/linkedin',
+  getParentRoute: () => ConnectionsRoute,
+} as any)
 const UUsernameRoute = UUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
@@ -405,7 +435,7 @@ export interface FileRoutesByFullPath {
   '/career-score': typeof CareerScoreRoute
   '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
-  '/connections': typeof ConnectionsRoute
+  '/connections': typeof ConnectionsRouteWithChildren
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
@@ -437,6 +467,11 @@ export interface FileRoutesByFullPath {
   '/analytics/github': typeof AnalyticsGithubRoute
   '/analytics/hackerrank': typeof AnalyticsHackerrankRoute
   '/analytics/leetcode': typeof AnalyticsLeetcodeRoute
+  '/connections/$platform': typeof ConnectionsPlatformRoute
+  '/connections/gfg': typeof ConnectionsGfgRoute
+  '/connections/github': typeof ConnectionsGithubRoute
+  '/connections/leetcode': typeof ConnectionsLeetcodeRoute
+  '/connections/linkedin': typeof ConnectionsLinkedinRoute
   '/u/$username': typeof UUsernameRouteWithChildren
   '/u/$username/recruiter': typeof UUsernameRecruiterRoute
 }
@@ -468,7 +503,7 @@ export interface FileRoutesByTo {
   '/career-score': typeof CareerScoreRoute
   '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
-  '/connections': typeof ConnectionsRoute
+  '/connections': typeof ConnectionsRouteWithChildren
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
@@ -500,6 +535,11 @@ export interface FileRoutesByTo {
   '/analytics/github': typeof AnalyticsGithubRoute
   '/analytics/hackerrank': typeof AnalyticsHackerrankRoute
   '/analytics/leetcode': typeof AnalyticsLeetcodeRoute
+  '/connections/$platform': typeof ConnectionsPlatformRoute
+  '/connections/gfg': typeof ConnectionsGfgRoute
+  '/connections/github': typeof ConnectionsGithubRoute
+  '/connections/leetcode': typeof ConnectionsLeetcodeRoute
+  '/connections/linkedin': typeof ConnectionsLinkedinRoute
   '/u/$username': typeof UUsernameRouteWithChildren
   '/u/$username/recruiter': typeof UUsernameRecruiterRoute
 }
@@ -532,7 +572,7 @@ export interface FileRoutesById {
   '/career-score': typeof CareerScoreRoute
   '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
-  '/connections': typeof ConnectionsRoute
+  '/connections': typeof ConnectionsRouteWithChildren
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
@@ -564,6 +604,11 @@ export interface FileRoutesById {
   '/analytics/github': typeof AnalyticsGithubRoute
   '/analytics/hackerrank': typeof AnalyticsHackerrankRoute
   '/analytics/leetcode': typeof AnalyticsLeetcodeRoute
+  '/connections/$platform': typeof ConnectionsPlatformRoute
+  '/connections/gfg': typeof ConnectionsGfgRoute
+  '/connections/github': typeof ConnectionsGithubRoute
+  '/connections/leetcode': typeof ConnectionsLeetcodeRoute
+  '/connections/linkedin': typeof ConnectionsLinkedinRoute
   '/u/$username': typeof UUsernameRouteWithChildren
   '/u/$username/recruiter': typeof UUsernameRecruiterRoute
 }
@@ -629,6 +674,11 @@ export interface FileRouteTypes {
     | '/analytics/github'
     | '/analytics/hackerrank'
     | '/analytics/leetcode'
+    | '/connections/$platform'
+    | '/connections/gfg'
+    | '/connections/github'
+    | '/connections/leetcode'
+    | '/connections/linkedin'
     | '/u/$username'
     | '/u/$username/recruiter'
   fileRoutesByTo: FileRoutesByTo
@@ -692,6 +742,11 @@ export interface FileRouteTypes {
     | '/analytics/github'
     | '/analytics/hackerrank'
     | '/analytics/leetcode'
+    | '/connections/$platform'
+    | '/connections/gfg'
+    | '/connections/github'
+    | '/connections/leetcode'
+    | '/connections/linkedin'
     | '/u/$username'
     | '/u/$username/recruiter'
   id:
@@ -755,6 +810,11 @@ export interface FileRouteTypes {
     | '/analytics/github'
     | '/analytics/hackerrank'
     | '/analytics/leetcode'
+    | '/connections/$platform'
+    | '/connections/gfg'
+    | '/connections/github'
+    | '/connections/leetcode'
+    | '/connections/linkedin'
     | '/u/$username'
     | '/u/$username/recruiter'
   fileRoutesById: FileRoutesById
@@ -787,7 +847,7 @@ export interface RootRouteChildren {
   CareerScoreRoute: typeof CareerScoreRoute
   CareerSnapshotRoute: typeof CareerSnapshotRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
-  ConnectionsRoute: typeof ConnectionsRoute
+  ConnectionsRoute: typeof ConnectionsRouteWithChildren
   ConnectionsBackupRoute: typeof ConnectionsBackupRoute
   ConnectionsPremiumRoute: typeof ConnectionsPremiumRoute
   ContributionsRoute: typeof ContributionsRoute
@@ -1231,6 +1291,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsLeetcodeRouteImport
       parentRoute: typeof AnalyticsRoute
     }
+    '/connections/$platform': {
+      id: '/connections/$platform'
+      path: '/$platform'
+      fullPath: '/connections/$platform'
+      preLoaderRoute: typeof ConnectionsPlatformRouteImport
+      parentRoute: typeof ConnectionsRoute
+    }
+    '/connections/gfg': {
+      id: '/connections/gfg'
+      path: '/gfg'
+      fullPath: '/connections/gfg'
+      preLoaderRoute: typeof ConnectionsGfgRouteImport
+      parentRoute: typeof ConnectionsRoute
+    }
+    '/connections/github': {
+      id: '/connections/github'
+      path: '/github'
+      fullPath: '/connections/github'
+      preLoaderRoute: typeof ConnectionsGithubRouteImport
+      parentRoute: typeof ConnectionsRoute
+    }
+    '/connections/leetcode': {
+      id: '/connections/leetcode'
+      path: '/leetcode'
+      fullPath: '/connections/leetcode'
+      preLoaderRoute: typeof ConnectionsLeetcodeRouteImport
+      parentRoute: typeof ConnectionsRoute
+    }
+    '/connections/linkedin': {
+      id: '/connections/linkedin'
+      path: '/linkedin'
+      fullPath: '/connections/linkedin'
+      preLoaderRoute: typeof ConnectionsLinkedinRouteImport
+      parentRoute: typeof ConnectionsRoute
+    }
     '/u/$username': {
       id: '/u/$username'
       path: '/u/$username'
@@ -1268,6 +1363,26 @@ const AnalyticsRouteChildren: AnalyticsRouteChildren = {
 
 const AnalyticsRouteWithChildren = AnalyticsRoute._addFileChildren(
   AnalyticsRouteChildren,
+)
+
+interface ConnectionsRouteChildren {
+  ConnectionsPlatformRoute: typeof ConnectionsPlatformRoute
+  ConnectionsGfgRoute: typeof ConnectionsGfgRoute
+  ConnectionsGithubRoute: typeof ConnectionsGithubRoute
+  ConnectionsLeetcodeRoute: typeof ConnectionsLeetcodeRoute
+  ConnectionsLinkedinRoute: typeof ConnectionsLinkedinRoute
+}
+
+const ConnectionsRouteChildren: ConnectionsRouteChildren = {
+  ConnectionsPlatformRoute: ConnectionsPlatformRoute,
+  ConnectionsGfgRoute: ConnectionsGfgRoute,
+  ConnectionsGithubRoute: ConnectionsGithubRoute,
+  ConnectionsLeetcodeRoute: ConnectionsLeetcodeRoute,
+  ConnectionsLinkedinRoute: ConnectionsLinkedinRoute,
+}
+
+const ConnectionsRouteWithChildren = ConnectionsRoute._addFileChildren(
+  ConnectionsRouteChildren,
 )
 
 interface UUsernameRouteChildren {
@@ -1310,7 +1425,7 @@ const rootRouteChildren: RootRouteChildren = {
   CareerScoreRoute: CareerScoreRoute,
   CareerSnapshotRoute: CareerSnapshotRoute,
   ChangePasswordRoute: ChangePasswordRoute,
-  ConnectionsRoute: ConnectionsRoute,
+  ConnectionsRoute: ConnectionsRouteWithChildren,
   ConnectionsBackupRoute: ConnectionsBackupRoute,
   ConnectionsPremiumRoute: ConnectionsPremiumRoute,
   ContributionsRoute: ContributionsRoute,
