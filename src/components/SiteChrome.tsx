@@ -318,40 +318,24 @@ export function SiteNav() {
         </div>
 
         {/* Right Side Utility & User Controls */}
-        <div className="flex items-center gap-1.5 md:gap-2">
+        <div className="flex items-center gap-2">
           {isAppView ? (
             <TooltipProvider delayDuration={150}>
-              {/* Help & Copilot Button */}
-              <Tooltip side="bottom">
-                <TooltipTrigger asChild>
-                  <Link
-                    to="/copilot"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                    aria-label="Help & Support"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Help & Copilot Support
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Real Notification Bell & Dropdown */}
+              {/* Notification Bell & Dropdown */}
               <NotificationBellDropdown />
 
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              {/* Mobile Drawer Hamburger */}
+              {/* Mobile Menu Hamburger (Mobile Only) */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden h-8 w-8"
+                className="md:hidden h-8 w-8 text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open menu"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-4 w-4" />
               </Button>
 
               {/* Account Dropdown */}
