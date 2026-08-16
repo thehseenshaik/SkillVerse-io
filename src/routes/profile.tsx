@@ -1327,40 +1327,32 @@ export function ProfilePage() {
                 )}
               </div>
 
-              {/* 9. CONNECTED PLATFORMS & IDENTITY TELEMETRY */}
-              <div id="platforms" className="space-y-4 pt-4">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-1 border-b border-border/50">
-                  <div className="space-y-1">
-                    <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20 text-[10px] font-bold uppercase tracking-wider">
-                      <Sparkles className="h-3 w-3" /> VERIFIED DEVELOPER TELEMETRY
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                      Connected Identity Profiles
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Live telemetry synced across the platforms defining your coding rank and credentials.
-                    </p>
-                  </div>
+              {/* 9. CONNECTED PROFILES */}
+              <div id="platforms" className="space-y-4 pt-2">
+                <div className="flex items-center justify-between gap-4 pb-2 border-b border-border/50">
+                  <h3 className="text-xl font-bold tracking-tight text-foreground">
+                    Connected Profiles
+                  </h3>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-card border border-border/80 text-xs font-bold text-foreground shadow-2xs">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="flex items-center gap-2.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-xs font-semibold text-foreground">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
                       {connectedCount} of {platformsList.length} Connected
                     </span>
                     <Button
                       asChild
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="h-9 px-3.5 rounded-xl text-xs font-bold gap-1.5 border-border/80 hover:border-brand/40 shadow-xs"
+                      className="h-8 px-3 rounded-lg text-xs font-semibold gap-1 text-brand hover:bg-brand/10"
                     >
                       <RouterLink to="/connections">
-                        Identity Hub <ArrowRight className="h-3.5 w-3.5 text-brand" />
+                        Identity Hub <ArrowRight className="h-3.5 w-3.5" />
                       </RouterLink>
                     </Button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {platformsList.map((plat) => {
                     const Icon = plat.icon;
                     const isConnected = plat.data?.connected && plat.data?.username;
@@ -1371,121 +1363,78 @@ export function ProfilePage() {
                       <div
                         key={plat.name}
                         className={cn(
-                          "group relative overflow-hidden rounded-3xl border transition-all duration-300 p-5 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md",
+                          "rounded-2xl border p-4 flex flex-col justify-between space-y-3 transition-all",
                           isConnected
-                            ? "bg-gradient-to-br from-card via-card to-card/60 border-border/70 hover:border-brand/40 hover:-translate-y-0.5"
-                            : "bg-card/40 border-border/50 opacity-90 hover:opacity-100 hover:border-border"
+                            ? "bg-card border-border/80 shadow-2xs hover:border-brand/40"
+                            : "bg-card/40 border-border/40"
                         )}
                       >
-                        {/* Custom Brand Top Hairline Glow */}
-                        <div
-                          className="absolute inset-x-0 top-0 h-1 transition-opacity duration-300 opacity-60 group-hover:opacity-100"
-                          style={{ backgroundColor: plat.color }}
-                        />
-
-                        <div className="space-y-3">
-                          {/* Header: Icon + Platform Name + Status Tag */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div
-                                className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-105"
-                                style={{
-                                  backgroundColor: `${plat.color}14`,
-                                  border: `1px solid ${plat.color}35`,
-                                  color: plat.color,
-                                }}
-                              >
-                                <Icon className="h-5.5 w-5.5" />
-                              </div>
-                              <div className="min-w-0 space-y-0.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h4 className="text-sm font-extrabold text-foreground tracking-tight leading-none">
-                                    {plat.name}
-                                  </h4>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/40">
-                                    {plat.badge}
-                                  </span>
-                                </div>
-                                {isConnected ? (
-                                  <p className="text-xs font-semibold text-brand truncate">
-                                    @{plat.data?.username}
-                                  </p>
-                                ) : (
-                                  <p className="text-[11px] font-medium text-muted-foreground/80">
-                                    Not Connected
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Status Pill */}
-                            <span
-                              className={cn(
-                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold shrink-0 border",
-                                isConnected
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                  : "bg-muted/60 text-muted-foreground border-border/50"
-                              )}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-foreground"
+                              style={{
+                                backgroundColor: `${plat.color}15`,
+                                color: plat.color,
+                              }}
                             >
-                              <span
-                                className={cn(
-                                  "h-1.5 w-1.5 rounded-full",
-                                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
-                                )}
-                              />
-                              {isConnected ? "Live" : "Offline"}
-                            </span>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-foreground leading-snug">
+                                {plat.name}
+                              </h4>
+                              {isConnected ? (
+                                <p className="text-xs font-medium text-brand truncate">
+                                  @{plat.data?.username}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  Not connected
+                                </p>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Metric or Feature Description */}
-                          <div className="pt-1">
-                            {isConnected && metric ? (
-                              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/70 border border-border/60 text-xs font-bold text-foreground">
-                                <Sparkles className="h-3.5 w-3.5 text-brand" />
-                                <span>{metric}</span>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                                {plat.desc}
-                              </p>
-                            )}
-                          </div>
+                          {isConnected && metric && (
+                            <span className="shrink-0 px-2.5 py-1 rounded-lg bg-secondary text-[11px] font-bold text-foreground">
+                              {metric}
+                            </span>
+                          )}
                         </div>
 
-                        {/* Card Actions Footer */}
-                        <div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs">
+                        <div className="flex items-center justify-between pt-2.5 border-t border-border/40 text-xs">
                           {isConnected ? (
                             <>
                               <RouterLink
                                 to={plat.route}
-                                className="inline-flex items-center gap-1 font-bold text-xs text-brand hover:underline"
+                                className="font-semibold text-xs text-brand hover:underline inline-flex items-center gap-1"
                               >
-                                View Telemetry <ArrowRight className="h-3 w-3" />
+                                View Profile <ArrowRight className="h-3 w-3" />
                               </RouterLink>
 
                               <Button
                                 size="sm"
                                 variant="outline"
                                 disabled={isSyncingThis}
-                                className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 border-border/70 hover:border-brand/40 shadow-2xs"
+                                className="h-7 px-3 rounded-lg text-xs font-semibold gap-1"
                                 onClick={() => handleSyncPlatform(plat.key)}
                               >
-                                <RefreshCw className={cn("h-3 w-3 text-muted-foreground", isSyncingThis && "animate-spin text-brand")} />
-                                {isSyncingThis ? "Syncing..." : "Sync Live"}
+                                <RefreshCw className={cn("h-3 w-3", isSyncingThis && "animate-spin text-brand")} />
+                                {isSyncingThis ? "Syncing..." : "Sync"}
                               </Button>
                             </>
                           ) : (
-                            <>
-                              <span className="text-[11px] font-medium text-muted-foreground">Unlinked account</span>
+                            <div className="flex justify-end w-full">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 px-3.5 rounded-xl text-xs font-bold hover:border-brand hover:text-brand shadow-2xs gap-1.5"
+                                className="h-7 px-3 rounded-lg text-xs font-semibold hover:border-brand hover:text-brand gap-1"
                                 onClick={() => openConnectModal(plat.key)}
                               >
                                 <LinkIcon className="h-3 w-3 text-brand" /> Connect
                               </Button>
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
