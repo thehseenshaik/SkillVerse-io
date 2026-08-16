@@ -68,6 +68,7 @@ import { Route as AnalyticsGfgRouteImport } from './routes/analytics/gfg'
 import { Route as AnalyticsGithubRouteImport } from './routes/analytics/github'
 import { Route as AnalyticsHackerrankRouteImport } from './routes/analytics/hackerrank'
 import { Route as AnalyticsLeetcodeRouteImport } from './routes/analytics/leetcode'
+import { Route as ConnectionsIndexRouteImport } from './routes/connections/index'
 import { Route as ConnectionsPlatformRouteImport } from './routes/connections/$platform'
 import { Route as ConnectionsGfgRouteImport } from './routes/connections/gfg'
 import { Route as ConnectionsGithubRouteImport } from './routes/connections/github'
@@ -371,6 +372,11 @@ const AnalyticsLeetcodeRoute = AnalyticsLeetcodeRouteImport.update({
   path: '/leetcode',
   getParentRoute: () => AnalyticsRoute,
 } as any)
+const ConnectionsIndexRoute = ConnectionsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConnectionsRoute,
+} as any)
 const ConnectionsPlatformRoute = ConnectionsPlatformRouteImport.update({
   id: '/$platform',
   path: '/$platform',
@@ -473,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/connections/leetcode': typeof ConnectionsLeetcodeRoute
   '/connections/linkedin': typeof ConnectionsLinkedinRoute
   '/u/$username': typeof UUsernameRouteWithChildren
+  '/connections/': typeof ConnectionsIndexRoute
   '/u/$username/recruiter': typeof UUsernameRecruiterRoute
 }
 export interface FileRoutesByTo {
@@ -503,7 +510,6 @@ export interface FileRoutesByTo {
   '/career-score': typeof CareerScoreRoute
   '/career-snapshot': typeof CareerSnapshotRoute
   '/change-password': typeof ChangePasswordRoute
-  '/connections': typeof ConnectionsRouteWithChildren
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
@@ -541,6 +547,7 @@ export interface FileRoutesByTo {
   '/connections/leetcode': typeof ConnectionsLeetcodeRoute
   '/connections/linkedin': typeof ConnectionsLinkedinRoute
   '/u/$username': typeof UUsernameRouteWithChildren
+  '/connections': typeof ConnectionsIndexRoute
   '/u/$username/recruiter': typeof UUsernameRecruiterRoute
 }
 export interface FileRoutesById {
@@ -610,6 +617,7 @@ export interface FileRoutesById {
   '/connections/leetcode': typeof ConnectionsLeetcodeRoute
   '/connections/linkedin': typeof ConnectionsLinkedinRoute
   '/u/$username': typeof UUsernameRouteWithChildren
+  '/connections/': typeof ConnectionsIndexRoute
   '/u/$username/recruiter': typeof UUsernameRecruiterRoute
 }
 export interface FileRouteTypes {
@@ -680,6 +688,7 @@ export interface FileRouteTypes {
     | '/connections/leetcode'
     | '/connections/linkedin'
     | '/u/$username'
+    | '/connections/'
     | '/u/$username/recruiter'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -710,7 +719,6 @@ export interface FileRouteTypes {
     | '/career-score'
     | '/career-snapshot'
     | '/change-password'
-    | '/connections'
     | '/connections-backup'
     | '/connections-premium'
     | '/contributions'
@@ -748,6 +756,7 @@ export interface FileRouteTypes {
     | '/connections/leetcode'
     | '/connections/linkedin'
     | '/u/$username'
+    | '/connections'
     | '/u/$username/recruiter'
   id:
     | '__root__'
@@ -816,6 +825,7 @@ export interface FileRouteTypes {
     | '/connections/leetcode'
     | '/connections/linkedin'
     | '/u/$username'
+    | '/connections/'
     | '/u/$username/recruiter'
   fileRoutesById: FileRoutesById
 }
@@ -1291,6 +1301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsLeetcodeRouteImport
       parentRoute: typeof AnalyticsRoute
     }
+    '/connections/': {
+      id: '/connections/'
+      path: '/'
+      fullPath: '/connections/'
+      preLoaderRoute: typeof ConnectionsIndexRouteImport
+      parentRoute: typeof ConnectionsRoute
+    }
     '/connections/$platform': {
       id: '/connections/$platform'
       path: '/$platform'
@@ -1371,6 +1388,7 @@ interface ConnectionsRouteChildren {
   ConnectionsGithubRoute: typeof ConnectionsGithubRoute
   ConnectionsLeetcodeRoute: typeof ConnectionsLeetcodeRoute
   ConnectionsLinkedinRoute: typeof ConnectionsLinkedinRoute
+  ConnectionsIndexRoute: typeof ConnectionsIndexRoute
 }
 
 const ConnectionsRouteChildren: ConnectionsRouteChildren = {
@@ -1379,6 +1397,7 @@ const ConnectionsRouteChildren: ConnectionsRouteChildren = {
   ConnectionsGithubRoute: ConnectionsGithubRoute,
   ConnectionsLeetcodeRoute: ConnectionsLeetcodeRoute,
   ConnectionsLinkedinRoute: ConnectionsLinkedinRoute,
+  ConnectionsIndexRoute: ConnectionsIndexRoute,
 }
 
 const ConnectionsRouteWithChildren = ConnectionsRoute._addFileChildren(
