@@ -16,17 +16,15 @@ import {
   Settings,
   HelpCircle,
   ChevronLeft,
+  ChevronDown,
+  Compass,
+  Award,
+  Briefcase,
+  Flame,
+  Layers,
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  Briefcase,
-  Layers,
-  Flame,
-  ChevronDown,
-  Building2,
-  CheckCircle2,
-  Activity,
-  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -40,49 +38,78 @@ export interface NavItem {
   to: string;
   label: string;
   icon: React.ElementType;
-  badge?: string;
 }
 
 export interface NavSection {
+  key: string;
   title: string;
+  icon: React.ElementType;
   items: NavItem[];
 }
 
 export const navSections: NavSection[] = [
   {
-    title: "MAIN",
+    key: "OVERVIEW",
+    title: "OVERVIEW",
+    icon: LayoutDashboard,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/profile", label: "My Profile", icon: User },
-      { to: "/career-snapshot", label: "Career Hub", icon: Trophy },
-      { to: "/ai-progress", label: "Skill Progress", icon: TrendingUp },
     ],
   },
   {
-    title: "DEVELOPMENT",
+    key: "CAREER",
+    title: "CAREER",
+    icon: Briefcase,
+    items: [
+      { to: "/profile", label: "My Profile", icon: User },
+      { to: "/career-snapshot", label: "Career Identity", icon: Trophy },
+      { to: "/resume-builder", label: "Resume", icon: FileText },
+    ],
+  },
+  {
+    key: "PROGRESS",
+    title: "PROGRESS",
+    icon: TrendingUp,
+    items: [
+      { to: "/ai-progress", label: "Skill Progress", icon: Flame },
+      { to: "/ai-career-roadmap", label: "Learning Roadmap", icon: Compass },
+      { to: "/achievements", label: "Achievements", icon: Award },
+    ],
+  },
+  {
+    key: "PLATFORMS",
+    title: "PLATFORMS",
+    icon: Code2,
     items: [
       { to: "/analytics/github", label: "GitHub", icon: Github },
       { to: "/analytics/leetcode", label: "LeetCode", icon: Code2 },
       { to: "/analytics/gfg", label: "GeeksforGeeks", icon: BookOpen },
-      { to: "/portfolio-editor", label: "Projects", icon: FolderKanban },
     ],
   },
   {
+    key: "AITOOLS",
     title: "AI TOOLS",
+    icon: Sparkles,
     items: [
       { to: "/ai-resume-generator", label: "AI Resume", icon: FileText },
-      { to: "/ai-career", label: "Career Recommendations", icon: Sparkles },
       { to: "/ai-resume-analyzer", label: "Resume Analyzer", icon: FileSearch },
+      { to: "/ai-career", label: "Career Recommendations", icon: Sparkles },
       { to: "/ai-skill-gaps", label: "Skill Gap Analysis", icon: Target },
     ],
   },
   {
-    title: "ACCOUNT",
+    key: "PROJECTS",
+    title: "PROJECTS",
+    icon: FolderKanban,
     items: [
-      { to: "/settings", label: "Settings", icon: Settings },
-      { to: "/assistant", label: "Help & Support", icon: HelpCircle },
+      { to: "/portfolio-editor", label: "My Projects", icon: FolderKanban },
     ],
   },
+];
+
+export const bottomNavItems: NavItem[] = [
+  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/assistant", label: "Help & Support", icon: HelpCircle },
 ];
 
 interface SidebarContextType {
@@ -166,13 +193,47 @@ export function AppSidebar() {
   const { collapsed, toggleCollapsed } = useSidebarState();
   const location = useLocation();
 
-  // Active route checking helper
+  // Helper to check if a route is active
   const isRouteActive = (to: string) => {
     const currentPath = location.pathname;
     if (to === "/dashboard") {
       return currentPath === "/dashboard" || currentPath === "/";
     }
     return currentPath === to || currentPath.startsWith(`${to}/`);
+  };
+
+  // Keep track of expanded sections (multiple can be open at once)
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {
+      OVERVIEW: true,
+      CAREER: true,
+      PROGRESS: true,
+      PLATFORMS: true,
+      AITOOLS: true,
+      PROJECTS: true,
+    };
+    return initial;
+  });
+
+  // Automatically expand the section containing the active route on location change
+  React.useEffect(() => {
+    const currentPath = location.pathname;
+    navSections.forEach((section) => {
+      const hasActive = section.items.some((item) => {
+        if (item.to === "/dashboard") return currentPath === "/dashboard" || currentPath === "/";
+        return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
+      });
+      if (hasActive) {
+        setOpenSections((prev) => ({ ...prev, [section.key]: true }));
+      }
+    });
+  }, [location.pathname]);
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   return (
@@ -184,122 +245,187 @@ export function AppSidebar() {
           collapsed ? "w-[68px]" : "w-[250px]"
         )}
       >
-        {/* Navigation items list */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-6 custom-scrollbar">
-          {navSections.map((section) => (
-            <div key={section.title} className="space-y-1">
-              {/* Section title header */}
-              {collapsed ? (
-                <div className="h-px bg-border/50 my-2 mx-1 transition-all duration-300" />
-              ) : (
-                <div className="px-3 pb-1 text-[11px] font-bold tracking-wider text-muted-foreground/70 uppercase transition-opacity duration-200">
-                  {section.title}
-                </div>
-              )}
+        {/* Independent Scrollable Navigation Area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-4 custom-scrollbar">
+          {navSections.map((section) => {
+            const SectionIcon = section.icon;
+            const isOpen = openSections[section.key] ?? false;
+            const hasActiveChild = section.items.some((item) => isRouteActive(item.to));
 
-              {/* Items in section */}
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const active = isRouteActive(item.to);
-
-                const linkContent = (
-                  <Link
-                    to={item.to}
+            return (
+              <div key={section.key} className="space-y-1">
+                {/* Section Header */}
+                {collapsed ? (
+                  /* Collapsed View Section Header / Icon Tooltip */
+                  <Tooltip side="right" sideOffset={12}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(section.key)}
+                        className={cn(
+                          "w-full flex items-center justify-center py-2 rounded-lg transition-colors",
+                          hasActiveChild ? "text-brand font-semibold bg-brand/10" : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                        )}
+                      >
+                        <SectionIcon className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-foreground text-background font-semibold text-xs shadow-md py-1.5 px-3">
+                      {section.title}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  /* Expanded View Accordion Header Button */
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.key)}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                      active
-                        ? "bg-brand/12 text-brand font-semibold shadow-2xs dark:bg-brand/20"
-                        : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                      "w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider uppercase transition-colors outline-none focus-visible:ring-1 focus-visible:ring-brand",
+                      hasActiveChild
+                        ? "text-brand"
+                        : "text-muted-foreground/80 hover:text-foreground hover:bg-secondary/50"
                     )}
                   >
-                    {/* Active highlight bar indicator on left edge */}
-                    {active && (
-                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand shadow-sm" />
-                    )}
-
-                    <Icon
+                    <span className="flex items-center gap-2 truncate">
+                      <SectionIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{section.title}</span>
+                    </span>
+                    <ChevronDown
                       className={cn(
-                        "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
-                        active ? "text-brand" : "text-muted-foreground group-hover:text-foreground"
+                        "h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out",
+                        isOpen ? "rotate-180 text-brand" : "rotate-0 text-muted-foreground/70"
                       )}
                     />
+                  </button>
+                )}
 
-                    {/* Smooth fading text label */}
-                    <span
-                      className={cn(
-                        "truncate transition-all duration-300 ease-out whitespace-nowrap",
-                        collapsed
-                          ? "opacity-0 max-w-0 pointer-events-none translate-x-[-8px]"
-                          : "opacity-100 max-w-[170px] translate-x-0"
-                      )}
-                    >
-                      {item.label}
-                    </span>
-
-                    {/* Optional badge */}
-                    {item.badge && !collapsed && (
-                      <span className="ml-auto rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold text-brand">
-                        {item.badge}
-                      </span>
+                {/* Collapsible Animated Child Navigation Links */}
+                {!collapsed && (
+                  <div
+                    className={cn(
+                      "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                     )}
-                  </Link>
-                );
-
-                if (collapsed) {
-                  return (
-                    <Tooltip key={item.to} side="right" sideOffset={12}>
-                      <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                      <TooltipContent
-                        side="right"
-                        className="bg-foreground text-background font-medium text-xs shadow-md border border-border/20 py-1.5 px-3"
+                  >
+                    <div className="overflow-hidden">
+                      <div
+                        className={cn(
+                          "pl-2 space-y-0.5 transition-transform duration-300 ease-out",
+                          isOpen ? "translate-y-0" : "-translate-y-1"
+                        )}
                       >
-                        <div className="font-semibold">{item.label}</div>
-                        <div className="text-[10px] text-muted-foreground/80 font-normal">
-                          {section.title}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                }
+                        {section.items.map((item) => {
+                          const Icon = item.icon;
+                          const active = isRouteActive(item.to);
 
-                return <React.Fragment key={item.to}>{linkContent}</React.Fragment>;
-              })}
-            </div>
-          ))}
+                          return (
+                            <Link
+                              key={item.to}
+                              to={item.to}
+                              className={cn(
+                                "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                                active
+                                  ? "bg-brand/12 text-brand font-semibold shadow-2xs dark:bg-brand/20"
+                                  : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                              )}
+                            >
+                              {active && (
+                                <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand shadow-xs" />
+                              )}
+                              <Icon
+                                className={cn(
+                                  "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-105",
+                                  active ? "text-brand" : "text-muted-foreground group-hover:text-foreground"
+                                )}
+                              />
+                              <span className="truncate">{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Sidebar Footer with Collapse Toggle Button */}
-        <div className="shrink-0 p-3 border-t border-border/50 bg-background/50 flex items-center justify-between gap-2">
-          {!collapsed && (
-            <div className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground truncate">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="truncate font-medium">SkillVerse OS</span>
-            </div>
-          )}
+        {/* Bottom Pinned Section: Settings, Help & Sidebar Toggle */}
+        <div className="shrink-0 p-3 border-t border-border/50 bg-background/50 space-y-1">
+          {bottomNavItems.map((item) => {
+            const Icon = item.icon;
+            const active = isRouteActive(item.to);
 
-          <Tooltip side={collapsed ? "right" : "top"} sideOffset={10}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={toggleCollapsed}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            const content = (
+              <Link
+                key={item.to}
+                to={item.to}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-all hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand",
-                  collapsed && "mx-auto"
+                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 ease-in-out",
+                  active
+                    ? "bg-brand/12 text-brand font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
+                  collapsed && "justify-center px-0"
                 )}
               >
-                <ChevronLeft
+                <Icon
                   className={cn(
-                    "h-4 w-4 transition-transform duration-300 ease-out",
-                    collapsed && "rotate-180 text-brand"
+                    "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-105",
+                    active ? "text-brand" : "text-muted-foreground group-hover:text-foreground"
                   )}
                 />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "top"} className="text-xs">
-              {collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            </TooltipContent>
-          </Tooltip>
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+
+            if (collapsed) {
+              return (
+                <Tooltip key={item.to} side="right" sideOffset={12}>
+                  <TooltipTrigger asChild>{content}</TooltipTrigger>
+                  <TooltipContent side="right" className="bg-foreground text-background font-semibold text-xs shadow-md py-1.5 px-3">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return <React.Fragment key={item.to}>{content}</React.Fragment>;
+          })}
+
+          {/* Sidebar Collapse Toggle Button */}
+          <div className="pt-2 flex items-center justify-between border-t border-border/40">
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground truncate">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="truncate font-medium">SkillVerse OS</span>
+              </div>
+            )}
+
+            <Tooltip side={collapsed ? "right" : "top"} sideOffset={10}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleCollapsed}
+                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-all hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand",
+                    collapsed && "mx-auto"
+                  )}
+                >
+                  <ChevronLeft
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-300 ease-out",
+                      collapsed && "rotate-180 text-brand"
+                    )}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "top"} className="text-xs">
+                {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </aside>
     </TooltipProvider>

@@ -49,6 +49,7 @@ import {
   AppSidebar,
   SidebarProvider,
   navSections,
+  bottomNavItems,
   useSidebarState,
 } from "@/components/navigation/AppSidebar";
 import { cn } from "@/lib/utils";
@@ -129,7 +130,7 @@ export function SiteNav() {
             <Wordmark />
           </Link>
 
-          {/* MongoDB Atlas Style Workspace Dropdown (Authenticated App View) */}
+          {/* Workspace Dropdown */}
           {isAppView && (
             <>
               <div className="hidden sm:block h-4 w-px bg-border/60" />
@@ -342,8 +343,9 @@ export function SiteNav() {
           {isAppView ? (
             <div className="mt-6 space-y-6">
               {navSections.map((section) => (
-                <div key={section.title} className="space-y-1">
-                  <div className="px-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <div key={section.key} className="space-y-1">
+                  <div className="px-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase flex items-center gap-1.5">
+                    <section.icon className="h-3.5 w-3.5 text-brand" />
                     {section.title}
                   </div>
                   {section.items.map((item) => {
@@ -366,6 +368,23 @@ export function SiteNav() {
                   })}
                 </div>
               ))}
+
+              <div className="space-y-1 border-t border-border pt-4">
+                {bottomNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
 
               <div className="border-t border-border pt-4">
                 <div className="mb-3 px-2">
