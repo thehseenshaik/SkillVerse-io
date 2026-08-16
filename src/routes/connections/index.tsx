@@ -475,13 +475,19 @@ function CareerIdentityOverviewPage() {
 
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">
-                Enter your exact handle or username to verify and link your account:
+                {connectModalPlatform === "linkedin"
+                  ? "Paste your full LinkedIn Profile URL (e.g. https://www.linkedin.com/in/yourname) or handle:"
+                  : "Enter your exact handle or profile URL to verify and link your account:"}
               </p>
               <input
                 type="text"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
-                placeholder={`Enter ${connectModalPlatform} username`}
+                placeholder={
+                  connectModalPlatform === "linkedin"
+                    ? "https://www.linkedin.com/in/yourname"
+                    : `Enter ${connectModalPlatform} handle or profile URL`
+                }
                 className="w-full rounded-xl border border-border/70 bg-background px-4 py-2.5 text-sm font-semibold focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 transition-all"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {

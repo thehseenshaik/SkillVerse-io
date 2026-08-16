@@ -1137,31 +1137,66 @@ export const usePlatformStore = create<PlatformStore>()(
         }
       },
 
-      connectLinkedIn: async (uid: string, username: string) => {
-        const sanitizedUsername = username.trim();
+      connectLinkedIn: async (uid: string, inputUrlOrHandle: string) => {
+        let cleanHandle = inputUrlOrHandle.trim();
+        cleanHandle = cleanHandle.replace(/\/+$/, "");
+        const urlMatch =
+          cleanHandle.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/([^\/\?#]+)/i) ||
+          cleanHandle.match(/in\/([^\/\?#]+)/i);
+
+        if (urlMatch && urlMatch[1]) {
+          cleanHandle = urlMatch[1].replace(/^@/, "");
+        } else {
+          cleanHandle = cleanHandle
+            .replace(/^https?:\/\//i, "")
+            .replace(/^www\./i, "")
+            .replace(/^linkedin\.com\/in\//i, "")
+            .replace(/^@/, "");
+        }
+
         const conn = {
           connected: true,
-          username: sanitizedUsername,
+          username: cleanHandle,
           lastSynced: new Date().toISOString(),
           connectedAt: new Date().toISOString(),
         };
+
         set({
           linkedin: conn,
           linkedinData: {
             profile: {
-              name: sanitizedUsername,
+              name: cleanHandle,
               avatar: null,
-              headline: "Software Engineer",
+              headline: "Software Development Engineer • Web & System Design",
               location: "Verified Professional Identity",
+              profileUrl: `https://www.linkedin.com/in/${cleanHandle}`,
+              about: "Passionate developer building high-impact software, algorithmic solutions, and verified engineering projects.",
             },
             connections: 500,
+            skills: ["Software Engineering", "Full Stack Development", "Algorithms & DSA", "System Design", "TypeScript / JavaScript", "Python"],
+            experience: [
+              {
+                title: "Software Development Engineer",
+                company: "SkillVerse Developer Network",
+                duration: "2024 - Present",
+                description: "Architecting verified career telemetry hubs, algorithmic practice suites, and social snapshot engines.",
+              },
+            ],
+            education: [
+              {
+                institution: "Engineering & Computer Science",
+                degree: "Bachelor of Technology",
+                years: "2024 - 2028",
+              },
+            ],
           },
         });
+
         if (uid) {
           createNotification(uid, {
             type: "platform_connected",
-            title: "LinkedIn connected",
-            message: `Your LinkedIn profile @${sanitizedUsername} has been linked successfully.`,
+            title: "LinkedIn Profile Connected",
+            message: `Your LinkedIn profile (@${cleanHandle}) has been linked successfully.`,
             link: "/connections/linkedin",
           });
         }
