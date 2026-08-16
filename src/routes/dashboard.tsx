@@ -944,10 +944,14 @@ function DashboardPage() {
                         <span className="text-[10px] text-muted-foreground font-semibold">Stars</span>
                       </div>
                       <div>
-                        <span className="text-base font-extrabold text-foreground block tabular-nums">
-                          {githubData.profile?.followers || 0}
+                        <span className="text-base font-extrabold text-brand block truncate px-0.5">
+                          {githubData?.languages && Object.keys(githubData.languages).length > 0
+                            ? Object.keys(githubData.languages)[0]
+                            : githubData?.profile?.followers
+                            ? `${githubData.profile.followers}`
+                            : "TypeScript"}
                         </span>
-                        <span className="text-[10px] text-muted-foreground font-semibold">Followers</span>
+                        <span className="text-[10px] text-muted-foreground font-semibold">Top Stack</span>
                       </div>
                     </div>
                   ) : (
@@ -975,10 +979,10 @@ function DashboardPage() {
 
                   {github?.connected ? (
                     <Link
-                      to="/analytics/github"
+                      to="/connections/github"
                       className="text-xs font-bold text-brand hover:underline flex items-center gap-1"
                     >
-                      View Analytics →
+                      View Profile ↗
                     </Link>
                   ) : (
                     <Link
@@ -1057,10 +1061,10 @@ function DashboardPage() {
 
                   {leetcode?.connected ? (
                     <Link
-                      to="/analytics/leetcode"
+                      to="/connections/leetcode"
                       className="text-xs font-bold text-brand hover:underline flex items-center gap-1"
                     >
-                      View Analytics →
+                      View Profile ↗
                     </Link>
                   ) : (
                     <Link
@@ -1139,10 +1143,10 @@ function DashboardPage() {
 
                   {gfg?.connected ? (
                     <Link
-                      to="/analytics/gfg"
+                      to="/connections/gfg"
                       className="text-xs font-bold text-brand hover:underline flex items-center gap-1"
                     >
-                      View Analytics →
+                      View Profile ↗
                     </Link>
                   ) : (
                     <Link
