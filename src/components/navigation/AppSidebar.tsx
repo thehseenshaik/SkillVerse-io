@@ -133,37 +133,32 @@ const SidebarContext = React.createContext<SidebarContextType | undefined>(
   undefined
 );
 
-const SIDEBAR_MODE_KEY = "skillverse_sidebar_mode";
-const SIDEBAR_MANUAL_STATE_KEY = "skillverse_sidebar_manual_state";
-
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [sidebarMode, setSidebarMode] = React.useState<SidebarMode>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(SIDEBAR_MODE_KEY);
-      if (saved === "manual" || saved === "auto") return saved;
-    }
-    return "auto";
-  });
-
-  const [manualState, setManualState] = React.useState<ManualState>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(SIDEBAR_MANUAL_STATE_KEY);
-      if (saved === "expanded" || saved === "collapsed") return saved;
-    }
-    return "expanded";
-  });
+  // Always default permanently to Auto Hover Mode
+  const [sidebarMode, setSidebarMode] = React.useState<SidebarMode>("auto");
+  const [manualState, setManualState] = React.useState<ManualState>("expanded");
 
   const [isHovered, setIsHovered] = React.useState<boolean>(false);
   const hoverLeaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const [mobileOpen, setMobileOpen] = React.useState<boolean>(false);
 
-  // Calculate effective collapsed state
+  // Clear any old localStorage overrides to guarantee permanent Auto Hover default
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("skillverse_sidebar_mode");
+      localStorage.removeItem("skillverse_sidebar_manual_state");
+      localStorage.removeItem("skillverse_sidebar_collapsed");
+    }
+  }, []);
+
+  // Effective collapsed state:
+  // In Auto Mode: collapsed when mouse is outside, expanded when mouse enters
+  // In Manual Mode: respects manual toggle choice
   const collapsed = React.useMemo(() => {
     if (sidebarMode === "manual") {
       return manualState === "collapsed";
     }
-    // Auto Mode: collapsed when mouse is outside, expanded when mouse enters
     return !isHovered;
   }, [sidebarMode, manualState, isHovered]);
 
@@ -179,7 +174,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     if (hoverLeaveTimerRef.current) {
       clearTimeout(hoverLeaveTimerRef.current);
     }
-    // 200ms close delay to prevent flickering when cursor moves outside
+    // 200ms grace close delay to prevent flickering
     hoverLeaveTimerRef.current = setTimeout(() => {
       setIsHovered(false);
       hoverLeaveTimerRef.current = null;
@@ -188,30 +183,22 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   const toggleCollapsed = React.useCallback(() => {
     if (sidebarMode === "auto") {
-      // Pin to manual mode in the opposite of current collapsed state
-      const nextManualState: ManualState = collapsed ? "expanded" : "collapsed";
+      // Temporarily pin state in current opposite
       setSidebarMode("manual");
-      setManualState(nextManualState);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(SIDEBAR_MODE_KEY, "manual");
-        localStorage.setItem(SIDEBAR_MANUAL_STATE_KEY, nextManualState);
-      }
+      setManualState(collapsed ? "expanded" : "collapsed");
     } else {
-      // Toggle manual expanded / collapsed
-      const nextManualState: ManualState =
-        manualState === "collapsed" ? "expanded" : "collapsed";
-      setManualState(nextManualState);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(SIDEBAR_MANUAL_STATE_KEY, nextManualState);
+      // Toggle back to auto mode or switch manual mode state
+      if (manualState === "collapsed") {
+        setManualState("expanded");
+      } else {
+        setSidebarMode("auto");
       }
     }
   }, [sidebarMode, manualState, collapsed]);
 
   const resetToAutoMode = React.useCallback(() => {
     setSidebarMode("auto");
-    if (typeof window !== "undefined") {
-      localStorage.setItem(SIDEBAR_MODE_KEY, "auto");
-    }
+    setIsHovered(false);
   }, []);
 
   const setCollapsedDummy = React.useCallback(
@@ -372,6 +359,7 @@ export function AppSidebar() {
       <aside
         aria-label="Main Navigation Sidebar"
         onMouseEnter={onSidebarMouseEnter}
+        onMouseMove={onSidebarMouseEnter}
         onMouseLeave={onSidebarMouseLeave}
         className={cn(
           "fixed left-0 top-14 bottom-0 z-30 hidden md:flex flex-col bg-background/95 backdrop-blur-md border-r border-border/60 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
@@ -533,21 +521,21 @@ export function AppSidebar() {
             return <React.Fragment key={item.to}>{content}</React.Fragment>;
           })}
 
-          {/* Sidebar Mode Status & Manual Toggle Button */}
+          {/* Sidebar Mode Indicator & Toggle Button */}
           <div className="pt-2 flex items-center justify-between border-t border-border/40">
             {!collapsed && (
               <div className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground truncate">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span className="truncate font-medium">
-                  {sidebarMode === "manual" ? "Pinned Mode" : "Auto Hover"}
+                  {sidebarMode === "manual" ? "Pinned Mode" : "Auto Hover Active"}
                 </span>
                 {sidebarMode === "manual" && (
                   <button
                     type="button"
                     onClick={resetToAutoMode}
-                    className="text-[10px] text-brand hover:underline font-semibold ml-1"
+                    className="text-[10px] text-brand hover:underline font-semibold ml-1 cursor-pointer"
                   >
-                    Auto
+                    Reset Auto
                   </button>
                 )}
               </div>
@@ -558,7 +546,7 @@ export function AppSidebar() {
                 <button
                   type="button"
                   onClick={toggleCollapsed}
-                  aria-label={collapsed ? "Pin expanded" : "Pin collapsed"}
+                  aria-label={sidebarMode === "auto" ? "Pin sidebar" : "Reset auto hover"}
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-all hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand",
                     collapsed && "mx-auto"
@@ -573,13 +561,7 @@ export function AppSidebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side={collapsed ? "right" : "top"} className="text-xs">
-                {sidebarMode === "auto"
-                  ? collapsed
-                    ? "Pin sidebar expanded"
-                    : "Pin sidebar collapsed"
-                  : collapsed
-                  ? "Expand & Pin"
-                  : "Collapse & Pin"}
+                {sidebarMode === "auto" ? "Pin sidebar mode" : "Reset auto hover mode"}
               </TooltipContent>
             </Tooltip>
           </div>
