@@ -1,17 +1,24 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Bell,
   ChevronDown,
   Github,
+  HelpCircle,
   Linkedin,
   LogOut,
   Mail,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings as SettingsIcon,
   Shield,
+  Sparkles,
   Twitter,
   User,
   X,
+  Building2,
+  Check,
 } from "lucide-react";
 import skillverseLogo from "@/assets/skillverse-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -31,20 +38,24 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useState } from "react";
+import {
+  AppSidebar,
+  SidebarProvider,
+  navSections,
+  useSidebarState,
+} from "@/components/navigation/AppSidebar";
+import { cn } from "@/lib/utils";
 
 const publicNav = [
   { to: "/features", label: "Features" },
   { to: "/career-score", label: "Career Score" },
-] as const;
-
-const authedNav = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/profile", label: "Profile" },
-  { to: "/analytics", label: "Analytics" },
-  { to: "/resume", label: "Resume" },
-  { to: "/practice", label: "Practice" },
-  { to: "/assistant", label: "Copilot" },
 ] as const;
 
 function Wordmark() {
@@ -55,6 +66,7 @@ export function SiteNav() {
   const { user, isAuthenticated, hydrated, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { collapsed, toggleCollapsed } = useSidebarState();
 
   const onSignOut = async () => {
     await signOut();
@@ -62,61 +74,177 @@ export function SiteNav() {
     setMobileMenuOpen(false);
   };
 
-  const homeTarget = hydrated && isAuthenticated ? "/dashboard" : "/";
-  const items = hydrated && isAuthenticated ? authedNav : publicNav;
+  const isAppView = hydrated && isAuthenticated;
+  const homeTarget = isAppView ? "/dashboard" : "/";
+
+  // Initials for avatar fallback
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "SV";
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 md:px-8">
-        <Link to={homeTarget} className="group flex items-center gap-2">
-          <img
-            src={skillverseLogo}
-            alt="SkillVerse"
-            width={26}
-            height={26}
-            className="h-6 w-6 object-contain transition-transform group-hover:scale-105"
-          />
-          <Wordmark />
-        </Link>
+    <header className="fixed top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
+      <div className="flex h-14 w-full items-center justify-between px-4 md:px-6">
+        {/* Left Side Navigation Items */}
+        <div className="flex items-center gap-3">
+          {/* Sidebar Toggle Button (Only on authenticated app desktop view) */}
+          {isAppView && (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip side="bottom">
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleCollapsed}
+                    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    {collapsed ? (
+                      <PanelLeftOpen className="h-4 w-4 text-brand" />
+                    ) : (
+                      <PanelLeftClose className="h-4 w-4" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {items.map((n) => (
-            <Link
-              key={n.to}
-              to={n.to}
-              className="rounded-md px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              activeProps={{
-                className:
-                  "rounded-md px-3 py-1.5 text-[13px] font-semibold text-foreground bg-secondary",
-              }}
-            >
-              {n.label}
-            </Link>
-          ))}
-        </nav>
+          {/* Logo & Wordmark */}
+          <Link to={homeTarget} className="group flex items-center gap-2">
+            <img
+              src={skillverseLogo}
+              alt="SkillVerse"
+              width={26}
+              height={26}
+              className="h-6 w-6 object-contain transition-transform group-hover:scale-105"
+            />
+            <Wordmark />
+          </Link>
 
-        <div className="flex items-center gap-2">
-          {hydrated && isAuthenticated ? (
+          {/* MongoDB Atlas Style Workspace Dropdown (Authenticated App View) */}
+          {isAppView && (
             <>
+              <div className="hidden sm:block h-4 w-px bg-border/60" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="hidden sm:flex items-center gap-1.5 rounded-lg border border-border/40 bg-secondary/50 px-2.5 py-1 text-xs transition-colors hover:bg-secondary hover:border-border">
+                    <Building2 className="h-3.5 w-3.5 text-brand" />
+                    <span className="font-semibold text-foreground">
+                      SkillVerse Workspace
+                    </span>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Workspaces
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem className="flex items-center justify-between font-medium">
+                    <span className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-brand" />
+                      SkillVerse Workspace
+                    </span>
+                    <Check className="h-4 w-4 text-brand" />
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-xs text-muted-foreground cursor-pointer">
+                    + Create New Workspace
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+
+          {/* Public Top Links if Unauthenticated */}
+          {!isAppView && (
+            <nav className="hidden items-center gap-1 md:flex ml-4">
+              {publicNav.map((n) => (
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  className="rounded-md px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  activeProps={{
+                    className:
+                      "rounded-md px-3 py-1.5 text-[13px] font-semibold text-foreground bg-secondary",
+                  }}
+                >
+                  {n.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+        </div>
+
+        {/* Right Side Utility & User Controls */}
+        <div className="flex items-center gap-1.5 md:gap-2">
+          {isAppView ? (
+            <TooltipProvider delayDuration={150}>
+              {/* Help Button */}
+              <Tooltip side="bottom">
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/assistant"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    aria-label="Help & Support"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Help & Copilot Support
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Notifications Button */}
+              <Tooltip side="bottom">
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    aria-label="Notifications"
+                  >
+                    <Bell className="h-4 w-4" />
+                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand ring-2 ring-background" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Notifications
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
+              {/* Mobile Drawer Hamburger */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="md:hidden h-8 w-8"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
               </Button>
+
+              {/* Account Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="hidden md:inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background pl-1 pr-3 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary"
+                    className="flex items-center gap-2 rounded-full border border-border/80 bg-background p-1 pl-1.5 pr-2.5 text-[13px] font-medium text-foreground transition-all hover:bg-secondary hover:border-border"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-foreground to-foreground/70 text-background">
-                      <User className="h-3.5 w-3.5" strokeWidth={2} />
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-brand to-brand-strong text-[11px] font-bold text-brand-foreground shadow-xs">
+                      {userInitials}
                     </span>
-                    <span className="hidden max-w-[100px] truncate sm:inline">
+                    <span className="hidden max-w-[100px] truncate sm:inline font-semibold text-xs">
                       {user?.name?.split(" ")[0] ?? "Account"}
                     </span>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -133,12 +261,12 @@ export function SiteNav() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center gap-2">
+                    <Link to="/profile" className="flex items-center gap-2 cursor-pointer">
                       <User className="h-4 w-4" /> Profile
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/settings" className="flex items-center gap-2">
+                    <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
                       <SettingsIcon className="h-4 w-4" /> Settings
                     </Link>
                   </DropdownMenuItem>
@@ -148,7 +276,7 @@ export function SiteNav() {
                       <DropdownMenuItem asChild>
                         <Link
                           to="/admin"
-                          className="flex items-center gap-2 text-brand focus:text-brand"
+                          className="flex items-center gap-2 text-brand focus:text-brand cursor-pointer"
                         >
                           <Shield className="h-4 w-4" /> Admin console
                         </Link>
@@ -158,13 +286,13 @@ export function SiteNav() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={onSignOut}
-                    className="flex items-center gap-2 text-destructive focus:text-destructive"
+                    className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" /> Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </>
+            </TooltipProvider>
           ) : (
             <>
               <Button
@@ -195,9 +323,9 @@ export function SiteNav() {
         </div>
       </div>
 
-      {/* Mobile menu sheet */}
+      {/* Mobile Drawer Sheet Navigation */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="right" className="w-[300px] sm:w-[350px]">
+        <SheetContent side="right" className="w-[300px] sm:w-[350px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <img
@@ -210,83 +338,82 @@ export function SiteNav() {
               <Wordmark />
             </SheetTitle>
           </SheetHeader>
-          <nav className="mt-8 flex flex-col gap-2">
-            {items.map((n) => (
-              <Link
-                key={n.to}
-                to={n.to}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                activeProps={{
-                  className:
-                    "flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-semibold text-foreground bg-secondary",
-                }}
-              >
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          {hydrated && isAuthenticated && (
-            <div className="mt-8 border-t border-border pt-6">
-              <div className="mb-4 px-4">
-                <div className="text-sm font-semibold">
-                  {user?.name ?? "Account"}
+
+          {isAppView ? (
+            <div className="mt-6 space-y-6">
+              {navSections.map((section) => (
+                <div key={section.title} className="space-y-1">
+                  <div className="px-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                    {section.title}
+                  </div>
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                        activeProps={{
+                          className:
+                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand bg-brand/10",
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {user?.email ?? ""}
+              ))}
+
+              <div className="border-t border-border pt-4">
+                <div className="mb-3 px-2">
+                  <div className="text-sm font-semibold">{user?.name ?? "Account"}</div>
+                  <div className="text-xs text-muted-foreground">{user?.email ?? ""}</div>
                 </div>
-              </div>
-              <nav className="flex flex-col gap-1">
-                <Link
-                  to="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  <User className="h-4 w-4" /> Profile
-                </Link>
-                <Link
-                  to="/settings"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  <SettingsIcon className="h-4 w-4" /> Settings
-                </Link>
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-brand transition-colors hover:bg-secondary"
-                  >
-                    <Shield className="h-4 w-4" /> Admin console
-                  </Link>
-                )}
                 <button
                   onClick={onSignOut}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-destructive transition-colors hover:bg-secondary"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive hover:bg-secondary transition-colors"
                 >
                   <LogOut className="h-4 w-4" /> Sign out
                 </button>
-              </nav>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-8 flex flex-col gap-2">
+              {publicNav.map((n) => (
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  activeProps={{
+                    className:
+                      "flex items-center gap-3 rounded-lg px-4 py-3 text-[15px] font-semibold text-foreground bg-secondary",
+                  }}
+                >
+                  {n.label}
+                </Link>
+              ))}
+              <div className="mt-8 border-t border-border pt-6">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="mb-3 block w-full rounded-lg border border-border px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-secondary"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full rounded-lg bg-foreground px-4 py-3 text-center text-sm font-semibold text-background transition-opacity hover:opacity-90"
+                >
+                  Get started
+                </Link>
+              </div>
             </div>
           )}
-          {!hydrated || !isAuthenticated ? (
-            <div className="mt-8 border-t border-border pt-6">
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="mb-3 block w-full rounded-lg border border-border px-4 py-3 text-center text-sm font-medium transition-colors hover:bg-secondary"
-              >
-                Log in
-              </Link>
-              <Link
-                to="/signup"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block w-full rounded-lg bg-foreground px-4 py-3 text-center text-sm font-semibold text-background transition-opacity hover:opacity-90"
-              >
-                Get started
-              </Link>
-            </div>
-          ) : null}
         </SheetContent>
       </Sheet>
     </header>
@@ -378,12 +505,37 @@ export function SiteFooter() {
   );
 }
 
-export function PageShell({ children }: { children: React.ReactNode }) {
+function PageShellContent({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, hydrated } = useAuth();
+  const { collapsed } = useSidebarState();
+
+  const isAppView = hydrated && isAuthenticated;
+
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground overflow-x-hidden">
       <SiteNav />
-      <main className="flex-1 pt-14">{children}</main>
+      {isAppView && <AppSidebar />}
+      <main
+        className={cn(
+          "flex-1 pt-14 transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          isAppView
+            ? collapsed
+              ? "md:ml-[68px]"
+              : "md:ml-[250px]"
+            : "ml-0"
+        )}
+      >
+        <div className="w-full h-full">{children}</div>
+      </main>
       <SiteFooter />
     </div>
+  );
+}
+
+export function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <PageShellContent>{children}</PageShellContent>
+    </SidebarProvider>
   );
 }
