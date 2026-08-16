@@ -420,37 +420,50 @@ function ConnectionsPage() {
           <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-green-500/5 rounded-full blur-3xl animate-blob delay-4000" />
         </div>
 
-        {/* Header */}
-        <div className="border-b border-border/50 bg-gradient-to-r from-background via-muted/20 to-background backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            <div className="flex items-center justify-between animate-fade-up">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  Connections
+        {/* Hero Header */}
+        <section className="relative overflow-hidden bg-hero border-b border-border/60">
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute left-1/2 top-20 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-brand/15 blur-[120px] animate-pulse-glow" />
+          </div>
+
+          <div className="mx-auto max-w-6xl px-6 pt-12 pb-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 animate-fade-up">
+              <div className="space-y-2 max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand backdrop-blur shadow-2xs">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+                  </span>
+                  PLATFORM CONNECTIONS
+                </div>
+
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
+                  Connect Your <span className="text-gradient">Platforms</span>.
                 </h1>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Connect your coding platforms to unlock powerful analytics and insights
+
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                  Connect your coding platforms to aggregate your activity, verified skills and telemetry metrics in real time.
                 </p>
               </div>
-              
-              {/* Connection Progress */}
-              <div className="hidden md:flex items-center gap-4">
+
+              {/* Progress */}
+              <div className="flex items-center gap-4 shrink-0 bg-background/80 backdrop-blur-md border border-border/60 rounded-2xl p-4 shadow-2xs">
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-sm font-bold text-foreground">
                     {connectedCount}/{platforms.length} Connected
                   </p>
-                  <p className="text-xs text-muted-foreground">Platforms linked</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">Platforms linked</p>
                 </div>
-                <div className="w-32 h-2 bg-secondary rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-brand-gradient transition-all duration-1000 ease-out"
+                <div className="w-28 h-2 bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-brand transition-all duration-1000 ease-out"
                     style={{ width: `${connectionProgress}%` }}
                   />
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Main Content */}
         <div className="max-w-6xl mx-auto px-6 py-8">

@@ -5,6 +5,7 @@ import {
   FileText,
   Code2,
   BarChart3,
+  Link2,
   Sparkles,
   Settings,
   HelpCircle,
@@ -31,6 +32,7 @@ export const primaryNavItems: NavItem[] = [
   { to: "/resume", label: "Resume", icon: FileText },
   { to: "/practice", label: "Practice", icon: Code2 },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/connections", label: "Connections", icon: Link2 },
   { to: "/copilot", label: "Copilot", icon: Sparkles },
 ];
 
