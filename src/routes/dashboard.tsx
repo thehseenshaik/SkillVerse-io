@@ -686,77 +686,37 @@ function DashboardPage() {
             <RecentActivitySection />
           </section>
 
-          {/* 3. TODAY'S FOCUS — PREMIUM INTERACTIVE CAREER GOALS */}
-          <section className="space-y-4 animate-fade-up">
-            {/* Header HUD */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-bold text-brand shadow-2xs">
-                  <Target className="h-3.5 w-3.5 text-brand" />
-                  <span>TODAY'S CAREER FOCUS</span>
+          {/* 3. TODAY'S FOCUS — COMPACT SLEEK CAREER GOALS */}
+          <section className="space-y-2.5 animate-fade-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="grid h-6 w-6 place-items-center rounded-lg bg-brand/10 text-brand">
+                  <Target className="h-3.5 w-3.5" />
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Small, consistent daily actions compound into major career breakthroughs.
-                </p>
-              </div>
-
-              {/* HUD Progress Ring / Meter */}
-              <div className="flex items-center gap-3 self-start sm:self-center">
-                <span className="inline-flex items-center gap-1 text-xs font-extrabold text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
-                  <Flame className="h-3.5 w-3.5 text-brand" /> +50 XP Today
+                <h2 className="text-xs font-extrabold uppercase tracking-wider text-foreground">
+                  TODAY'S FOCUS
+                </h2>
+                <span className="rounded-full bg-brand/10 border border-brand/20 px-2 py-0.5 text-[10px] font-extrabold text-brand">
+                  {liveTasks.filter((t) => t.status === "completed").length}/{liveTasks.length} Completed
                 </span>
-
-                <div className="flex items-center gap-2 bg-card border border-border/80 rounded-2xl px-3.5 py-1.5 shadow-2xs">
-                  <span className="text-xs font-black text-foreground">
-                    {liveTasks.filter((t) => t.status === "completed").length}/{liveTasks.length} Done
-                  </span>
-                  <div className="w-16 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-brand transition-all duration-700 ease-out"
-                      style={{
-                        width: `${Math.round(
-                          (liveTasks.filter((t) => t.status === "completed").length / liveTasks.length) * 100
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
               </div>
+
+              <span className="text-[11px] font-semibold text-muted-foreground hidden sm:inline">
+                {liveTasks.every((t) => t.status === "completed") ? "🎉 All goals crushed!" : "Daily momentum drills"}
+              </span>
             </div>
 
-            {/* Complete 100% Celebration Banner */}
-            {liveTasks.every((t) => t.status === "completed") && (
-              <div className="relative overflow-hidden rounded-3xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent p-5 shadow-lg backdrop-blur-md animate-scale-up">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 shadow-inner">
-                      <Trophy className="h-6 w-6 animate-bounce" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-extrabold text-foreground">All Today's Goals Crushed! 🏆</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Incredible consistency! You've unlocked maximum daily career momentum points.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-emerald-500 px-3 py-1 text-xs font-black text-white shadow-md">
-                    100% COMPLETE
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* 2x2 Premium Focus Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Compact High-Density Card List */}
+            <Card className="rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-2xs divide-y divide-border/40">
               {liveTasks.map((task) => {
                 const isDone = task.status === "completed";
                 const isCurrent = task.status === "in_progress";
 
                 const getIcon = () => {
-                  if (task.iconType === "code") return <Code2 className="h-5 w-5 text-brand" />;
-                  if (task.iconType === "profile") return <Sparkles className="h-5 w-5 text-amber-500" />;
-                  if (task.iconType === "zap") return <Zap className="h-5 w-5 text-cyan-500" />;
-                  return <Trophy className="h-5 w-5 text-purple-500" />;
+                  if (task.iconType === "code") return <Code2 className="h-3.5 w-3.5 text-brand" />;
+                  if (task.iconType === "profile") return <Sparkles className="h-3.5 w-3.5 text-amber-500" />;
+                  if (task.iconType === "zap") return <Zap className="h-3.5 w-3.5 text-cyan-500" />;
+                  return <Trophy className="h-3.5 w-3.5 text-purple-500" />;
                 };
 
                 return (
@@ -764,84 +724,63 @@ function DashboardPage() {
                     key={task.id}
                     onClick={() => navigate({ to: task.link as any })}
                     className={cn(
-                      "group relative flex flex-col justify-between rounded-3xl border border-border/70 bg-card p-5 shadow-xs transition-all duration-300 hover:border-brand/50 hover:shadow-md cursor-pointer overflow-hidden",
-                      isDone ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10" : isCurrent ? "border-brand/40 bg-brand/5" : ""
+                      "group py-2 px-3 flex items-center justify-between gap-3 transition-colors hover:bg-secondary/50 rounded-xl cursor-pointer",
+                      isDone && "opacity-75"
                     )}
                   >
-                    <div className="space-y-3">
-                      {/* Top Row: Icon + Category + Checkbox */}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-border/60 bg-background/80 shadow-2xs group-hover:scale-105 transition-transform">
-                            {getIcon()}
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand">
-                              {task.category}
-                            </span>
-                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-                              <Clock className="h-3 w-3" />
-                              <span>{task.estTime}</span>
-                            </div>
-                          </div>
-                        </div>
+                    {/* Left: Checkbox + Icon + Title */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleTaskStatus(task.id, e)}
+                        className={cn(
+                          "h-5 w-5 rounded-full border-2 grid place-items-center shrink-0 transition-all duration-200 cursor-pointer hover:scale-110",
+                          isDone
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : isCurrent
+                            ? "border-brand bg-brand/10 text-transparent hover:text-brand"
+                            : "border-border hover:border-brand text-transparent"
+                        )}
+                        title={isDone ? "Mark as incomplete" : "Mark as completed"}
+                      >
+                        <Check className="h-3 w-3 stroke-[3]" />
+                      </button>
 
-                        {/* Interactive Checkbox */}
-                        <button
-                          type="button"
-                          onClick={(e) => toggleTaskStatus(task.id, e)}
-                          className={cn(
-                            "h-6 w-6 rounded-full border-2 grid place-items-center shrink-0 transition-all duration-200 cursor-pointer shadow-2xs hover:scale-110",
-                            isDone
-                              ? "bg-emerald-500 border-emerald-500 text-white"
-                              : isCurrent
-                              ? "border-brand ring-4 ring-brand/15 bg-brand/10 text-transparent hover:text-brand"
-                              : "border-border hover:border-brand text-transparent"
-                          )}
-                          title={isDone ? "Mark as incomplete" : "Mark as completed"}
-                        >
-                          <Check className="h-3.5 w-3.5 stroke-[3]" />
-                        </button>
+                      <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-secondary/80 border border-border/50">
+                        {getIcon()}
                       </div>
 
-                      {/* Content */}
-                      <div>
-                        <h3
-                          className={cn(
-                            "text-sm sm:text-base font-extrabold transition-colors group-hover:text-brand",
-                            isDone ? "text-muted-foreground line-through" : "text-foreground"
-                          )}
-                        >
-                          {task.title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-2">
-                          {task.desc}
-                        </p>
-                      </div>
+                      <span
+                        className={cn(
+                          "text-xs sm:text-sm font-bold truncate transition-colors group-hover:text-brand",
+                          isDone ? "text-muted-foreground line-through" : "text-foreground"
+                        )}
+                      >
+                        {task.title}
+                      </span>
                     </div>
 
-                    {/* Progress Bar & Footer Action */}
-                    <div className="pt-4 space-y-2.5 border-t border-border/40 mt-3">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-foreground">{task.badgeText}</span>
-                        <span className="font-semibold text-brand group-hover:underline inline-flex items-center gap-1">
-                          {task.actionText} <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full transition-all duration-500 rounded-full",
-                            isDone ? "bg-emerald-500" : "bg-brand"
-                          )}
-                          style={{ width: `${task.progressPercent}%` }}
-                        />
-                      </div>
+                    {/* Right: Badge + Action */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-md",
+                          isDone
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : isCurrent
+                            ? "bg-brand/10 text-brand"
+                            : "bg-secondary text-muted-foreground"
+                        )}
+                      >
+                        {task.badgeText}
+                      </span>
+
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 );
               })}
-            </div>
+            </Card>
           </section>
 
           {/* 4. DEVELOPER ACTIVITY */}
