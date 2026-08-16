@@ -62,23 +62,23 @@
 
   --border: oklch(0.88 0.004 85);
   --input: oklch(0.9 0.004 85);
-  --ring: oklch(0.65 0.15 30);
+  --ring: oklch(0.55 0.22 260);
 
-  /* Orange accent - #F97316 equivalent */
-  --brand: oklch(0.65 0.18 30);
-  --brand-strong: oklch(0.55 0.18 30);
-  --brand-glow: oklch(0.75 0.14 30);
-  --brand-foreground: oklch(0.99 0 0);
-  --accent-2: oklch(0.5 0.09 210);
+  /* SkillVerse Premium Brand System - Electric Indigo-Blue */
+  --brand: oklch(0.54 0.22 260);
+  --brand-strong: oklch(0.44 0.24 260);
+  --brand-glow: oklch(0.68 0.18 260);
+  --brand-foreground: #ffffff;
+  --accent-2: oklch(0.55 0.18 170);
 
   --gradient-brand: linear-gradient(
     135deg,
-    oklch(0.65 0.18 30),
-    oklch(0.7 0.16 35)
+    oklch(0.54 0.22 260),
+    oklch(0.48 0.24 275)
   );
   --gradient-hero: radial-gradient(
     60% 55% at 50% 0%,
-    oklch(0.95 0.04 30 / 0.3),
+    oklch(0.54 0.22 260 / 0.15),
     transparent 70%
   );
   --glass-bg: oklch(1 0 0 / 0.8);
@@ -87,7 +87,7 @@
     0 1px 0 oklch(0 0 0 / 0.02),
     0 4px 12px -2px oklch(0 0 0 / 0.08),
     0 8px 24px -4px oklch(0 0 0 / 0.06);
-  --shadow-glow: 0 20px 60px -24px oklch(0.65 0.18 30 / 0.3);
+  --shadow-glow: 0 20px 60px -24px oklch(0.54 0.22 260 / 0.35);
   --shadow-card:
     0 1px 3px oklch(0 0 0 / 0.04),
     0 8px 24px -4px oklch(0 0 0 / 0.08);
@@ -123,22 +123,22 @@
 
   --border: oklch(1 0 0 / 0.09);
   --input: oklch(1 0 0 / 0.12);
-  --ring: oklch(0.72 0.19 75);
+  --ring: oklch(0.65 0.22 260);
 
-  --brand: oklch(0.72 0.19 75);
-  --brand-strong: oklch(0.62 0.2 70);
-  --brand-glow: oklch(0.78 0.17 80);
-  --brand-foreground: oklch(0.135 0.006 60);
-  --accent-2: oklch(0.7 0.1 210);
+  --brand: oklch(0.62 0.22 260);
+  --brand-strong: oklch(0.52 0.24 260);
+  --brand-glow: oklch(0.72 0.18 260);
+  --brand-foreground: #ffffff;
+  --accent-2: oklch(0.65 0.18 170);
 
   --gradient-brand: linear-gradient(
     135deg,
-    oklch(0.7 0.2 50),
-    oklch(0.78 0.16 65)
+    oklch(0.62 0.22 260),
+    oklch(0.56 0.24 275)
   );
   --gradient-hero: radial-gradient(
     60% 55% at 50% 0%,
-    oklch(0.35 0.15 45 / 0.45),
+    oklch(0.62 0.22 260 / 0.28),
     transparent 70%
   );
   --glass-bg: oklch(0.175 0.008 60 / 0.72);
