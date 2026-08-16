@@ -424,192 +424,175 @@ export function CareerSnapshotStudioPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN: SIMPLIFIED TABBED CUSTOMIZER (5 Cols) */}
+            {/* RIGHT COLUMN: UNIFIED CUSTOMIZER & SHARE DECK (5 Cols - Perfect Height Match) */}
             <div className="lg:col-span-5 space-y-4">
-              {/* Tab Switcher */}
-              <div className="flex rounded-2xl bg-secondary/60 p-1 border border-border/60">
-                <button
-                  onClick={() => setActiveRightTab("customize")}
-                  className={cn(
-                    "flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-extrabold transition-all cursor-pointer",
-                    activeRightTab === "customize"
-                      ? "bg-background text-foreground shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-brand" />
-                  1. Customize Poster
-                </button>
-                <button
-                  onClick={() => setActiveRightTab("caption")}
-                  className={cn(
-                    "flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-extrabold transition-all cursor-pointer",
-                    activeRightTab === "caption"
-                      ? "bg-background text-foreground shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <FaLinkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
-                  2. LinkedIn Post
-                </button>
-              </div>
-
-              {/* TAB 1: CUSTOMIZE POSTER */}
-              {activeRightTab === "customize" && (
-                <div className="space-y-4 animate-fade-up">
-                  {/* Story Focus */}
-                  <Card className="p-5 rounded-3xl border border-border/70 space-y-3">
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-brand flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5" /> Select Milestone Focus
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {STORY_TYPES.map((story) => {
-                        const Icon = story.icon;
-                        const isSelected = selectedStoryType === story.id;
-                        return (
-                          <button
-                            key={story.id}
-                            onClick={() => setSelectedStoryType(story.id)}
-                            className={cn(
-                              "inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer",
-                              isSelected
-                                ? "bg-brand text-white border-brand shadow-2xs"
-                                : "bg-background text-foreground hover:bg-secondary border-border/70"
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                            <span className="truncate">{story.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </Card>
-
-                  {/* Included Stats */}
-                  <Card className="p-5 rounded-3xl border border-border/70 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-brand flex items-center gap-1.5">
-                        <TrendingUp className="h-3.5 w-3.5" /> Displayed Statistics
-                      </h3>
-                      <span className="text-[11px] font-bold text-muted-foreground">
-                        {selectedStatIds.length}/4 Active
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {availableStats.map((stat) => {
-                        const isChecked = selectedStatIds.includes(stat.id);
-                        return (
-                          <button
-                            key={stat.id}
-                            onClick={() => toggleStat(stat.id)}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer",
-                              isChecked
-                                ? "bg-brand/10 border-brand/40 text-brand font-bold"
-                                : "bg-background border-border text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            <span>{stat.label}</span>
-                            <strong className="text-foreground">({stat.value})</strong>
-                            {isChecked && <Check className="h-3 w-3 text-brand stroke-[3]" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                </div>
-              )}
-
-              {/* TAB 2: LINKEDIN CAPTION STUDIO */}
-              {activeRightTab === "caption" && (
-                <div className="space-y-4 animate-fade-up">
-                  <Card className="p-5 rounded-3xl border border-border/70 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0A66C2] flex items-center gap-1.5">
-                        <FaLinkedin className="h-3.5 w-3.5" /> AI Generated Post
-                      </h3>
-
-                      {/* Tone switcher */}
-                      <div className="flex items-center gap-1">
-                        {(["professional", "personal", "technical"] as CaptionTone[]).map((t) => (
-                          <button
-                            key={t}
-                            onClick={() => setCaptionTone(t)}
-                            className={cn(
-                              "text-[10px] font-bold px-2 py-1 rounded-lg capitalize border transition-all cursor-pointer",
-                              captionTone === t
-                                ? "bg-[#0A66C2] text-white border-[#0A66C2]"
-                                : "bg-background text-muted-foreground border-border hover:text-foreground"
-                            )}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                        <button
-                          onClick={generateCaption}
-                          disabled={isGeneratingCaption}
-                          className="p-1 text-brand hover:bg-brand/10 rounded-lg transition-colors ml-1 cursor-pointer"
-                          title="Regenerate caption"
-                        >
-                          <RefreshCw className={cn("h-3.5 w-3.5", isGeneratingCaption && "animate-spin")} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <Textarea
-                      value={captionText}
-                      onChange={(e) => setCaptionText(e.target.value)}
-                      rows={8}
-                      className="w-full text-xs rounded-2xl border-border bg-background p-3.5 leading-relaxed focus-visible:ring-brand"
-                    />
-
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <label className="flex items-center gap-2 cursor-pointer text-muted-foreground font-medium select-none">
-                        <input
-                          type="checkbox"
-                          checked={includeProfileLink}
-                          onChange={(e) => setIncludeProfileLink(e.target.checked)}
-                          className="rounded accent-brand h-4 w-4 cursor-pointer"
-                        />
-                        <span>Include Profile Link</span>
-                      </label>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCopyCaption}
-                        className="text-xs font-bold text-brand h-7 px-2.5 rounded-xl hover:bg-brand/10"
-                      >
-                        {copiedCaption ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-                        {copiedCaption ? "Copied!" : "Copy Post Text"}
-                      </Button>
-                    </div>
-                  </Card>
-                </div>
-              )}
-
-              {/* History Section (if available) */}
-              {shareHistory.length > 0 && (
-                <div className="glass rounded-2xl p-4 border border-border/60 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-brand" /> Recent Saved Snapshots
+              
+              {/* CARD 1: MILESTONE FOCUS & STATS */}
+              <Card className="p-5 rounded-3xl border border-border/70 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-brand flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" /> 1. Select Milestone Focus
+                  </h3>
+                  <span className="text-[10px] font-bold text-muted-foreground">
+                    {selectedStatIds.length}/4 Stats On Poster
                   </span>
-                  <div className="space-y-1.5">
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {STORY_TYPES.map((story) => {
+                    const Icon = story.icon;
+                    const isSelected = selectedStoryType === story.id;
+                    return (
+                      <button
+                        key={story.id}
+                        onClick={() => setSelectedStoryType(story.id)}
+                        className={cn(
+                          "inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-brand text-white border-brand shadow-2xs scale-[1.02]"
+                            : "bg-background text-foreground hover:bg-secondary border-border/70"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span className="truncate">{story.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="h-px bg-border/40 my-2" />
+
+                {/* Displayed Stats Chips */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold text-muted-foreground block">
+                    Active Statistics on Poster:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {availableStats.map((stat) => {
+                      const isChecked = selectedStatIds.includes(stat.id);
+                      return (
+                        <button
+                          key={stat.id}
+                          onClick={() => toggleStat(stat.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer",
+                            isChecked
+                              ? "bg-brand/10 border-brand/40 text-brand font-bold"
+                              : "bg-background border-border text-muted-foreground hover:text-foreground opacity-70"
+                          )}
+                        >
+                          <span>{stat.label}</span>
+                          <strong className="text-foreground">({stat.value})</strong>
+                          {isChecked && <Check className="h-3 w-3 text-brand stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card>
+
+              {/* CARD 2: AI LINKEDIN POST CAPTION */}
+              <Card className="p-5 rounded-3xl border border-border/70 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#0A66C2] flex items-center gap-1.5">
+                    <FaLinkedin className="h-3.5 w-3.5" /> 2. AI LinkedIn Post Text
+                  </h3>
+
+                  {/* Tone Switcher */}
+                  <div className="flex items-center gap-1">
+                    {(["professional", "personal", "technical"] as CaptionTone[]).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setCaptionTone(t)}
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-lg capitalize border transition-all cursor-pointer",
+                          captionTone === t
+                            ? "bg-[#0A66C2] text-white border-[#0A66C2]"
+                            : "bg-background text-muted-foreground border-border hover:text-foreground"
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                    <button
+                      onClick={generateCaption}
+                      disabled={isGeneratingCaption}
+                      className="p-1 text-brand hover:bg-brand/10 rounded-lg transition-colors ml-0.5 cursor-pointer"
+                      title="Regenerate caption"
+                    >
+                      <RefreshCw className={cn("h-3.5 w-3.5", isGeneratingCaption && "animate-spin")} />
+                    </button>
+                  </div>
+                </div>
+
+                <Textarea
+                  value={captionText}
+                  onChange={(e) => setCaptionText(e.target.value)}
+                  rows={5}
+                  className="w-full text-xs rounded-2xl border-border bg-background p-3.5 leading-relaxed focus-visible:ring-brand"
+                />
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-muted-foreground font-medium select-none text-[11px]">
+                    <input
+                      type="checkbox"
+                      checked={includeProfileLink}
+                      onChange={(e) => setIncludeProfileLink(e.target.checked)}
+                      className="rounded accent-brand h-3.5 w-3.5 cursor-pointer"
+                    />
+                    <span>Attach Profile Link</span>
+                  </label>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyCaption}
+                    className="text-xs font-bold text-brand h-7 px-2.5 rounded-xl hover:bg-brand/10"
+                  >
+                    {copiedCaption ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                    {copiedCaption ? "Copied!" : "Copy Post Text"}
+                  </Button>
+                </div>
+              </Card>
+
+              {/* CARD 3: SNAPSHOT HISTORY & VERIFIED IDENTITY DECK */}
+              <div className="glass rounded-3xl p-4 border border-border/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-brand" />
+                    Verified Snapshot History
+                  </span>
+                  <span className="text-[10px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20">
+                    skillverse.com/u/{userData.username}
+                  </span>
+                </div>
+
+                {shareHistory.length > 0 ? (
+                  <div className="space-y-2">
                     {shareHistory.slice(0, 3).map((item) => (
                       <div
                         key={item.id}
-                        className="p-2.5 rounded-xl bg-card border border-border/50 flex items-center justify-between text-xs"
+                        className="p-2.5 rounded-xl bg-card border border-border/50 flex items-center justify-between text-xs hover:border-brand/40 transition-colors"
                       >
-                        <span className="font-bold truncate text-foreground">{item.storyTitle}</span>
-                        <span className="text-[10px] text-muted-foreground shrink-0 pl-2">
-                          {new Date(item.createdAt).toLocaleDateString()}
+                        <div className="min-w-0 pr-2">
+                          <span className="font-bold truncate text-foreground block">{item.storyTitle}</span>
+                          <span className="text-[10px] text-muted-foreground capitalize block">
+                            {item.templateId} theme • {new Date(item.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md shrink-0">
+                          {item.status || "Saved"}
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">
+                    Your generated posters and captions will be logged here automatically.
+                  </p>
+                )}
+              </div>
+
             </div>
           </div>
         </main>
