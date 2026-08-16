@@ -25,9 +25,10 @@ import {
   RefreshCw,
   Link as LinkIcon,
   Clock,
+  BookOpen,
 } from "lucide-react";
-import { FaGithub } from "react-icons/fa";
-import { SiLeetcode } from "react-icons/si";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
+import { SiLeetcode, SiCodeforces, SiCodechef, SiHackerrank } from "react-icons/si";
 import { useAuth } from "@/lib/auth-context";
 import {
   changePassword,
@@ -257,19 +258,7 @@ export function AccountSettings() {
               )}
               {activeTab === "notifications" && <NotificationsTab />}
               {activeTab === "privacy" && <PrivacyTab />}
-              {activeTab === "connections" && (
-                <ConnectionsTab
-                  github={github}
-                  leetcode={leetcode}
-                  githubData={githubData}
-                  leetcodeData={leetcodeData}
-                  onSyncGitHub={() => user?.id && syncGitHub(user.id)}
-                  onSyncLeetCode={() => user?.id && syncLeetCode(user.id)}
-                  onDisconnectGitHub={() => user?.id && disconnectGitHub(user.id)}
-                  onDisconnectLeetCode={() => user?.id && disconnectLeetCode(user.id)}
-                  isSyncing={isSyncing}
-                />
-              )}
+              {activeTab === "connections" && <ConnectionsTab />}
               {activeTab === "danger" && (
                 <DangerTab
                   deletePassword={deletePassword}
@@ -810,17 +799,10 @@ function PrivacyItem({
   );
 }
 
-function ConnectionsTab({
-  github,
-  leetcode,
-  githubData,
-  leetcodeData,
-  onSyncGitHub,
-  onSyncLeetCode,
-  onDisconnectGitHub,
-  onDisconnectLeetCode,
-  isSyncing,
-}: any) {
+function ConnectionsTab() {
+  const { user } = useAuth();
+  const store = usePlatformStore();
+
   const formatLastSynced = (date: string | null) => {
     if (!date) return "Never";
     const d = new Date(date);
@@ -829,7 +811,7 @@ function ConnectionsTab({
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    
+
     if (minutes < 1) return "Just now";
     if (minutes < 60) return `${minutes} min ago`;
     if (hours < 24) return `${hours}h ago`;
@@ -837,158 +819,195 @@ function ConnectionsTab({
     return d.toLocaleDateString();
   };
 
+  const platforms = [
+    {
+      id: "github",
+      name: "GitHub",
+      icon: <FaGithub className="h-5 w-5 text-foreground" />,
+      connection: store.github,
+      data: store.githubData,
+      getStatsText: () =>
+        store.githubData
+          ? `${store.githubData.profile?.followers || 0} followers • ${store.githubData.repositories?.length || 0} repos`
+          : null,
+      onSync: () => user?.id && store.syncGitHub(user.id),
+      onDisconnect: () => user?.id && store.disconnectGitHub(user.id),
+    },
+    {
+      id: "leetcode",
+      name: "LeetCode",
+      icon: <SiLeetcode className="h-5 w-5 text-[#FFA116]" />,
+      connection: store.leetcode,
+      data: store.leetcodeData,
+      getStatsText: () =>
+        store.leetcodeData
+          ? `${store.leetcodeData.stats?.All || 0} solved • Rating: ${store.leetcodeData.contest?.rating || "N/A"}`
+          : null,
+      onSync: () => user?.id && store.syncLeetCode(user.id),
+      onDisconnect: () => user?.id && store.disconnectLeetCode(user.id),
+    },
+    {
+      id: "gfg",
+      name: "GeeksforGeeks",
+      icon: <BookOpen className="h-5 w-5 text-[#2F8D46]" />,
+      connection: store.gfg,
+      data: store.gfgData,
+      getStatsText: () =>
+        store.gfgData ? `${store.gfgData.problems?.total || store.gfgData.potd?.totalSolved || 0} solved` : null,
+      onSync: () => user?.id && store.syncGFG(user.id),
+      onDisconnect: () => user?.id && store.disconnectGFG(user.id),
+    },
+    {
+      id: "codeforces",
+      name: "Codeforces",
+      icon: <SiCodeforces className="h-5 w-5 text-[#1F8ACB]" />,
+      connection: store.codeforces,
+      data: store.codeforcesData,
+      getStatsText: () =>
+        store.codeforcesData ? `Rating: ${store.codeforcesData.rating || 0}` : null,
+      onSync: () => user?.id && store.syncCodeforces(user.id),
+      onDisconnect: () => user?.id && store.disconnectCodeforces(user.id),
+    },
+    {
+      id: "codechef",
+      name: "CodeChef",
+      icon: <SiCodechef className="h-5 w-5 text-[#5B4638]" />,
+      connection: store.codechef,
+      data: store.codechefData,
+      getStatsText: () =>
+        store.codechefData ? `Stars: ${store.codechefData.stars || "1★"}` : null,
+      onSync: () => user?.id && store.syncCodeChef(user.id),
+      onDisconnect: () => user?.id && store.disconnectCodeChef(user.id),
+    },
+    {
+      id: "hackerrank",
+      name: "HackerRank",
+      icon: <SiHackerrank className="h-5 w-5 text-[#2EC866]" />,
+      connection: store.hackerrank,
+      data: store.hackerrankData,
+      getStatsText: () =>
+        store.hackerrankData ? `${store.hackerrankData.badgesCount || 0} badges` : null,
+      onSync: () => user?.id && store.syncHackerRank(user.id),
+      onDisconnect: () => user?.id && store.disconnectHackerRank(user.id),
+    },
+    {
+      id: "linkedin",
+      name: "LinkedIn",
+      icon: <FaLinkedin className="h-5 w-5 text-[#0A66C2]" />,
+      connection: store.linkedin,
+      data: store.linkedinData,
+      getStatsText: () =>
+        store.linkedinData ? `${store.linkedinData.connections || 0} connections` : null,
+      onSync: undefined,
+      onDisconnect: () => user?.id && store.disconnectLinkedIn(user.id),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold">Platform Connections</h2>
         <p className="text-sm text-muted-foreground">
-          Manage your GitHub and LeetCode integrations
+          Manage all your developer platform integrations and real-time data sync.
         </p>
       </div>
 
-      <div className="space-y-4">
-        {/* GitHub Connection */}
-        <div className="rounded-lg border border-border/70 p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-lg border border-border/60 bg-background">
-                <FaGithub className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium">GitHub</h3>
-                  {github.connected && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                      Connected
-                    </span>
-                  )}
-                </div>
-                {github.connected && githubData ? (
-                  <div className="mt-1 space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <span>@{github.username}</span>
-                      <span>•</span>
-                      <span>{githubData.profile.followers} followers</span>
-                      <span>•</span>
-                      <span>{githubData.repositories.length} repos</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Clock className="h-3 w-3" />
-                      Last synced: {formatLastSynced(github.lastSynced)}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-muted-foreground">Not connected</p>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {github.connected ? (
-                <>
-                  <button
-                    onClick={onSyncGitHub}
-                    disabled={isSyncing}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary/60 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    Sync
-                  </button>
-                  <button
-                    onClick={onDisconnectGitHub}
-                    disabled={isSyncing}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                  >
-                    Disconnect
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/connections"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand/90"
-                >
-                  Connect
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="grid gap-4">
+        {platforms.map((p) => {
+          const isConnected = p.connection?.connected;
+          const stats = p.getStatsText();
 
-        {/* LeetCode Connection */}
-        <div className="rounded-lg border border-border/70 p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-lg border border-border/60 bg-background">
-                <SiLeetcode className="h-5 w-5 text-[#FFA116]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium">LeetCode</h3>
-                  {leetcode.connected && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                      Connected
-                    </span>
+          return (
+            <div key={p.id} className="rounded-xl border border-border/70 p-4 transition-all hover:border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/60 bg-background shadow-2xs">
+                    {p.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm text-foreground">{p.name}</h3>
+                      {isConnected ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Connected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          Not connected
+                        </span>
+                      )}
+                    </div>
+
+                    {isConnected ? (
+                      <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-foreground">@{p.connection.username}</span>
+                          {stats && (
+                            <>
+                              <span>•</span>
+                              <span>{stats}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground/80">
+                          <Clock className="h-3 w-3" />
+                          Last synced: {formatLastSynced(p.connection.lastSynced)}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Connect {p.name} to sync telemetry, score metrics, and activity.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  {isConnected ? (
+                    <>
+                      {p.onSync && (
+                        <button
+                          type="button"
+                          onClick={p.onSync}
+                          disabled={store.isSyncing}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${store.isSyncing ? "animate-spin" : ""}`} />
+                          Sync
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={p.onDisconnect}
+                        disabled={store.isSyncing}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to="/profile"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-semibold text-brand-foreground hover:opacity-90 transition-opacity shadow-2xs"
+                    >
+                      Connect
+                    </Link>
                   )}
                 </div>
-                {leetcode.connected && leetcodeData ? (
-                  <div className="mt-1 space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <span>@{leetcode.username}</span>
-                      <span>•</span>
-                      <span>{leetcodeData.stats.All} solved</span>
-                      <span>•</span>
-                      <span>Rating: {leetcodeData.contest.rating}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Clock className="h-3 w-3" />
-                      Last synced: {formatLastSynced(leetcode.lastSynced)}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-muted-foreground">Not connected</p>
-                )}
               </div>
             </div>
-            <div className="flex gap-2">
-              {leetcode.connected ? (
-                <>
-                  <button
-                    onClick={onSyncLeetCode}
-                    disabled={isSyncing}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary/60 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    Sync
-                  </button>
-                  <button
-                    onClick={onDisconnectLeetCode}
-                    disabled={isSyncing}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                  >
-                    Disconnect
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/connections"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand/90"
-                >
-                  Connect
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
+          );
+        })}
 
         {/* Auto-sync info */}
-        <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-4">
           <div className="flex items-start gap-3">
-            <RefreshCw className="h-5 w-5 text-brand mt-0.5" />
+            <RefreshCw className="h-5 w-5 text-brand mt-0.5 shrink-0" />
             <div>
-              <h3 className="font-medium">Automatic Sync</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Your connected platforms automatically sync every 24 hours. You can also manually sync at any time using the Sync button above.
+              <h3 className="font-semibold text-xs text-foreground">Automatic Platform Telemetry Sync</h3>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                SkillVerse automatically synchronizes your connected platform metrics every 24 hours. You can also trigger a manual sync anytime using the Sync button above.
               </p>
             </div>
           </div>
