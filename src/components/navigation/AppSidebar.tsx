@@ -213,21 +213,7 @@ export function AppSidebar() {
           collapsed ? "w-[68px]" : "w-[250px]"
         )}
       >
-        {/* Sidebar Brand Header */}
-        <div className="shrink-0 p-4 border-b border-border/40 flex items-center gap-3">
-          <img
-            src={skillverseLogo}
-            alt="SkillVerse"
-            width={24}
-            height={24}
-            className="h-6 w-6 object-contain shrink-0"
-          />
-          {!collapsed && (
-            <span className="font-bold text-base tracking-tight text-foreground truncate">
-              SkillVerse
-            </span>
-          )}
-        </div>
+
 
         {/* Primary 5 Authenticated Navigation Items */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1.5 custom-scrollbar">
