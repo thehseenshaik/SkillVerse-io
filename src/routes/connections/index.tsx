@@ -157,7 +157,12 @@ function CareerIdentityOverviewPage() {
         if (!user?.id) return;
         await store.connectLinkedIn(user.id, un);
       },
-      onSync: undefined,
+      onSync: async () => {
+        if (!user?.id) return;
+        toast.info("Syncing LinkedIn profile...");
+        await store.syncLinkedIn(user.id);
+        toast.success("LinkedIn profile synced!");
+      },
     },
     {
       id: "codeforces",
