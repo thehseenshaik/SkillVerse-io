@@ -112,10 +112,18 @@ export const bottomNavItems: NavItem[] = [
   { to: "/assistant", label: "Help & Support", icon: HelpCircle },
 ];
 
+type SidebarMode = "auto" | "manual";
+type ManualState = "expanded" | "collapsed";
+
 interface SidebarContextType {
   collapsed: boolean;
+  sidebarMode: SidebarMode;
+  isHovered: boolean;
   setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   toggleCollapsed: () => void;
+  resetToAutoMode: () => void;
+  onSidebarMouseEnter: () => void;
+  onSidebarMouseLeave: () => void;
   mobileOpen: boolean;
   setMobileOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toggleMobile: () => void;
@@ -125,40 +133,95 @@ const SidebarContext = React.createContext<SidebarContextType | undefined>(
   undefined
 );
 
-const SIDEBAR_STORAGE_KEY = "skillverse_sidebar_collapsed";
+const SIDEBAR_MODE_KEY = "skillverse_sidebar_mode";
+const SIDEBAR_MANUAL_STATE_KEY = "skillverse_sidebar_manual_state";
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsedState] = React.useState<boolean>(() => {
+  const [sidebarMode, setSidebarMode] = React.useState<SidebarMode>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-      if (saved !== null) {
-        return saved === "true";
-      }
+      const saved = localStorage.getItem(SIDEBAR_MODE_KEY);
+      if (saved === "manual" || saved === "auto") return saved;
     }
-    return false;
+    return "auto";
   });
+
+  const [manualState, setManualState] = React.useState<ManualState>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(SIDEBAR_MANUAL_STATE_KEY);
+      if (saved === "expanded" || saved === "collapsed") return saved;
+    }
+    return "expanded";
+  });
+
+  const [isHovered, setIsHovered] = React.useState<boolean>(false);
+  const hoverLeaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const [mobileOpen, setMobileOpen] = React.useState<boolean>(false);
 
-  const setCollapsed = React.useCallback(
-    (action: React.SetStateAction<boolean>) => {
-      setCollapsedState((prev) => {
-        const next = typeof action === "function" ? action(prev) : action;
-        if (typeof window !== "undefined") {
-          localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
-          document.cookie = `sidebar_state=${next}; path=/; max-age=${
-            60 * 60 * 24 * 30
-          }`;
-        }
-        return next;
-      });
-    },
-    []
-  );
+  // Calculate effective collapsed state
+  const collapsed = React.useMemo(() => {
+    if (sidebarMode === "manual") {
+      return manualState === "collapsed";
+    }
+    // Auto Mode: collapsed when mouse is outside, expanded when mouse enters
+    return !isHovered;
+  }, [sidebarMode, manualState, isHovered]);
+
+  const onSidebarMouseEnter = React.useCallback(() => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+    setIsHovered(true);
+  }, []);
+
+  const onSidebarMouseLeave = React.useCallback(() => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current);
+    }
+    // 200ms close delay to prevent flickering when cursor moves outside
+    hoverLeaveTimerRef.current = setTimeout(() => {
+      setIsHovered(false);
+      hoverLeaveTimerRef.current = null;
+    }, 200);
+  }, []);
 
   const toggleCollapsed = React.useCallback(() => {
-    setCollapsed((prev) => !prev);
-  }, [setCollapsed]);
+    if (sidebarMode === "auto") {
+      // Pin to manual mode in the opposite of current collapsed state
+      const nextManualState: ManualState = collapsed ? "expanded" : "collapsed";
+      setSidebarMode("manual");
+      setManualState(nextManualState);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SIDEBAR_MODE_KEY, "manual");
+        localStorage.setItem(SIDEBAR_MANUAL_STATE_KEY, nextManualState);
+      }
+    } else {
+      // Toggle manual expanded / collapsed
+      const nextManualState: ManualState =
+        manualState === "collapsed" ? "expanded" : "collapsed";
+      setManualState(nextManualState);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SIDEBAR_MANUAL_STATE_KEY, nextManualState);
+      }
+    }
+  }, [sidebarMode, manualState, collapsed]);
+
+  const resetToAutoMode = React.useCallback(() => {
+    setSidebarMode("auto");
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SIDEBAR_MODE_KEY, "auto");
+    }
+  }, []);
+
+  const setCollapsedDummy = React.useCallback(
+    (action: React.SetStateAction<boolean>) => {
+      const nextCollapsed = typeof action === "function" ? action(collapsed) : action;
+      setSidebarMode("manual");
+      setManualState(nextCollapsed ? "collapsed" : "expanded");
+    },
+    [collapsed]
+  );
 
   const toggleMobile = React.useCallback(() => {
     setMobileOpen((prev) => !prev);
@@ -167,13 +230,30 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(
     () => ({
       collapsed,
-      setCollapsed,
+      sidebarMode,
+      isHovered,
+      setCollapsed: setCollapsedDummy,
       toggleCollapsed,
+      resetToAutoMode,
+      onSidebarMouseEnter,
+      onSidebarMouseLeave,
       mobileOpen,
       setMobileOpen,
       toggleMobile,
     }),
-    [collapsed, setCollapsed, toggleCollapsed, mobileOpen, toggleMobile]
+    [
+      collapsed,
+      sidebarMode,
+      isHovered,
+      setCollapsedDummy,
+      toggleCollapsed,
+      resetToAutoMode,
+      onSidebarMouseEnter,
+      onSidebarMouseLeave,
+      mobileOpen,
+      setMobileOpen,
+      toggleMobile,
+    ]
   );
 
   return (
@@ -190,10 +270,18 @@ export function useSidebarState() {
 }
 
 export function AppSidebar() {
-  const { collapsed, toggleCollapsed } = useSidebarState();
+  const {
+    collapsed,
+    sidebarMode,
+    toggleCollapsed,
+    resetToAutoMode,
+    onSidebarMouseEnter,
+    onSidebarMouseLeave,
+  } = useSidebarState();
+
   const location = useLocation();
 
-  // Helper to check if a route is active
+  // Helper to check active route
   const isRouteActive = (to: string) => {
     const currentPath = location.pathname;
     if (to === "/dashboard") {
@@ -202,20 +290,17 @@ export function AppSidebar() {
     return currentPath === to || currentPath.startsWith(`${to}/`);
   };
 
-  // Keep track of expanded sections (multiple can be open at once)
-  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {
-      OVERVIEW: true,
-      CAREER: true,
-      PROGRESS: true,
-      PLATFORMS: true,
-      AITOOLS: true,
-      PROJECTS: true,
-    };
-    return initial;
+  // Section Open State:
+  // 1. clickOpenedSections: Set of section keys explicitly toggled by click or containing active route
+  // 2. hoverOpenedSection: Section key dynamically opened by mouse hover
+  const [clickOpenedSections, setClickOpenedSections] = React.useState<Set<string>>(() => {
+    return new Set(["OVERVIEW", "CAREER", "PROGRESS", "PLATFORMS", "AITOOLS", "PROJECTS"]);
   });
 
-  // Automatically expand the section containing the active route on location change
+  const [hoverOpenedSection, setHoverOpenedSection] = React.useState<string | null>(null);
+  const sectionLeaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Automatically ensure the section containing the active route is in clickOpenedSections
   React.useEffect(() => {
     const currentPath = location.pathname;
     navSections.forEach((section) => {
@@ -224,36 +309,89 @@ export function AppSidebar() {
         return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
       });
       if (hasActive) {
-        setOpenSections((prev) => ({ ...prev, [section.key]: true }));
+        setClickOpenedSections((prev) => new Set(prev).add(section.key));
       }
     });
   }, [location.pathname]);
 
-  const toggleSection = (key: string) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+  // Section click toggle handler
+  const handleSectionClick = (key: string) => {
+    setClickOpenedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  // Section mouse enter handler (Hover-to-Open)
+  const handleSectionMouseEnter = (key: string) => {
+    if (typeof window !== "undefined" && !window.matchMedia("(hover: hover)").matches) {
+      return; // Skip hover logic on touch devices
+    }
+    if (sectionLeaveTimerRef.current) {
+      clearTimeout(sectionLeaveTimerRef.current);
+      sectionLeaveTimerRef.current = null;
+    }
+    if (!clickOpenedSections.has(key)) {
+      setHoverOpenedSection(key);
+    }
+  };
+
+  // Section mouse leave handler (Hover-to-Close with 200ms debounce)
+  const handleSectionMouseLeave = (key: string) => {
+    if (typeof window !== "undefined" && !window.matchMedia("(hover: hover)").matches) {
+      return;
+    }
+    if (hoverOpenedSection === key) {
+      if (sectionLeaveTimerRef.current) {
+        clearTimeout(sectionLeaveTimerRef.current);
+      }
+      sectionLeaveTimerRef.current = setTimeout(() => {
+        setHoverOpenedSection((current) => (current === key ? null : current));
+        sectionLeaveTimerRef.current = null;
+      }, 200);
+    }
+  };
+
+  // Determine if a section should render open
+  const isSectionExpanded = (section: NavSection) => {
+    const hasActiveChild = section.items.some((item) => isRouteActive(item.to));
+    return (
+      hasActiveChild ||
+      clickOpenedSections.has(section.key) ||
+      hoverOpenedSection === section.key
+    );
   };
 
   return (
     <TooltipProvider delayDuration={150}>
       <aside
         aria-label="Main Navigation Sidebar"
+        onMouseEnter={onSidebarMouseEnter}
+        onMouseLeave={onSidebarMouseLeave}
         className={cn(
           "fixed left-0 top-14 bottom-0 z-30 hidden md:flex flex-col bg-background/95 backdrop-blur-md border-r border-border/60 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none",
           collapsed ? "w-[68px]" : "w-[250px]"
         )}
       >
         {/* Independent Scrollable Navigation Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-3 custom-scrollbar">
           {navSections.map((section) => {
             const SectionIcon = section.icon;
-            const isOpen = openSections[section.key] ?? false;
+            const isOpen = isSectionExpanded(section);
             const hasActiveChild = section.items.some((item) => isRouteActive(item.to));
 
             return (
-              <div key={section.key} className="space-y-1">
+              <div
+                key={section.key}
+                onMouseEnter={() => handleSectionMouseEnter(section.key)}
+                onMouseLeave={() => handleSectionMouseLeave(section.key)}
+                className="space-y-1"
+              >
                 {/* Section Header */}
                 {collapsed ? (
                   /* Collapsed View Section Header / Icon Tooltip */
@@ -261,10 +399,12 @@ export function AppSidebar() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => toggleSection(section.key)}
+                        onClick={() => handleSectionClick(section.key)}
                         className={cn(
-                          "w-full flex items-center justify-center py-2 rounded-lg transition-colors",
-                          hasActiveChild ? "text-brand font-semibold bg-brand/10" : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                          "w-full flex items-center justify-center py-2.5 rounded-lg transition-all",
+                          hasActiveChild
+                            ? "text-brand font-semibold bg-brand/12"
+                            : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
                         )}
                       >
                         <SectionIcon className="h-4 w-4" />
@@ -278,9 +418,9 @@ export function AppSidebar() {
                   /* Expanded View Accordion Header Button */
                   <button
                     type="button"
-                    onClick={() => toggleSection(section.key)}
+                    onClick={() => handleSectionClick(section.key)}
                     className={cn(
-                      "w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider uppercase transition-colors outline-none focus-visible:ring-1 focus-visible:ring-brand",
+                      "w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider uppercase transition-colors outline-none focus-visible:ring-1 focus-visible:ring-brand cursor-pointer",
                       hasActiveChild
                         ? "text-brand"
                         : "text-muted-foreground/80 hover:text-foreground hover:bg-secondary/50"
@@ -393,12 +533,23 @@ export function AppSidebar() {
             return <React.Fragment key={item.to}>{content}</React.Fragment>;
           })}
 
-          {/* Sidebar Collapse Toggle Button */}
+          {/* Sidebar Mode Status & Manual Toggle Button */}
           <div className="pt-2 flex items-center justify-between border-t border-border/40">
             {!collapsed && (
               <div className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground truncate">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="truncate font-medium">SkillVerse OS</span>
+                <span className="truncate font-medium">
+                  {sidebarMode === "manual" ? "Pinned Mode" : "Auto Hover"}
+                </span>
+                {sidebarMode === "manual" && (
+                  <button
+                    type="button"
+                    onClick={resetToAutoMode}
+                    className="text-[10px] text-brand hover:underline font-semibold ml-1"
+                  >
+                    Auto
+                  </button>
+                )}
               </div>
             )}
 
@@ -407,7 +558,7 @@ export function AppSidebar() {
                 <button
                   type="button"
                   onClick={toggleCollapsed}
-                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-label={collapsed ? "Pin expanded" : "Pin collapsed"}
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-all hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand",
                     collapsed && "mx-auto"
@@ -422,7 +573,13 @@ export function AppSidebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side={collapsed ? "right" : "top"} className="text-xs">
-                {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                {sidebarMode === "auto"
+                  ? collapsed
+                    ? "Pin sidebar expanded"
+                    : "Pin sidebar collapsed"
+                  : collapsed
+                  ? "Expand & Pin"
+                  : "Collapse & Pin"}
               </TooltipContent>
             </Tooltip>
           </div>
