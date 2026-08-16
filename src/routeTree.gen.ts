@@ -49,6 +49,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as IdentityHubRouteImport } from './routes/identity-hub'
 import { Route as InterviewRouteImport } from './routes/interview'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as PortfolioEditorRouteImport } from './routes/portfolio-editor'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -270,6 +271,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortfolioEditorRoute = PortfolioEditorRouteImport.update({
   id: '/portfolio-editor',
   path: '/portfolio-editor',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/identity-hub': typeof IdentityHubRoute
   '/interview': typeof InterviewRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/portfolio-editor': typeof PortfolioEditorRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
@@ -474,6 +481,7 @@ export interface FileRoutesByTo {
   '/identity-hub': typeof IdentityHubRoute
   '/interview': typeof InterviewRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/portfolio-editor': typeof PortfolioEditorRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
@@ -537,6 +545,7 @@ export interface FileRoutesById {
   '/identity-hub': typeof IdentityHubRoute
   '/interview': typeof InterviewRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/portfolio-editor': typeof PortfolioEditorRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
@@ -601,6 +610,7 @@ export interface FileRouteTypes {
     | '/identity-hub'
     | '/interview'
     | '/login'
+    | '/notifications'
     | '/portfolio-editor'
     | '/practice'
     | '/privacy'
@@ -663,6 +673,7 @@ export interface FileRouteTypes {
     | '/identity-hub'
     | '/interview'
     | '/login'
+    | '/notifications'
     | '/portfolio-editor'
     | '/practice'
     | '/privacy'
@@ -725,6 +736,7 @@ export interface FileRouteTypes {
     | '/identity-hub'
     | '/interview'
     | '/login'
+    | '/notifications'
     | '/portfolio-editor'
     | '/practice'
     | '/privacy'
@@ -788,6 +800,7 @@ export interface RootRouteChildren {
   IdentityHubRoute: typeof IdentityHubRoute
   InterviewRoute: typeof InterviewRoute
   LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
   PortfolioEditorRoute: typeof PortfolioEditorRoute
   PracticeRoute: typeof PracticeRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -1085,6 +1098,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portfolio-editor': {
       id: '/portfolio-editor'
       path: '/portfolio-editor'
@@ -1303,6 +1323,7 @@ const rootRouteChildren: RootRouteChildren = {
   IdentityHubRoute: IdentityHubRoute,
   InterviewRoute: InterviewRoute,
   LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
   PortfolioEditorRoute: PortfolioEditorRoute,
   PracticeRoute: PracticeRoute,
   PrivacyRoute: PrivacyRoute,

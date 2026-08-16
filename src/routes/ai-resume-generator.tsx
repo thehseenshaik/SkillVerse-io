@@ -21,6 +21,7 @@ import { PageShell } from "@/components/SiteChrome";
 import { AuthGate } from "@/components/AuthGate";
 import { useAuth } from "@/lib/auth-context";
 import { useProfile } from "@/lib/profile-context";
+import { createNotification } from "@/lib/services/notification-service";
 import { useResumeStore } from "@/lib/resume/store";
 import { getTemplate, templateNames } from "@/components/resume/templates";
 import { getThemePreset } from "@/lib/resume/theme-system";
@@ -152,6 +153,14 @@ function ResumeGeneratorPage() {
         setShowPrinterAnimation(false);
         setShowPreview(true);
         toast.success("Resume generated successfully");
+        if (user?.id) {
+          createNotification(user.id, {
+            type: "resume",
+            title: "Resume generated",
+            message: "Your resume has been generated successfully.",
+            idempotencyKey: `resume_gen_${Date.now()}`,
+          }).catch(() => {});
+        }
       } catch (error: any) {
         setShowPrinterAnimation(false);
         toast.error(`Failed to generate resume: ${error.message || "Unknown error"}`);

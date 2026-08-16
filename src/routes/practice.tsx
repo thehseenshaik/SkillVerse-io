@@ -21,6 +21,7 @@ import { PageShell } from "@/components/SiteChrome";
 import { AuthGate } from "@/components/AuthGate";
 import { useAuth } from "@/lib/auth-context";
 import { usePlatformStore } from "@/lib/platform-store";
+import { createNotification } from "@/lib/services/notification-service";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -460,6 +461,19 @@ function PracticeHubPage() {
       } else {
         next.add(id);
         toast.success("Problem marked as solved! 🎉");
+
+        // Trigger real notification
+        const prob = DSA_PROBLEMS.find((p) => p.id === id);
+        const probTitle = prob?.title || id;
+        if (user?.id) {
+          createNotification(user.id, {
+            type: "problem",
+            title: "Problem completed",
+            message: `You completed ${probTitle}.`,
+            metadata: { problemId: id, problemTitle: probTitle },
+            idempotencyKey: `prob_solved_${id}_${Date.now()}`,
+          }).catch(() => {});
+        }
       }
       try {
         localStorage.setItem("skillverse_solved_practice_problems", JSON.stringify(Array.from(next)));

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createNotification } from './services/notification-service';
 
 // API base URL
 const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
@@ -349,6 +350,13 @@ export const usePlatformStore = create<PlatformStore>()(
           
           // Trigger sync to fetch full public repo and commit details
           if (uid) {
+            createNotification(uid, {
+              type: "connection",
+              title: "GitHub connected successfully",
+              message: "Your GitHub profile has been connected to SkillVerse.",
+              metadata: { platform: "github", username },
+              idempotencyKey: `conn_github_${uid}_${username}`,
+            }).catch(() => {});
             get().syncGitHub(uid).catch(() => {});
           }
         } catch (error) {
@@ -380,8 +388,26 @@ export const usePlatformStore = create<PlatformStore>()(
           
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
+
+          if (uid) {
+            createNotification(uid, {
+              type: "sync",
+              title: "Profile synced",
+              message: "Your GitHub profile has been synced successfully.",
+              metadata: { platform: "github" },
+              idempotencyKey: `sync_github_${uid}_${Math.floor(Date.now() / 300000)}`,
+            }).catch(() => {});
+          }
         } catch (error) {
           set({ isSyncing: false });
+          if (uid) {
+            createNotification(uid, {
+              type: "sync_failure",
+              title: "Sync failed",
+              message: "We couldn't sync your GitHub profile. Try again.",
+              metadata: { platform: "github" },
+            }).catch(() => {});
+          }
         }
       },
       
@@ -483,6 +509,17 @@ export const usePlatformStore = create<PlatformStore>()(
             },
             leetcodeData: get().leetcodeData || initialLeetCodeData,
           });
+
+          if (uid) {
+            createNotification(uid, {
+              type: "connection",
+              title: "LeetCode connected successfully",
+              message: "Your LeetCode profile has been connected to SkillVerse.",
+              metadata: { platform: "leetcode", username: sanitizedUsername },
+              idempotencyKey: `conn_leetcode_${uid}_${sanitizedUsername}`,
+            }).catch(() => {});
+          }
+
           await get().syncLeetCode(uid, sanitizedUsername);
         } catch (error) {
           set({ isLoading: false, error: error instanceof Error ? error.message : 'Connection failed' });
@@ -516,8 +553,26 @@ export const usePlatformStore = create<PlatformStore>()(
           }
           await get().fetchDashboardData(uid);
           set({ isSyncing: false });
+
+          if (uid) {
+            createNotification(uid, {
+              type: "sync",
+              title: "Profile synced",
+              message: "Your LeetCode profile has been synced successfully.",
+              metadata: { platform: "leetcode" },
+              idempotencyKey: `sync_leetcode_${uid}_${Math.floor(Date.now() / 300000)}`,
+            }).catch(() => {});
+          }
         } catch (error) {
           set({ isSyncing: false });
+          if (uid) {
+            createNotification(uid, {
+              type: "sync_failure",
+              title: "Sync failed",
+              message: "We couldn't sync your LeetCode profile. Try again.",
+              metadata: { platform: "leetcode" },
+            }).catch(() => {});
+          }
         }
       },
       

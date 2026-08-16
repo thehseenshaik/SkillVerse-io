@@ -18,6 +18,12 @@ import {
   User,
   X,
   Check,
+  CheckCheck,
+  Link2,
+  CheckCircle2,
+  FileText,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import skillverseLogo from "@/assets/skillverse-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -51,6 +57,11 @@ import {
   bottomNavItems,
   useSidebarState,
 } from "@/components/navigation/AppSidebar";
+import {
+  NotificationProvider,
+  useNotifications,
+} from "@/lib/notification-context";
+import { NotificationType } from "@/lib/services/notification-service";
 import { cn } from "@/lib/utils";
 
 const publicNav = [
@@ -60,6 +71,163 @@ const publicNav = [
 
 function Wordmark() {
   return <span className="text-xl font-bold text-foreground">SkillVerse</span>;
+}
+
+function getNotificationIcon(type: NotificationType) {
+  switch (type) {
+    case "connection":
+      return <Link2 className="h-3.5 w-3.5 text-emerald-500" />;
+    case "problem":
+      return <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />;
+    case "resume":
+      return <FileText className="h-3.5 w-3.5 text-purple-500" />;
+    case "profile":
+      return <User className="h-3.5 w-3.5 text-amber-500" />;
+    case "sync":
+      return <RefreshCw className="h-3.5 w-3.5 text-cyan-500" />;
+    case "sync_failure":
+      return <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />;
+    case "ai":
+    default:
+      return <Sparkles className="h-3.5 w-3.5 text-brand" />;
+  }
+}
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffSec < 45) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hr ago`;
+  const diffDays = Math.floor(diffHr / 24);
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function NotificationBellDropdown() {
+  const { notifications, unreadCount, hasUnread, isNewArrival, markAsRead, markAllAsRead } =
+    useNotifications();
+
+  return (
+    <DropdownMenu>
+      <TooltipProvider delayDuration={150}>
+        <Tooltip side="bottom">
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground cursor-pointer focus-visible:ring-2 focus-visible:ring-brand"
+                aria-label="Notifications"
+              >
+                <Bell
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    isNewArrival && "animate-bounce text-brand"
+                  )}
+                />
+                {hasUnread && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground ring-2 ring-background">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Notifications {hasUnread && `(${unreadCount} unread)`}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <DropdownMenuContent
+        align="end"
+        className="w-80 p-0 sm:w-90 rounded-2xl border border-border/70 bg-background/95 backdrop-blur-xl shadow-xl"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold tracking-tight text-foreground">Notifications</span>
+            {hasUnread && (
+              <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                {unreadCount} new
+              </span>
+            )}
+          </div>
+          {hasUnread && (
+            <button
+              type="button"
+              onClick={() => markAllAsRead()}
+              className="text-[11px] font-semibold text-brand hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <CheckCheck className="h-3 w-3" /> Mark all read
+            </button>
+          )}
+        </div>
+
+        {/* List Body */}
+        <div className="max-h-[340px] overflow-y-auto divide-y divide-border/40 custom-scrollbar">
+          {notifications.length === 0 ? (
+            <div className="py-8 text-center">
+              <Bell className="mx-auto h-6 w-6 text-muted-foreground/50 mb-2" />
+              <p className="text-xs font-semibold text-foreground">You're all caught up</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">No notifications right now.</p>
+            </div>
+          ) : (
+            notifications.slice(0, 6).map((item) => (
+              <div
+                key={item.id}
+                onClick={() => markAsRead(item.id)}
+                className={cn(
+                  "group flex items-start gap-3 p-3.5 transition-colors cursor-pointer hover:bg-secondary/60",
+                  !item.read && "bg-brand/5 dark:bg-brand/10"
+                )}
+              >
+                <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-secondary/80 border border-border/50">
+                  {getNotificationIcon(item.type)}
+                </div>
+                <div className="flex-1 space-y-0.5 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      className={cn(
+                        "text-xs font-semibold truncate text-foreground",
+                        !item.read && "font-bold text-brand"
+                      )}
+                    >
+                      {item.title}
+                    </p>
+                    {!item.read && <span className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                    {item.message}
+                  </p>
+                  <span className="text-[10px] text-muted-foreground/70 block pt-0.5">
+                    {formatRelativeTime(item.createdAt)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border/50 p-2 text-center bg-muted/20 rounded-b-2xl">
+          <Link
+            to="/notifications"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline py-1"
+          >
+            <span>View all notifications</span>
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function SiteNav() {
@@ -169,22 +337,8 @@ export function SiteNav() {
                 </TooltipContent>
               </Tooltip>
 
-              {/* Notifications Button */}
-              <Tooltip side="bottom">
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                    aria-label="Notifications"
-                  >
-                    <Bell className="h-4 w-4" />
-                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand ring-2 ring-background" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Notifications
-                </TooltipContent>
-              </Tooltip>
+              {/* Real Notification Bell & Dropdown */}
+              <NotificationBellDropdown />
 
               {/* Theme Toggle */}
               <ThemeToggle />
@@ -468,7 +622,9 @@ function PageShellContent({ children }: { children: React.ReactNode }) {
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <PageShellContent>{children}</PageShellContent>
+      <NotificationProvider>
+        <PageShellContent>{children}</PageShellContent>
+      </NotificationProvider>
     </SidebarProvider>
   );
 }

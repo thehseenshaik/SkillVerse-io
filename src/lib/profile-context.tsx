@@ -11,6 +11,7 @@ import {
 import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
 import { fbDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { createNotification } from "@/lib/services/notification-service";
 
 /**
  * Profile store — synced to Firestore per user (users/{uid}).
@@ -267,6 +268,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         // Only flip to "saved" if this write is still for the current uid.
         if (currentUidRef.current === uid) {
           setSyncStatus("saved");
+          createNotification(uid, {
+            type: "profile",
+            title: "Profile updated",
+            message: "Your SkillVerse profile has been updated.",
+            idempotencyKey: `profile_upd_${uid}_${Math.floor(Date.now() / 60000)}`,
+          }).catch(() => {});
           setTimeout(
             () => setSyncStatus((s) => (s === "saved" ? "idle" : s)),
             1500,
