@@ -971,17 +971,18 @@ function ConnectionsTab() {
                           type="button"
                           onClick={p.onSync}
                           disabled={store.isSyncing}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary transition-colors disabled:opacity-50 cursor-pointer"
+                          className="relative group overflow-hidden inline-flex items-center gap-1.5 rounded-xl border border-brand/40 bg-background/80 hover:bg-brand/10 px-3.5 py-1.5 text-xs font-bold text-foreground hover:text-brand hover:border-brand transition-all duration-300 shadow-2xs hover:shadow-md hover:shadow-brand/20 hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50 cursor-pointer"
                         >
-                          <RefreshCw className={`h-3.5 w-3.5 ${store.isSyncing ? "animate-spin" : ""}`} />
-                          Sync
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
+                          <RefreshCw className={`h-3.5 w-3.5 text-brand transition-transform duration-500 group-hover:rotate-180 ${store.isSyncing ? "animate-spin" : ""}`} />
+                          <span>Sync</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={p.onDisconnect}
                         disabled={store.isSyncing}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 cursor-pointer"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:border-destructive transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                       >
                         Disconnect
                       </button>
@@ -989,9 +990,10 @@ function ConnectionsTab() {
                   ) : (
                     <Link
                       to="/profile"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-semibold text-brand-foreground hover:opacity-90 transition-opacity shadow-2xs"
+                      className="relative group overflow-hidden inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand via-brand-strong to-brand px-4 py-1.5 text-xs font-extrabold text-white shadow-md shadow-brand/25 hover:shadow-lg hover:shadow-brand/40 hover:scale-[1.04] active:scale-[0.96] transition-all duration-300 cursor-pointer"
                     >
-                      Connect
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
+                      <span>Connect</span>
                     </Link>
                   )}
                 </div>
