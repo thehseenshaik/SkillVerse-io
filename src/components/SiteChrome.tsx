@@ -130,39 +130,7 @@ export function SiteNav() {
             <Wordmark />
           </Link>
 
-          {/* Workspace Dropdown */}
-          {isAppView && (
-            <>
-              <div className="hidden sm:block h-4 w-px bg-border/60" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="hidden sm:flex items-center gap-1.5 rounded-lg border border-border/40 bg-secondary/50 px-2.5 py-1 text-xs transition-colors hover:bg-secondary hover:border-border">
-                    <Building2 className="h-3.5 w-3.5 text-brand" />
-                    <span className="font-semibold text-foreground">
-                      SkillVerse Workspace
-                    </span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Workspaces
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem className="flex items-center justify-between font-medium">
-                    <span className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-brand" />
-                      SkillVerse Workspace
-                    </span>
-                    <Check className="h-4 w-4 text-brand" />
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-xs text-muted-foreground cursor-pointer">
-                    + Create New Workspace
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
+
 
           {/* Public Top Links if Unauthenticated */}
           {!isAppView && (
