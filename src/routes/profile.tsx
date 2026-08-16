@@ -25,7 +25,8 @@ import {
   ArrowRight,
   AlertTriangle,
   Link as LinkIcon,
-  AtSign
+  AtSign,
+  BookOpen,
 } from "lucide-react";
 import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { SiLeetcode, SiCodeforces, SiCodechef, SiHackerrank } from "react-icons/si";
