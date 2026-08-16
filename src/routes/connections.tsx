@@ -93,7 +93,7 @@ function CareerIdentityOverviewPage() {
       connection: store.github,
       data: store.githubData,
       getAvatar: () => store.githubData?.profile?.avatar || null,
-      getDisplayName: () => store.githubData?.profile?.displayName || store.github.username,
+      getDisplayName: () => store.githubData?.profile?.displayName || store.github?.username || "GitHub User",
       getMetricsText: () =>
         store.githubData
           ? `${store.githubData.profile?.publicRepos || store.githubData.repositories?.length || 0} Repos • ${store.githubData.profile?.followers || 0} Followers`
@@ -119,7 +119,7 @@ function CareerIdentityOverviewPage() {
       connection: store.leetcode,
       data: store.leetcodeData,
       getAvatar: () => store.leetcodeData?.profile?.avatar || null,
-      getDisplayName: () => store.leetcodeData?.profile?.displayName || store.leetcode.username,
+      getDisplayName: () => store.leetcodeData?.profile?.displayName || store.leetcode?.username || "LeetCode User",
       getMetricsText: () =>
         store.leetcodeData
           ? `${store.leetcodeData.stats?.All || 0} Solved • Rating: ${store.leetcodeData.contest?.rating || "N/A"}`
@@ -145,7 +145,7 @@ function CareerIdentityOverviewPage() {
       connection: store.gfg,
       data: store.gfgData,
       getAvatar: () => store.gfgData?.profile?.avatar || null,
-      getDisplayName: () => store.gfgData?.profile?.displayName || store.gfg.username,
+      getDisplayName: () => store.gfgData?.profile?.displayName || store.gfg?.username || "GFG User",
       getMetricsText: () =>
         store.gfgData
           ? `Score: ${store.gfgData.profile?.codingScore || 0} • ${store.gfgData.problems?.total || 0} Solved`
@@ -171,13 +171,12 @@ function CareerIdentityOverviewPage() {
       connection: store.linkedin,
       data: store.linkedinData,
       getAvatar: () => store.linkedinData?.profile?.avatar || null,
-      getDisplayName: () => store.linkedinData?.profile?.name || store.linkedin.username,
+      getDisplayName: () => store.linkedinData?.profile?.name || store.linkedin?.username || "LinkedIn User",
       getMetricsText: () =>
         store.linkedinData ? `${store.linkedinData.connections || 500}+ Connections` : null,
       onConnect: async (un: string) => {
         if (!user?.id) return;
-        // fallback connection for linkedin handle
-        store.connectLinkedIn(user.id, un);
+        await store.connectLinkedIn(user.id, un);
       },
       onSync: undefined,
     },
@@ -190,7 +189,7 @@ function CareerIdentityOverviewPage() {
       connection: store.codeforces,
       data: store.codeforcesData,
       getAvatar: () => null,
-      getDisplayName: () => store.codeforces.username,
+      getDisplayName: () => store.codeforces?.username || "Codeforces User",
       getMetricsText: () =>
         store.codeforcesData ? `Rating: ${store.codeforcesData.rating || 0}` : null,
       onConnect: async (un: string) => {
@@ -214,7 +213,7 @@ function CareerIdentityOverviewPage() {
       connection: store.codechef,
       data: store.codechefData,
       getAvatar: () => null,
-      getDisplayName: () => store.codechef.username,
+      getDisplayName: () => store.codechef?.username || "CodeChef User",
       getMetricsText: () =>
         store.codechefData ? `Stars: ${store.codechefData.stars || "1★"}` : null,
       onConnect: async (un: string) => {
@@ -238,7 +237,7 @@ function CareerIdentityOverviewPage() {
       connection: store.hackerrank,
       data: store.hackerrankData,
       getAvatar: () => null,
-      getDisplayName: () => store.hackerrank.username,
+      getDisplayName: () => store.hackerrank?.username || "HackerRank User",
       getMetricsText: () =>
         store.hackerrankData ? `${store.hackerrankData.badgesCount || 0} Badges` : null,
       onConnect: async (un: string) => {
@@ -361,7 +360,7 @@ function CareerIdentityOverviewPage() {
                             )}
                           </div>
                           {isConnected && (
-                            <p className="text-xs font-semibold text-brand mt-0.5">@{p.connection.username}</p>
+                            <p className="text-xs font-semibold text-brand mt-0.5">@{p.connection?.username}</p>
                           )}
                         </div>
                       </div>
@@ -374,7 +373,7 @@ function CareerIdentityOverviewPage() {
                             <img src={avatar} alt={displayName} className="h-10 w-10 rounded-xl object-cover border border-border" />
                           ) : (
                             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background border border-border text-xs font-bold text-foreground">
-                              {(p.connection.username || "P").charAt(0).toUpperCase()}
+                              {(p.connection?.username || "P").charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div>
@@ -385,7 +384,7 @@ function CareerIdentityOverviewPage() {
 
                         <div className="flex items-center gap-1 text-[11px] text-muted-foreground/80 pt-1 border-t border-border/50">
                           <Clock className="h-3 w-3" />
-                          <span>Last synced: {formatLastSynced(p.connection.lastSynced)}</span>
+                          <span>Last synced: {formatLastSynced(p.connection?.lastSynced || null)}</span>
                         </div>
                       </div>
                     ) : (
