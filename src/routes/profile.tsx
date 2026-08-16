@@ -27,7 +27,7 @@ import {
   Link as LinkIcon,
   AtSign
 } from "lucide-react";
-import { FaGithub } from "react-icons/fa";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
 import { SiLeetcode, SiCodeforces, SiCodechef, SiHackerrank } from "react-icons/si";
 import { PageShell } from "@/components/SiteChrome";
 import { AuthGate } from "@/components/AuthGate";
@@ -104,7 +104,7 @@ const basicsSchema = z.object({
   gender: z.string().trim().max(30).optional(),
 });
 
-type PlatformKey = "github" | "leetcode" | "gfg" | "codeforces" | "codechef" | "hackerrank";
+type PlatformKey = "github" | "leetcode" | "gfg" | "codeforces" | "codechef" | "hackerrank" | "linkedin";
 
 export function ProfilePage() {
   const { user } = useAuth();
@@ -129,6 +129,14 @@ export function ProfilePage() {
     codeforces,
     codechef,
     hackerrank,
+    linkedin,
+    githubData,
+    leetcodeData,
+    gfgData,
+    codeforcesData,
+    codechefData,
+    hackerrankData,
+    linkedinData,
     validateGitHubUsername,
     connectGitHub,
     syncGitHub,
@@ -147,6 +155,8 @@ export function ProfilePage() {
     validateHackerRankUsername,
     connectHackerRank,
     syncHackerRank,
+    connectLinkedIn,
+    syncLinkedIn,
     fetchDashboardData,
     clearError,
   } = usePlatformStore();
@@ -429,6 +439,9 @@ export function ProfilePage() {
           await validateHackerRankUsername(handle);
           await connectHackerRank(user.id, handle);
           break;
+        case "linkedin":
+          await connectLinkedIn(user.id, handle);
+          break;
       }
 
       await refreshConnections();
@@ -465,6 +478,9 @@ export function ProfilePage() {
         case "hackerrank":
           await syncHackerRank(user.id);
           break;
+        case "linkedin":
+          await syncLinkedIn(user.id);
+          break;
       }
       await refreshConnections();
       toast.success(`Synced ${key.toUpperCase()} data`);
@@ -477,17 +493,88 @@ export function ProfilePage() {
 
   // Platform Connection Map
   const platformsList = [
-    { name: "GitHub", icon: FaGithub, key: "github" as PlatformKey, data: github, desc: "Connect GitHub to sync repositories, commits, and activity." },
-    { name: "LeetCode", icon: SiLeetcode, key: "leetcode" as PlatformKey, data: leetcode, desc: "Connect LeetCode to sync solved problems and rating." },
-    { name: "GeeksforGeeks", icon: SiCodeforces, key: "gfg" as PlatformKey, data: gfg, desc: "Connect GeeksforGeeks to sync coding score and streak." },
-    { name: "Codeforces", icon: SiCodeforces, key: "codeforces" as PlatformKey, data: codeforces, desc: "Connect Codeforces to sync rating, rank, and contest activity." },
-    { name: "CodeChef", icon: SiCodechef, key: "codechef" as PlatformKey, data: codechef, desc: "Connect CodeChef to sync rating, stars, and problem stats." },
-    { name: "HackerRank", icon: SiHackerrank, key: "hackerrank" as PlatformKey, data: hackerrank, desc: "Connect HackerRank to sync domain badges and verified skills." },
+    {
+      name: "GitHub",
+      icon: FaGithub,
+      key: "github" as PlatformKey,
+      data: github,
+      route: "/connections/github",
+      color: "#24292E",
+      badge: "Code & Commits",
+      desc: "Repositories, contribution activity, stars, and code metrics.",
+      getMetric: () => (githubData?.profile?.publicRepos ? `${githubData.profile.publicRepos} Repositories` : null),
+    },
+    {
+      name: "LeetCode",
+      icon: SiLeetcode,
+      key: "leetcode" as PlatformKey,
+      data: leetcode,
+      route: "/connections/leetcode",
+      color: "#FFA116",
+      badge: "DSA & Problem Solving",
+      desc: "Solved problem count, contest rating, and global ranking.",
+      getMetric: () => (leetcodeData?.stats?.All ? `${leetcodeData.stats.All} Solved` : null),
+    },
+    {
+      name: "LinkedIn",
+      icon: FaLinkedin,
+      key: "linkedin" as PlatformKey,
+      data: linkedin,
+      route: "/connections/linkedin",
+      color: "#0A66C2",
+      badge: "Professional Identity",
+      desc: "Verified credentials, work telemetry, and professional network.",
+      getMetric: () => (linkedinData?.connections ? `${linkedinData.connections}+ Connections` : "Verified Identity"),
+    },
+    {
+      name: "GeeksforGeeks",
+      icon: BookOpen,
+      key: "gfg" as PlatformKey,
+      data: gfg,
+      route: "/connections/gfg",
+      color: "#2F8D46",
+      badge: "Coding Score & POTD",
+      desc: "Institute rank, coding score, problem streak, and POTD progress.",
+      getMetric: () => (gfgData?.profile?.codingScore ? `${gfgData.profile.codingScore} Coding Score` : null),
+    },
+    {
+      name: "Codeforces",
+      icon: SiCodeforces,
+      key: "codeforces" as PlatformKey,
+      data: codeforces,
+      route: "/connections/codeforces",
+      color: "#1F8ACB",
+      badge: "Competitive Rating",
+      desc: "Competitive rating, max rank, and contest performance.",
+      getMetric: () => (codeforcesData?.profile?.rating ? `Rating ${codeforcesData.profile.rating}` : null),
+    },
+    {
+      name: "CodeChef",
+      icon: SiCodechef,
+      key: "codechef" as PlatformKey,
+      data: codechef,
+      route: "/connections/codechef",
+      color: "#5B4638",
+      badge: "Stars & Division",
+      desc: "Global rating, star badges, and contest division rank.",
+      getMetric: () => (codechefData?.profile?.rating ? `Rating ${codechefData.profile.rating}` : null),
+    },
+    {
+      name: "HackerRank",
+      icon: SiHackerrank,
+      key: "hackerrank" as PlatformKey,
+      data: hackerrank,
+      route: "/connections/hackerrank",
+      color: "#2EC866",
+      badge: "Domain Badges",
+      desc: "Verified domain badges, challenge certificates, and skills.",
+      getMetric: () => (hackerrankData?.profile?.badgeCount ? `${hackerrankData.profile.badgeCount} Badges` : null),
+    },
   ];
 
   const connectedCount = useMemo(() => {
     return platformsList.filter((p) => p.data?.connected && p.data?.username).length;
-  }, [github, leetcode, gfg, codeforces, codechef, hackerrank]);
+  }, [github, leetcode, gfg, codeforces, codechef, hackerrank, linkedin]);
 
   // Skill Chips Array
   const skillChips = useMemo(() => {
@@ -1239,75 +1326,163 @@ export function ProfilePage() {
                 )}
               </div>
 
-              {/* 9. CONNECTED PLATFORMS */}
-              <div id="platforms" className="space-y-3 pt-2">
-                <DashboardSectionHeader title="CONNECTED PLATFORMS" desc="Sync live coding stats, repositories, and streaks across platforms." />
+              {/* 9. CONNECTED PLATFORMS & IDENTITY TELEMETRY */}
+              <div id="platforms" className="space-y-4 pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-1 border-b border-border/50">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20 text-[10px] font-bold uppercase tracking-wider">
+                      <Sparkles className="h-3 w-3" /> VERIFIED DEVELOPER TELEMETRY
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+                      Connected Identity Profiles
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Live telemetry synced across the platforms defining your coding rank and credentials.
+                    </p>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-card border border-border/80 text-xs font-bold text-foreground shadow-2xs">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      {connectedCount} of {platformsList.length} Connected
+                    </span>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3.5 rounded-xl text-xs font-bold gap-1.5 border-border/80 hover:border-brand/40 shadow-xs"
+                    >
+                      <RouterLink to="/connections">
+                        Identity Hub <ArrowRight className="h-3.5 w-3.5 text-brand" />
+                      </RouterLink>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 pt-2">
                   {platformsList.map((plat) => {
                     const Icon = plat.icon;
                     const isConnected = plat.data?.connected && plat.data?.username;
                     const isSyncingThis = syncingPlatformKey === plat.key;
+                    const metric = plat.getMetric();
 
                     return (
                       <div
                         key={plat.name}
-                        className="glass rounded-2xl border border-border/60 bg-card p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-brand/30 transition-all"
+                        className={cn(
+                          "group relative overflow-hidden rounded-3xl border transition-all duration-300 p-5 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md",
+                          isConnected
+                            ? "bg-gradient-to-br from-card via-card to-card/60 border-border/70 hover:border-brand/40 hover:-translate-y-0.5"
+                            : "bg-card/40 border-border/50 opacity-90 hover:opacity-100 hover:border-border"
+                        )}
                       >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 rounded-xl bg-secondary/80 text-foreground grid place-items-center shrink-0">
-                                <Icon className="h-4 w-4" />
+                        {/* Custom Brand Top Hairline Glow */}
+                        <div
+                          className="absolute inset-x-0 top-0 h-1 transition-opacity duration-300 opacity-60 group-hover:opacity-100"
+                          style={{ backgroundColor: plat.color }}
+                        />
+
+                        <div className="space-y-3">
+                          {/* Header: Icon + Platform Name + Status Tag */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-105"
+                                style={{
+                                  backgroundColor: `${plat.color}14`,
+                                  border: `1px solid ${plat.color}35`,
+                                  color: plat.color,
+                                }}
+                              >
+                                <Icon className="h-5.5 w-5.5" />
                               </div>
-                              <div>
-                                <h4 className="text-xs font-bold text-foreground leading-tight">{plat.name}</h4>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {isConnected ? `@${plat.data?.username}` : "Not Connected"}
-                                </span>
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="text-sm font-extrabold text-foreground tracking-tight leading-none">
+                                    {plat.name}
+                                  </h4>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border/40">
+                                    {plat.badge}
+                                  </span>
+                                </div>
+                                {isConnected ? (
+                                  <p className="text-xs font-semibold text-brand truncate">
+                                    @{plat.data?.username}
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] font-medium text-muted-foreground/80">
+                                    Not Connected
+                                  </p>
+                                )}
                               </div>
                             </div>
 
+                            {/* Status Pill */}
                             <span
                               className={cn(
-                                "h-2 w-2 rounded-full",
-                                isConnected ? "bg-emerald-500" : "bg-muted-foreground/30"
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold shrink-0 border",
+                                isConnected
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                  : "bg-muted/60 text-muted-foreground border-border/50"
                               )}
-                            />
+                            >
+                              <span
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full",
+                                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
+                                )}
+                              />
+                              {isConnected ? "Live" : "Offline"}
+                            </span>
                           </div>
 
-                          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                            {plat.desc}
-                          </p>
+                          {/* Metric or Feature Description */}
+                          <div className="pt-1">
+                            {isConnected && metric ? (
+                              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/70 border border-border/60 text-xs font-bold text-foreground">
+                                <Sparkles className="h-3.5 w-3.5 text-brand" />
+                                <span>{metric}</span>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                                {plat.desc}
+                              </p>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-border/40 text-[10px]">
+                        {/* Card Actions Footer */}
+                        <div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs">
                           {isConnected ? (
                             <>
-                              <span className="text-muted-foreground flex items-center gap-1">
-                                <RefreshCw className="h-2.5 w-2.5" /> Synced
-                              </span>
+                              <RouterLink
+                                to={plat.route}
+                                className="inline-flex items-center gap-1 font-bold text-xs text-brand hover:underline"
+                              >
+                                View Telemetry <ArrowRight className="h-3 w-3" />
+                              </RouterLink>
+
                               <Button
                                 size="sm"
                                 variant="outline"
                                 disabled={isSyncingThis}
-                                className="h-7 px-3 text-[11px] rounded-xl font-semibold gap-1 shrink-0"
+                                className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 border-border/70 hover:border-brand/40 shadow-2xs"
                                 onClick={() => handleSyncPlatform(plat.key)}
                               >
-                                <RefreshCw className={cn("h-3 w-3", isSyncingThis && "animate-spin")} />
-                                {isSyncingThis ? "Syncing..." : "Sync"}
+                                <RefreshCw className={cn("h-3 w-3 text-muted-foreground", isSyncingThis && "animate-spin text-brand")} />
+                                {isSyncingThis ? "Syncing..." : "Sync Live"}
                               </Button>
                             </>
                           ) : (
                             <>
-                              <span className="text-muted-foreground">Not synced</span>
+                              <span className="text-[11px] font-medium text-muted-foreground">Unlinked account</span>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 px-3 text-[11px] rounded-xl font-semibold hover:border-brand hover:text-brand shrink-0"
+                                className="h-8 px-3.5 rounded-xl text-xs font-bold hover:border-brand hover:text-brand shadow-2xs gap-1.5"
                                 onClick={() => openConnectModal(plat.key)}
                               >
-                                <LinkIcon className="h-3 w-3 mr-1" /> Connect
+                                <LinkIcon className="h-3 w-3 text-brand" /> Connect
                               </Button>
                             </>
                           )}
