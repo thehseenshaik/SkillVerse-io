@@ -62,7 +62,7 @@ const QUICK_ACTIONS = [
   "Connect platforms"
 ];
 
-function AssistantPage() {
+export function AssistantPage() {
   const { user } = useAuth();
   const { profile, completion } = useProfile();
   const { githubData, leetcodeData, github, leetcode } = usePlatformStore();

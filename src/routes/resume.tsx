@@ -50,7 +50,7 @@ function ResumePage() {
               <span className="text-gradient">resume</span>
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Choose how you want to create your resume - let AI do the heavy lifting or build it manually with full control.
+              Build, improve and manage a resume that reflects your skills.
             </p>
           </div>
 

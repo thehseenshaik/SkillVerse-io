@@ -2,29 +2,14 @@ import * as React from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  User,
-  Trophy,
-  TrendingUp,
-  Github,
-  Code2,
-  BookOpen,
-  FolderKanban,
   FileText,
+  Code2,
+  BarChart3,
   Sparkles,
-  FileSearch,
-  Target,
   Settings,
   HelpCircle,
+  User,
   ChevronLeft,
-  ChevronDown,
-  Compass,
-  Award,
-  Briefcase,
-  Flame,
-  Layers,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import skillverseLogo from "@/assets/skillverse-logo.png";
 
 export interface NavItem {
   to: string;
@@ -40,76 +26,18 @@ export interface NavItem {
   icon: React.ElementType;
 }
 
-export interface NavSection {
-  key: string;
-  title: string;
-  icon: React.ElementType;
-  items: NavItem[];
-}
-
-export const navSections: NavSection[] = [
-  {
-    key: "OVERVIEW",
-    title: "OVERVIEW",
-    icon: LayoutDashboard,
-    items: [
-      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    key: "CAREER",
-    title: "CAREER",
-    icon: Briefcase,
-    items: [
-      { to: "/profile", label: "My Profile", icon: User },
-      { to: "/career-snapshot", label: "Career Identity", icon: Trophy },
-      { to: "/resume-builder", label: "Resume", icon: FileText },
-    ],
-  },
-  {
-    key: "PROGRESS",
-    title: "PROGRESS",
-    icon: TrendingUp,
-    items: [
-      { to: "/ai-progress", label: "Skill Progress", icon: Flame },
-      { to: "/ai-career-roadmap", label: "Learning Roadmap", icon: Compass },
-      { to: "/achievements", label: "Achievements", icon: Award },
-    ],
-  },
-  {
-    key: "PLATFORMS",
-    title: "PLATFORMS",
-    icon: Code2,
-    items: [
-      { to: "/analytics/github", label: "GitHub", icon: Github },
-      { to: "/analytics/leetcode", label: "LeetCode", icon: Code2 },
-      { to: "/analytics/gfg", label: "GeeksforGeeks", icon: BookOpen },
-    ],
-  },
-  {
-    key: "AITOOLS",
-    title: "AI TOOLS",
-    icon: Sparkles,
-    items: [
-      { to: "/ai-resume-generator", label: "AI Resume", icon: FileText },
-      { to: "/ai-resume-analyzer", label: "Resume Analyzer", icon: FileSearch },
-      { to: "/ai-career", label: "Career Recommendations", icon: Sparkles },
-      { to: "/ai-skill-gaps", label: "Skill Gap Analysis", icon: Target },
-    ],
-  },
-  {
-    key: "PROJECTS",
-    title: "PROJECTS",
-    icon: FolderKanban,
-    items: [
-      { to: "/portfolio-editor", label: "My Projects", icon: FolderKanban },
-    ],
-  },
+export const primaryNavItems: NavItem[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/resume", label: "Resume", icon: FileText },
+  { to: "/practice", label: "Practice", icon: Code2 },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/copilot", label: "Copilot", icon: Sparkles },
 ];
 
 export const bottomNavItems: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
-  { to: "/assistant", label: "Help & Support", icon: HelpCircle },
+  { to: "/copilot", label: "Help & Support", icon: HelpCircle },
+  { to: "/profile", label: "Profile", icon: User },
 ];
 
 type SidebarMode = "auto" | "manual";
@@ -134,7 +62,7 @@ const SidebarContext = React.createContext<SidebarContextType | undefined>(
 );
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  // Always default permanently to Auto Hover Mode
+  // Permanently default to Auto Hover Mode
   const [sidebarMode, setSidebarMode] = React.useState<SidebarMode>("auto");
   const [manualState, setManualState] = React.useState<ManualState>("expanded");
 
@@ -143,7 +71,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   const [mobileOpen, setMobileOpen] = React.useState<boolean>(false);
 
-  // Clear any old localStorage overrides to guarantee permanent Auto Hover default
+  // Clear legacy localStorage overrides
   React.useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("skillverse_sidebar_mode");
@@ -152,9 +80,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Effective collapsed state:
-  // In Auto Mode: collapsed when mouse is outside, expanded when mouse enters
-  // In Manual Mode: respects manual toggle choice
+  // Calculate effective collapsed state
   const collapsed = React.useMemo(() => {
     if (sidebarMode === "manual") {
       return manualState === "collapsed";
@@ -183,11 +109,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   const toggleCollapsed = React.useCallback(() => {
     if (sidebarMode === "auto") {
-      // Temporarily pin state in current opposite
       setSidebarMode("manual");
       setManualState(collapsed ? "expanded" : "collapsed");
     } else {
-      // Toggle back to auto mode or switch manual mode state
       if (manualState === "collapsed") {
         setManualState("expanded");
       } else {
@@ -277,83 +201,6 @@ export function AppSidebar() {
     return currentPath === to || currentPath.startsWith(`${to}/`);
   };
 
-  // Section Open State:
-  // 1. clickOpenedSections: Set of section keys explicitly toggled by click or containing active route
-  // 2. hoverOpenedSection: Section key dynamically opened by mouse hover
-  const [clickOpenedSections, setClickOpenedSections] = React.useState<Set<string>>(() => {
-    return new Set(["OVERVIEW", "CAREER", "PROGRESS", "PLATFORMS", "AITOOLS", "PROJECTS"]);
-  });
-
-  const [hoverOpenedSection, setHoverOpenedSection] = React.useState<string | null>(null);
-  const sectionLeaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  // Automatically ensure the section containing the active route is in clickOpenedSections
-  React.useEffect(() => {
-    const currentPath = location.pathname;
-    navSections.forEach((section) => {
-      const hasActive = section.items.some((item) => {
-        if (item.to === "/dashboard") return currentPath === "/dashboard" || currentPath === "/";
-        return currentPath === item.to || currentPath.startsWith(`${item.to}/`);
-      });
-      if (hasActive) {
-        setClickOpenedSections((prev) => new Set(prev).add(section.key));
-      }
-    });
-  }, [location.pathname]);
-
-  // Section click toggle handler
-  const handleSectionClick = (key: string) => {
-    setClickOpenedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
-
-  // Section mouse enter handler (Hover-to-Open)
-  const handleSectionMouseEnter = (key: string) => {
-    if (typeof window !== "undefined" && !window.matchMedia("(hover: hover)").matches) {
-      return; // Skip hover logic on touch devices
-    }
-    if (sectionLeaveTimerRef.current) {
-      clearTimeout(sectionLeaveTimerRef.current);
-      sectionLeaveTimerRef.current = null;
-    }
-    if (!clickOpenedSections.has(key)) {
-      setHoverOpenedSection(key);
-    }
-  };
-
-  // Section mouse leave handler (Hover-to-Close with 200ms debounce)
-  const handleSectionMouseLeave = (key: string) => {
-    if (typeof window !== "undefined" && !window.matchMedia("(hover: hover)").matches) {
-      return;
-    }
-    if (hoverOpenedSection === key) {
-      if (sectionLeaveTimerRef.current) {
-        clearTimeout(sectionLeaveTimerRef.current);
-      }
-      sectionLeaveTimerRef.current = setTimeout(() => {
-        setHoverOpenedSection((current) => (current === key ? null : current));
-        sectionLeaveTimerRef.current = null;
-      }, 200);
-    }
-  };
-
-  // Determine if a section should render open
-  const isSectionExpanded = (section: NavSection) => {
-    const hasActiveChild = section.items.some((item) => isRouteActive(item.to));
-    return (
-      hasActiveChild ||
-      clickOpenedSections.has(section.key) ||
-      hoverOpenedSection === section.key
-    );
-  };
-
   return (
     <TooltipProvider delayDuration={150}>
       <aside
@@ -366,120 +213,68 @@ export function AppSidebar() {
           collapsed ? "w-[68px]" : "w-[250px]"
         )}
       >
-        {/* Independent Scrollable Navigation Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-3 custom-scrollbar">
-          {navSections.map((section) => {
-            const SectionIcon = section.icon;
-            const isOpen = isSectionExpanded(section);
-            const hasActiveChild = section.items.some((item) => isRouteActive(item.to));
+        {/* Sidebar Brand Header */}
+        <div className="shrink-0 p-4 border-b border-border/40 flex items-center gap-3">
+          <img
+            src={skillverseLogo}
+            alt="SkillVerse"
+            width={24}
+            height={24}
+            className="h-6 w-6 object-contain shrink-0"
+          />
+          {!collapsed && (
+            <span className="font-bold text-base tracking-tight text-foreground truncate">
+              SkillVerse
+            </span>
+          )}
+        </div>
 
-            return (
-              <div
-                key={section.key}
-                onMouseEnter={() => handleSectionMouseEnter(section.key)}
-                onMouseLeave={() => handleSectionMouseLeave(section.key)}
-                className="space-y-1"
+        {/* Primary 5 Authenticated Navigation Items */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1.5 custom-scrollbar">
+          {primaryNavItems.map((item) => {
+            const Icon = item.icon;
+            const active = isRouteActive(item.to);
+
+            const linkContent = (
+              <Link
+                to={item.to}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                  active
+                    ? "bg-brand/12 text-brand font-semibold shadow-2xs dark:bg-brand/20"
+                    : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground",
+                  collapsed && "justify-center px-0"
+                )}
               >
-                {/* Section Header */}
-                {collapsed ? (
-                  /* Collapsed View Section Header / Icon Tooltip */
-                  <Tooltip side="right" sideOffset={12}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => handleSectionClick(section.key)}
-                        className={cn(
-                          "w-full flex items-center justify-center py-2.5 rounded-lg transition-all",
-                          hasActiveChild
-                            ? "text-brand font-semibold bg-brand/12"
-                            : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
-                        )}
-                      >
-                        <SectionIcon className="h-4 w-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-foreground text-background font-semibold text-xs shadow-md py-1.5 px-3">
-                      {section.title}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  /* Expanded View Accordion Header Button */
-                  <button
-                    type="button"
-                    onClick={() => handleSectionClick(section.key)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider uppercase transition-colors outline-none focus-visible:ring-1 focus-visible:ring-brand cursor-pointer",
-                      hasActiveChild
-                        ? "text-brand"
-                        : "text-muted-foreground/80 hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <SectionIcon className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{section.title}</span>
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 shrink-0 transition-transform duration-300 ease-out",
-                        isOpen ? "rotate-180 text-brand" : "rotate-0 text-muted-foreground/70"
-                      )}
-                    />
-                  </button>
+                {active && !collapsed && (
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand shadow-xs" />
                 )}
-
-                {/* Collapsible Animated Child Navigation Links */}
-                {!collapsed && (
-                  <div
-                    className={cn(
-                      "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
-                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <div
-                        className={cn(
-                          "pl-2 space-y-0.5 transition-transform duration-300 ease-out",
-                          isOpen ? "translate-y-0" : "-translate-y-1"
-                        )}
-                      >
-                        {section.items.map((item) => {
-                          const Icon = item.icon;
-                          const active = isRouteActive(item.to);
-
-                          return (
-                            <Link
-                              key={item.to}
-                              to={item.to}
-                              className={cn(
-                                "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 ease-in-out outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                                active
-                                  ? "bg-brand/12 text-brand font-semibold shadow-2xs dark:bg-brand/20"
-                                  : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
-                              )}
-                            >
-                              {active && (
-                                <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand shadow-xs" />
-                              )}
-                              <Icon
-                                className={cn(
-                                  "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-105",
-                                  active ? "text-brand" : "text-muted-foreground group-hover:text-foreground"
-                                )}
-                              />
-                              <span className="truncate">{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                <Icon
+                  className={cn(
+                    "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-105",
+                    active ? "text-brand" : "text-muted-foreground group-hover:text-foreground"
+                  )}
+                />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
             );
+
+            if (collapsed) {
+              return (
+                <Tooltip key={item.to} side="right" sideOffset={12}>
+                  <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                  <TooltipContent side="right" className="bg-foreground text-background font-semibold text-xs shadow-md py-1.5 px-3">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return <React.Fragment key={item.to}>{linkContent}</React.Fragment>;
           })}
         </div>
 
-        {/* Bottom Pinned Section: Settings, Help & Sidebar Toggle */}
+        {/* Bottom Pinned Navigation Section: Settings, Help & Profile */}
         <div className="shrink-0 p-3 border-t border-border/50 bg-background/50 space-y-1">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
@@ -521,7 +316,7 @@ export function AppSidebar() {
             return <React.Fragment key={item.to}>{content}</React.Fragment>;
           })}
 
-          {/* Sidebar Mode Indicator & Toggle Button */}
+          {/* Sidebar Mode Status & Manual Toggle Button */}
           <div className="pt-2 flex items-center justify-between border-t border-border/40">
             {!collapsed && (
               <div className="flex items-center gap-2 px-2 text-[11px] text-muted-foreground truncate">

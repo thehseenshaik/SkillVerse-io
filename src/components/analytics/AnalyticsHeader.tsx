@@ -89,7 +89,7 @@ export function AnalyticsHeader({
           </h1>
 
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Your live problem solving stats, repository activity, and competitive metrics in one unified dashboard.
+            Understand your progress, activity and career growth over time.
           </p>
         </div>
 

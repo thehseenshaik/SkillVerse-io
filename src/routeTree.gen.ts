@@ -40,6 +40,7 @@ import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as ConnectionsBackupRouteImport } from './routes/connections-backup'
 import { Route as ConnectionsPremiumRouteImport } from './routes/connections-premium'
 import { Route as ContributionsRouteImport } from './routes/contributions'
+import { Route as CopilotRouteImport } from './routes/copilot'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DashboardAdaptiveRouteImport } from './routes/dashboard-adaptive'
 import { Route as ErrorRouteImport } from './routes/error'
@@ -224,6 +225,11 @@ const ContributionsRoute = ContributionsRouteImport.update({
   path: '/contributions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CopilotRoute = CopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -397,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
+  '/copilot': typeof CopilotRoute
   '/dashboard': typeof DashboardRoute
   '/dashboard-adaptive': typeof DashboardAdaptiveRoute
   '/error': typeof ErrorRoute
@@ -458,6 +465,7 @@ export interface FileRoutesByTo {
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
+  '/copilot': typeof CopilotRoute
   '/dashboard': typeof DashboardRoute
   '/dashboard-adaptive': typeof DashboardAdaptiveRoute
   '/error': typeof ErrorRoute
@@ -520,6 +528,7 @@ export interface FileRoutesById {
   '/connections-backup': typeof ConnectionsBackupRoute
   '/connections-premium': typeof ConnectionsPremiumRoute
   '/contributions': typeof ContributionsRoute
+  '/copilot': typeof CopilotRoute
   '/dashboard': typeof DashboardRoute
   '/dashboard-adaptive': typeof DashboardAdaptiveRoute
   '/error': typeof ErrorRoute
@@ -583,6 +592,7 @@ export interface FileRouteTypes {
     | '/connections-backup'
     | '/connections-premium'
     | '/contributions'
+    | '/copilot'
     | '/dashboard'
     | '/dashboard-adaptive'
     | '/error'
@@ -644,6 +654,7 @@ export interface FileRouteTypes {
     | '/connections-backup'
     | '/connections-premium'
     | '/contributions'
+    | '/copilot'
     | '/dashboard'
     | '/dashboard-adaptive'
     | '/error'
@@ -705,6 +716,7 @@ export interface FileRouteTypes {
     | '/connections-backup'
     | '/connections-premium'
     | '/contributions'
+    | '/copilot'
     | '/dashboard'
     | '/dashboard-adaptive'
     | '/error'
@@ -767,6 +779,7 @@ export interface RootRouteChildren {
   ConnectionsBackupRoute: typeof ConnectionsBackupRoute
   ConnectionsPremiumRoute: typeof ConnectionsPremiumRoute
   ContributionsRoute: typeof ContributionsRoute
+  CopilotRoute: typeof CopilotRoute
   DashboardRoute: typeof DashboardRoute
   DashboardAdaptiveRoute: typeof DashboardAdaptiveRoute
   ErrorRoute: typeof ErrorRoute
@@ -1007,6 +1020,13 @@ declare module '@tanstack/react-router' {
       path: '/contributions'
       fullPath: '/contributions'
       preLoaderRoute: typeof ContributionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/copilot': {
+      id: '/copilot'
+      path: '/copilot'
+      fullPath: '/copilot'
+      preLoaderRoute: typeof CopilotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -1274,6 +1294,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConnectionsBackupRoute: ConnectionsBackupRoute,
   ConnectionsPremiumRoute: ConnectionsPremiumRoute,
   ContributionsRoute: ContributionsRoute,
+  CopilotRoute: CopilotRoute,
   DashboardRoute: DashboardRoute,
   DashboardAdaptiveRoute: DashboardAdaptiveRoute,
   ErrorRoute: ErrorRoute,

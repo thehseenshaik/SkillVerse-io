@@ -615,7 +615,7 @@ function PracticeHubPage() {
                 Practice smarter. <span className="text-gradient">Prepare better.</span>
               </h1>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl">
-                Strengthen your DSA, aptitude, and interview skills with focused practice built around your career goals.
+                Sharpen your skills with focused coding and technical practice.
               </p>
             </div>
 

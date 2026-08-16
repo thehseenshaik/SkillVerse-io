@@ -17,7 +17,6 @@ import {
   Twitter,
   User,
   X,
-  Building2,
   Check,
 } from "lucide-react";
 import skillverseLogo from "@/assets/skillverse-logo.png";
@@ -48,7 +47,7 @@ import { useState } from "react";
 import {
   AppSidebar,
   SidebarProvider,
-  navSections,
+  primaryNavItems,
   bottomNavItems,
   useSidebarState,
 } from "@/components/navigation/AppSidebar";
@@ -130,8 +129,6 @@ export function SiteNav() {
             <Wordmark />
           </Link>
 
-
-
           {/* Public Top Links if Unauthenticated */}
           {!isAppView && (
             <nav className="hidden items-center gap-1 md:flex ml-4">
@@ -156,11 +153,11 @@ export function SiteNav() {
         <div className="flex items-center gap-1.5 md:gap-2">
           {isAppView ? (
             <TooltipProvider delayDuration={150}>
-              {/* Help Button */}
+              {/* Help & Copilot Button */}
               <Tooltip side="bottom">
                 <TooltipTrigger asChild>
                   <Link
-                    to="/assistant"
+                    to="/copilot"
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                     aria-label="Help & Support"
                   >
@@ -208,7 +205,7 @@ export function SiteNav() {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-2 rounded-full border border-border/80 bg-background p-1 pl-1.5 pr-2.5 text-[13px] font-medium text-foreground transition-all hover:bg-secondary hover:border-border"
+                    className="flex items-center gap-2 rounded-full border border-border/80 bg-background p-1 pl-1.5 pr-2.5 text-[13px] font-medium text-foreground transition-all hover:bg-secondary hover:border-border cursor-pointer"
                   >
                     <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-brand to-brand-strong text-[11px] font-bold text-brand-foreground shadow-xs">
                       {userInitials}
@@ -310,32 +307,29 @@ export function SiteNav() {
 
           {isAppView ? (
             <div className="mt-6 space-y-6">
-              {navSections.map((section) => (
-                <div key={section.key} className="space-y-1">
-                  <div className="px-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase flex items-center gap-1.5">
-                    <section.icon className="h-3.5 w-3.5 text-brand" />
-                    {section.title}
-                  </div>
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                        activeProps={{
-                          className:
-                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand bg-brand/10",
-                        }}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
+              <div className="space-y-1">
+                <div className="px-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Navigation
                 </div>
-              ))}
+                {primaryNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                      activeProps={{
+                        className:
+                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand bg-brand/10",
+                      }}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
 
               <div className="space-y-1 border-t border-border pt-4">
                 {bottomNavItems.map((item) => {
@@ -407,85 +401,37 @@ export function SiteNav() {
   );
 }
 
-const footerLinks = [
-  { to: "/features", label: "Features" },
-  { to: "/career-score", label: "Career Score" },
-  { to: "/practice", label: "Practice" },
-  { to: "/resume", label: "Resume" },
-] as const;
-
-const footerSocials = [
-  { icon: Github, href: "https://github.com", label: "GitHub" },
-  { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
-  { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
-  { icon: Mail, href: "mailto:hello@skillverse.app", label: "Email" },
-] as const;
-
 export function SiteFooter() {
   return (
-    <footer className="relative mt-20 border-t border-border/60 bg-background/60">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent" />
-      <div className="mx-auto max-w-6xl px-6 py-6">
-        <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src={skillverseLogo}
-              alt="SkillVerse"
-              width={22}
-              height={22}
-              className="h-[22px] w-[22px] object-contain"
-            />
-            <span className="text-[13px] font-semibold tracking-tight text-foreground">
-              SkillVerse
-            </span>
-            <span className="ml-1 hidden text-[11px] text-muted-foreground sm:inline">
-              — Career OS for students
-            </span>
-          </Link>
-
-          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            {footerLinks.map((l) => (
-              <Link
-                key={l.to}
-                to={l.to}
-                className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-1">
-            {footerSocials.map(({ icon: Icon, href, label }) => (
-              <a
-                key={label}
-                href={href}
-                aria-label={label}
-                target="_blank"
-                rel="noreferrer"
-                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <Icon className="h-[15px] w-[15px]" />
-              </a>
-            ))}
-          </div>
+    <footer className="relative border-t border-border/60 bg-background/80 py-6 text-center text-xs text-muted-foreground mt-16">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row">
+        <div className="flex items-center gap-2 font-medium text-foreground">
+          <img
+            src={skillverseLogo}
+            alt="SkillVerse"
+            width={18}
+            height={18}
+            className="h-4 w-4 object-contain"
+          />
+          <span>SkillVerse</span>
+          <span className="text-muted-foreground font-normal">
+            · Your career identity hub.
+          </span>
         </div>
-
-        <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-border/50 pt-4 text-[11px] text-muted-foreground sm:flex-row">
-          <p>
-            © {new Date().getFullYear()} SkillVerse Labs · All rights reserved.
-          </p>
-          <div className="flex items-center gap-4">
-            <a href="#" className="transition-colors hover:text-foreground">
-              Privacy
-            </a>
-            <a href="#" className="transition-colors hover:text-foreground">
-              Terms
-            </a>
-            <a href="#" className="transition-colors hover:text-foreground">
-              Security
-            </a>
-          </div>
+        <div className="flex items-center gap-4 text-muted-foreground">
+          <span>© {new Date().getFullYear()} SkillVerse</span>
+          <span>·</span>
+          <a href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </a>
+          <span>·</span>
+          <a href="#" className="hover:text-foreground transition-colors">
+            Terms
+          </a>
+          <span>·</span>
+          <Link to="/copilot" className="hover:text-foreground transition-colors">
+            Help
+          </Link>
         </div>
       </div>
     </footer>

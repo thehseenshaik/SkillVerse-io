@@ -497,7 +497,7 @@ function DashboardPage() {
                 </h1>
 
                 <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                  Your career progress, coding activity, and next steps — all in one place.
+                  Your career progress, skills and opportunities — all in one place.
                 </p>
               </div>
 
