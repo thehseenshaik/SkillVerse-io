@@ -14,10 +14,14 @@ async function leetcodeRequest(query, variables = {}) {
     }, {
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Referer': 'https://leetcode.com',
+        'Origin': 'https://leetcode.com',
       },
     });
     return response.data;
   } catch (error) {
+    console.error('[LeetCode API Error]:', error.message);
     throw new Error('Failed to fetch LeetCode data');
   }
 }
@@ -31,7 +35,6 @@ const USER_PROFILE_QUERY = `
         realName
         userAvatar
         aboutMe
-        country
         company
         school
         websites
@@ -92,18 +95,27 @@ const USER_BADGES_QUERY = `
   }
 `;
 
+function cleanUsername(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .trim()
+    .replace(/^@+/, '')
+    .replace(/^(https?:\/\/)?(www\.)?(leetcode\.com)\/(u\/|user\/|profile\/)?/i, '')
+    .replace(/\/+$/, '')
+    .trim();
+}
+
 // Validate LeetCode username
 router.post('/validate', async (req, res) => {
   try {
     const { username } = req.body;
+    const sanitizedUsername = cleanUsername(username);
     
-    if (!username || typeof username !== 'string') {
+    if (!sanitizedUsername) {
       return res.status(400).json({ error: 'Invalid username' });
     }
 
-    const sanitizedUsername = username.trim();
-    
-    // Validate username format (LeetCode allows alphanumeric and some special chars)
+    // Validate username format (LeetCode allows alphanumeric and hyphens/underscores)
     if (!/^[a-zA-Z0-9_-]+$/.test(sanitizedUsername)) {
       return res.status(400).json({ error: 'Invalid LeetCode username format' });
     }
@@ -115,13 +127,13 @@ router.post('/validate', async (req, res) => {
       return res.status(400).json({ error: 'LeetCode user not found' });
     }
 
-    const profile = result.data.matchedUser.profile;
+    const profile = result.data.matchedUser.profile || {};
     
     res.json({
       valid: true,
       username: sanitizedUsername,
       displayName: profile.realName || sanitizedUsername,
-      avatar: profile.userAvatar,
+      avatar: profile.userAvatar || '',
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -132,8 +144,9 @@ router.post('/validate', async (req, res) => {
 router.post('/connect', async (req, res) => {
   try {
     const { uid, username } = req.body;
+    const sanitizedUsername = cleanUsername(username);
     
-    if (!uid || !username) {
+    if (!uid || !sanitizedUsername) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 

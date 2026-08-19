@@ -35,7 +35,14 @@ interface ActivityStore {
   resetFilters: () => void;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:3001';
+  }
+  return '';
+};
+const API_BASE = getApiBaseUrl();
 
 export const useActivityStore = create<ActivityStore>((set, get) => ({
   activities: [],

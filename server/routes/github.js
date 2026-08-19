@@ -11,6 +11,7 @@ async function githubRequest(endpoint, params = {}) {
   try {
     const headers = {
       'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'SkillVerse-App',
     };
     
     // Only add Authorization header if token is available
@@ -34,18 +35,29 @@ async function githubRequest(endpoint, params = {}) {
   }
 }
 
+function cleanGithubUsername(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, '')
+    .replace(/^(https?:\/\/)?(www\.)?(github\.com)\//i, '')
+    .replace(/\/+$/, '')
+    .trim();
+}
+
 // Validate GitHub username
 router.post('/validate', async (req, res) => {
   try {
     const { username } = req.body;
+    const sanitizedUsername = cleanGithubUsername(username);
     
     console.log('[GitHub Validate] Attempting to validate username:', username);
     
-    if (!username || typeof username !== 'string') {
+    if (!sanitizedUsername) {
       return res.status(400).json({ error: 'Invalid username' });
     }
 
-    const sanitizedUsername = username.trim().toLowerCase();
     console.log('[GitHub Validate] Sanitized username:', sanitizedUsername);
     
     // Validate username format
@@ -78,8 +90,9 @@ router.post('/validate', async (req, res) => {
 router.post('/connect', async (req, res) => {
   try {
     const { uid, username } = req.body;
+    const sanitizedUsername = cleanGithubUsername(username);
     
-    if (!uid || !username) {
+    if (!uid || !sanitizedUsername) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 

@@ -2,14 +2,24 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../index');
 
+function cleanGfgUsername(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .trim()
+    .replace(/^@+/, '')
+    .replace(/^(https?:\/\/)?(www\.)?(geeksforgeeks\.org)\/(user\/|profile\/)?/i, '')
+    .replace(/\/+$/, '')
+    .trim();
+}
+
 // Helper function to fetch and parse public GFG profile and POTD data
 async function fetchGfgPublicProfile(username) {
-  if (!username || typeof username !== 'string') {
+  const sanitizedUsername = cleanGfgUsername(username);
+
+  if (!sanitizedUsername) {
     throw new Error('Invalid GFG username');
   }
 
-  const sanitizedUsername = username.trim();
-  
   // Validate username format (alphanumeric, underscores, hyphens)
   if (!/^[a-zA-Z0-9_-]+$/.test(sanitizedUsername)) {
     throw new Error('Invalid GeeksforGeeks username format');
@@ -35,39 +45,55 @@ async function fetchGfgPublicProfile(username) {
     }
 
     const html = await response.text();
-    const matches = html.match(/self\.__next_f\.push\((.*?)\)/gs) || [];
+    
+    // Check if the page exists or returned a valid profile HTML
+    if (!html.includes(sanitizedUsername) && !html.includes('geeksforgeeks')) {
+      throw new Error('GFG profile not found. Check your username and try again.');
+    }
 
     let articleCountData = null;
     let mentorData = null;
 
-    for (const m of matches) {
-      if (!articleCountData && (m.includes('articleCount') || m.includes('total_problems_solved'))) {
-        const match = m.match(/\\"articleCount\\":(\{.*?\}),\\"userData\\"/);
-        if (match) {
-          try {
-            const unescaped = match[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-            articleCountData = JSON.parse(unescaped);
-          } catch (e) {
-            console.error('[GFG Scraper] articleCount parse error:', e.message);
-          }
-        }
-      }
-
-      if (!mentorData && m.includes('"mentor":')) {
-        const match = m.match(/\\"mentor\\":(\{.*?\}),\\"username\\"/);
-        if (match) {
-          try {
-            const unescaped = match[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-            mentorData = JSON.parse(unescaped);
-          } catch (e) {
-            console.error('[GFG Scraper] mentor parse error:', e.message);
-          }
-        }
+    // Resilient mentor extraction
+    const mentorMatch = html.match(/\\"mentor\\":(\{.*?\})(?:,|,\")/);
+    if (mentorMatch) {
+      try {
+        const unescaped = mentorMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        mentorData = JSON.parse(unescaped);
+      } catch (e) {
+        console.error('[GFG Scraper] mentor parse error:', e.message);
       }
     }
 
-    if (!articleCountData && !mentorData) {
-      throw new Error('GFG profile not found. Check your username and try again.');
+    // Resilient articleCount extraction
+    const articleMatch = html.match(/\\"articleCount\\":(\{.*?\})(?:,|,\")/);
+    if (articleMatch) {
+      try {
+        const unescaped = articleMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        articleCountData = JSON.parse(unescaped);
+      } catch (e) {
+        console.error('[GFG Scraper] articleCount parse error:', e.message);
+      }
+    }
+
+    // Direct fallback extraction from HTML if Next.js pushes chunks separately
+    let displayName = articleCountData?.name || mentorData?.name || sanitizedUsername;
+    let avatar = articleCountData?.profile_image_url || mentorData?.profile_image_url || null;
+    let codingScore = articleCountData?.score ?? 0;
+    let problemsSolved = articleCountData?.total_problems_solved ?? 0;
+    let instituteName = articleCountData?.institute_name || mentorData?.school_info?.[0]?.institution_name || mentorData?.headline || null;
+
+    if (displayName === sanitizedUsername) {
+      const nameMatch = html.match(/\"name\":\"([^\"]+)\"/);
+      if (nameMatch) displayName = nameMatch[1];
+    }
+    if (!codingScore) {
+      const scoreMatch = html.match(/\"score\":(\d+)/);
+      if (scoreMatch) codingScore = parseInt(scoreMatch[1], 10);
+    }
+    if (!problemsSolved) {
+      const solvedMatch = html.match(/\"total_problems_solved\":(\d+)/);
+      if (solvedMatch) problemsSolved = parseInt(solvedMatch[1], 10);
     }
 
     // Parse problem difficulty breakdown if present
@@ -77,7 +103,7 @@ async function fetchGfgPublicProfile(username) {
       easy: 0,
       medium: 0,
       hard: 0,
-      total: articleCountData?.total_problems_solved ?? 0
+      total: problemsSolved
     };
 
     const diffMatch = html.match(/\"solvedStats\":(\{.*?\})/);
@@ -101,12 +127,12 @@ async function fetchGfgPublicProfile(username) {
       username: sanitizedUsername,
       profileUrl: `https://www.geeksforgeeks.org/user/${encodeURIComponent(sanitizedUsername)}/`,
       profile: {
-        displayName: articleCountData?.name || mentorData?.name || sanitizedUsername,
-        avatar: articleCountData?.profile_image_url || mentorData?.profile_image_url || null,
-        codingScore: articleCountData?.score ?? 0,
+        displayName: displayName,
+        avatar: avatar,
+        codingScore: codingScore,
         monthlyScore: articleCountData?.monthly_score ?? 0,
-        problemsSolved: articleCountData?.total_problems_solved ?? 0,
-        instituteName: articleCountData?.institute_name || mentorData?.school_info?.[0]?.institution_name || null,
+        problemsSolved: problemsSolved,
+        instituteName: instituteName,
         instituteRank: articleCountData?.institute_rank || null,
         articlesPublished: articleCountData?.total_articles_published ?? 0,
       },

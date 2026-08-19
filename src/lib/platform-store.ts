@@ -2,8 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { createNotification } from './services/notification-service';
 
-// API base URL
-const API_BASE = import.meta.env.VITE_API_URL || 'https://skillverse-io.onrender.com';
+// API base URL resolution
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:3001';
+  }
+  return '';
+};
+const API_BASE = getApiBaseUrl();
 
 interface PlatformConnection {
   connected: boolean;
